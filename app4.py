@@ -9,7 +9,7 @@ st.set_page_config(layout="wide", page_title="Bond Analytics")
 file_path = 'Yields data.xlsx'
 
 # Function to load the data
-@st.cache
+@st.cache_data
 def load_data(file_path):
     df = pd.read_excel(file_path, sheet_name=0)
     df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
