@@ -8,6 +8,12 @@ st.set_page_config(layout="wide", page_title="Bond Analytics")
 # Path to the Excel file
 file_path = 'Yields data.xlsx'
 
+# Initialize session state
+if 'custom_formula' not in st.session_state:
+    st.session_state.custom_formula = ''
+if 'overlay_custom_formula' not in st.session_state:
+    st.session_state.overlay_custom_formula = ''
+
 # Function to load the data
 @st.cache_data
 def load_data(file_path):
@@ -32,9 +38,11 @@ instruments = df.columns[1:]
 selected_instrument = st.sidebar.selectbox("Select Instrument", options=["Custom"] + list(instruments))
 
 # Text box for custom formula input when "Custom" is selected for the primary instrument
-custom_formula = None
 if selected_instrument == "Custom":
-    custom_formula = st.sidebar.text_area("Enter Custom Formula (e.g., 'EU 10-Year - EU 5-Year + 2')")
+    st.session_state.custom_formula = st.sidebar.text_area(
+        "Enter Custom Formula (e.g., 'EU 10-Year - EU 5-Year + 2')",
+        value=st.session_state.custom_formula
+    )
 
 # Dropdown for selecting overlay instrument if overlay analysis is chosen
 overlay_instrument = None
@@ -44,7 +52,10 @@ if analysis_type == "Overlay":
     
     # Text box for custom formula input when "Custom" is selected for the overlay instrument
     if overlay_instrument == "Custom":
-        overlay_custom_formula = st.sidebar.text_area("Enter Overlay Custom Formula (e.g., 'EU 2-Year - EU 10-Year')")
+        st.session_state.overlay_custom_formula = st.sidebar.text_area(
+            "Enter Overlay Custom Formula (e.g., 'EU 2-Year - EU 10-Year')",
+            value=st.session_state.overlay_custom_formula
+        )
 
 # Date inputs for filtering data
 min_date = df['Date'].min().date()
@@ -77,12 +88,12 @@ if submit_button:
 
         # Handle custom formula for primary instrument
         if selected_instrument == "Custom":
-            if custom_formula:
-                filtered_df['Primary'] = evaluate_formula(filtered_df, custom_formula)
+            if st.session_state.custom_formula:
+                filtered_df['Primary'] = evaluate_formula(filtered_df, st.session_state.custom_formula)
                 if filtered_df['Primary'] is None:
                     st.error("Error in evaluating the custom formula for the primary instrument.")
                     st.stop()
-                primary_title = custom_formula
+                primary_title = st.session_state.custom_formula
             else:
                 st.sidebar.error("Please enter a valid custom formula for the primary instrument.")
                 st.stop()
@@ -93,12 +104,12 @@ if submit_button:
         # For Overlay, process the overlay instrument
         if analysis_type == "Overlay":
             if overlay_instrument == "Custom":
-                if overlay_custom_formula:
-                    filtered_df['Overlay'] = evaluate_formula(filtered_df, overlay_custom_formula)
+                if st.session_state.overlay_custom_formula:
+                    filtered_df['Overlay'] = evaluate_formula(filtered_df, st.session_state.overlay_custom_formula)
                     if filtered_df['Overlay'] is None:
                         st.error("Error in evaluating the custom formula for the overlay instrument.")
                         st.stop()
-                    overlay_title = overlay_custom_formula
+                    overlay_title = st.session_state.overlay_custom_formula
                 else:
                     st.sidebar.error("Please enter a valid custom formula for the overlay instrument.")
                     st.stop()
@@ -112,7 +123,6 @@ if submit_button:
 
         # Plotting
 
-        # For Single analysis
         if analysis_type == "Single":
             chart = alt.Chart(filtered_df).mark_line().encode(
                 x='Date:T',
@@ -124,7 +134,6 @@ if submit_button:
             )
             st.altair_chart(chart, use_container_width=True)
 
-        # For Overlay analysis
         elif analysis_type == "Overlay":
             base = alt.Chart(filtered_df).encode(x='Date:T')
 
