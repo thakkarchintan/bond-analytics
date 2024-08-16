@@ -6,7 +6,7 @@ import altair as alt
 st.set_page_config(layout="wide", page_title="Bond Analytics")
 
 # Path to the Excel file
-file_path = "C:/Python - Financial Markets/Exploratory Projects/streamlit-bond-analytics/Yields data.xlsx"
+file_path = 'Yields data.xlsx'
 
 # Function to load the data
 @st.cache
