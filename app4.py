@@ -149,7 +149,7 @@ if submit_button:
                 y='independent'
             ).properties(
                 title=f"{primary_title} vs. {overlay_title}",
-                height='container'  # Make the chart fill the available height
+                height='container',  # Make the chart fill the available height
                 width='container'  # Make the chart fill the available width
             )
 
