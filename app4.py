@@ -129,7 +129,7 @@ if submit_button:
                 y=alt.Y('Primary:Q', title=primary_title, axis=alt.Axis(labelColor='blue', titleColor='blue'))
             ).properties(
                 title=primary_title,
-                height=int(600 * 1.5),  # Increase height by 1.3x
+                height='container',  # Make the chart fill the available height
                 width='container'  # Make the chart fill the available width
             )
             st.altair_chart(chart, use_container_width=True)
@@ -149,7 +149,7 @@ if submit_button:
                 y='independent'
             ).properties(
                 title=f"{primary_title} vs. {overlay_title}",
-                height=int(600 * 1.5),  # Increase height by 1.3x
+                height='container'  # Make the chart fill the available height
                 width='container'  # Make the chart fill the available width
             )
 
