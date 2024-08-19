@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import altair as alt
+import plotly.graph_objects as go
 
 # Set Streamlit screen layout to wide
 st.set_page_config(layout="wide", page_title="Bond Analytics")
@@ -121,36 +121,47 @@ if submit_button:
                     st.error(f"Overlay instrument '{overlay_instrument}' not found in data.")
                     st.stop()
 
-        # Plotting
+        # Plotting with Plotly
 
         if analysis_type == "Single":
-            chart = alt.Chart(filtered_df).mark_line().encode(
-                x='Date:T',
-                y=alt.Y('Primary:Q', title=primary_title, axis=alt.Axis(labelColor='blue', titleColor='blue'))
-            ).properties(
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=filtered_df['Date'],
+                y=filtered_df['Primary'],
+                mode='lines',
+                name=primary_title,
+                line=dict(color='blue')
+            ))
+            fig.update_layout(
                 title=primary_title,
+                xaxis_title='Date',
+                yaxis_title=primary_title,
                 height=800,  # Make the chart height 800
-                width='container'  # Make the chart fill the available width
+                width=1000  # Fixed width; adjust as needed
             )
-            st.altair_chart(chart, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True)
 
         elif analysis_type == "Overlay":
-            base = alt.Chart(filtered_df).encode(x='Date:T')
-
-            primary_chart = base.mark_line(color='blue').encode(
-                y=alt.Y('Primary:Q', title=primary_title, axis=alt.Axis(labelColor='blue', titleColor='blue'))
-            )
-
-            overlay_chart = base.mark_line(color='red').encode(
-                y=alt.Y('Overlay:Q', title=overlay_title, axis=alt.Axis(labelColor='red', titleColor='red'))
-            )
-
-            combined_chart = alt.layer(primary_chart, overlay_chart).resolve_scale(
-                y='independent'
-            ).properties(
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=filtered_df['Date'],
+                y=filtered_df['Primary'],
+                mode='lines',
+                name=primary_title,
+                line=dict(color='blue')
+            ))
+            fig.add_trace(go.Scatter(
+                x=filtered_df['Date'],
+                y=filtered_df['Overlay'],
+                mode='lines',
+                name=overlay_title,
+                line=dict(color='red')
+            ))
+            fig.update_layout(
                 title=f"{primary_title} vs. {overlay_title}",
+                xaxis_title='Date',
+                yaxis_title='Value',
                 height=800,  # Make the chart height 800
-                width='container'  # Make the chart fill the available width
+                width=1000  # Fixed width; adjust as needed
             )
-
-            st.altair_chart(combined_chart, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True)
