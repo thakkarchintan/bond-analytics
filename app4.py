@@ -122,6 +122,9 @@ if submit_button:
                     st.stop()
 
         # Plotting with Plotly
+        
+        import plotly.graph_objs as go
+        import streamlit as st
 
         if analysis_type == "Single":
             fig = go.Figure()
@@ -136,32 +139,54 @@ if submit_button:
                 title=primary_title,
                 xaxis_title='Date',
                 yaxis_title=primary_title,
-                height=800,  # Make the chart height 800
-                width=1000  # Fixed width; adjust as needed
+                height=800,  # Chart height
+                width=1000,  # Fixed width
+                yaxis=dict(title=primary_title, titlefont=dict(color='blue')),  # Matching axis label color
             )
             st.plotly_chart(fig, use_container_width=True)
 
         elif analysis_type == "Overlay":
             fig = go.Figure()
+
+            # Primary trace
             fig.add_trace(go.Scatter(
                 x=filtered_df['Date'],
                 y=filtered_df['Primary'],
                 mode='lines',
                 name=primary_title,
-                line=dict(color='blue')
+                line=dict(color='blue'),
+                yaxis='y1'  # Assign to primary y-axis
             ))
+
+            # Overlay trace
             fig.add_trace(go.Scatter(
                 x=filtered_df['Date'],
                 y=filtered_df['Overlay'],
                 mode='lines',
                 name=overlay_title,
-                line=dict(color='red')
+                line=dict(color='red'),
+                yaxis='y2'  # Assign to secondary y-axis
             ))
+
+            # Update layout with secondary y-axis
             fig.update_layout(
                 title=f"{primary_title} vs. {overlay_title}",
                 xaxis_title='Date',
-                yaxis_title='Value',
-                height=800,  # Make the chart height 800
-                width=1000  # Fixed width; adjust as needed
+                yaxis=dict(
+                    title=primary_title,
+                    titlefont=dict(color='blue'),
+                    tickfont=dict(color='blue')
+                ),  # Primary y-axis (left)
+                yaxis2=dict(
+                    title=overlay_title,
+                    titlefont=dict(color='red'),
+                    tickfont=dict(color='red'),
+                    overlaying='y',  # Overlay on the same chart
+                    side='right'  # Place it on the right
+                ),
+                height=800,  # Chart height
+                width=1000  # Fixed width
             )
+
+            # Display the plot
             st.plotly_chart(fig, use_container_width=True)
