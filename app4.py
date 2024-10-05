@@ -123,9 +123,6 @@ if submit_button:
 
         # Plotting with Plotly
         
-        import plotly.graph_objs as go
-        import streamlit as st
-
         if analysis_type == "Single":
             fig = go.Figure()
             fig.add_trace(go.Scatter(
@@ -190,3 +187,70 @@ if submit_button:
 
             # Display the plot
             st.plotly_chart(fig, use_container_width=True)
+
+        # Plot bar graph showing daily change // added on 05-Oct-2024 to show daily change in bar graphs
+        if analysis_type == "Single":
+            # Calculate daily change for the primary instrument
+            filtered_df['Daily Change'] = filtered_df['Primary'].diff()
+
+            # Create bar graph for the primary instrument's daily change
+            fig_change = go.Figure()
+            fig_change.add_trace(go.Bar(
+                x=filtered_df['Date'],
+                y=filtered_df['Daily Change'],
+                name=f"Daily Change - {primary_title}",
+                marker=dict(color='blue')
+            ))
+
+            fig_change.update_layout(
+                title=f"Daily Change - {primary_title}",
+                xaxis_title='Date',
+                yaxis_title='Daily Change',
+                height=800,  # Chart height
+                width=1000   # Fixed width
+            )
+
+            st.plotly_chart(fig_change, use_container_width=True)
+
+        elif analysis_type == "Overlay":
+            # Calculate daily change for both the primary and overlay instruments
+            filtered_df['Primary Daily Change'] = filtered_df['Primary'].diff()
+            filtered_df['Overlay Daily Change'] = filtered_df['Overlay'].diff()
+
+            # Create bar graph for the primary instrument's daily change
+            fig_primary_change = go.Figure()
+            fig_primary_change.add_trace(go.Bar(
+                x=filtered_df['Date'],
+                y=filtered_df['Primary Daily Change'],
+                name=f"Daily Change - {primary_title}",
+                marker=dict(color='blue')
+            ))
+
+            fig_primary_change.update_layout(
+                title=f"Daily Change - {primary_title}",
+                xaxis_title='Date',
+                yaxis_title='Daily Change',
+                height=800,  # Chart height
+                width=1000   # Fixed width
+            )
+
+            st.plotly_chart(fig_primary_change, use_container_width=True)
+
+            # Create bar graph for the overlay instrument's daily change
+            fig_overlay_change = go.Figure()
+            fig_overlay_change.add_trace(go.Bar(
+                x=filtered_df['Date'],
+                y=filtered_df['Overlay Daily Change'],
+                name=f"Daily Change - {overlay_title}",
+                marker=dict(color='red')
+            ))
+
+            fig_overlay_change.update_layout(
+                title=f"Daily Change - {overlay_title}",
+                xaxis_title='Date',
+                yaxis_title='Daily Change',
+                height=800,  # Chart height
+                width=1000   # Fixed width
+            )
+
+            st.plotly_chart(fig_overlay_change, use_container_width=True)
