@@ -33,11 +33,27 @@ def start_dummy_server():
 def run_scrap():
     try:
         print("Running scrap.py...")
-        subprocess.run(["python", "scrap.py"], check=True)
+        # Stream real-time logs of scrap.py
+        process = subprocess.Popen(
+            ["python", "scrap.py"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True  # Decode bytes to strings
+        )
+        # Print output and errors line-by-line in real-time
+        for line in process.stdout:
+            print(f"SCRAP LOG: {line.strip()}", flush=True)
+        for line in process.stderr:
+            print(f"SCRAP ERROR: {line.strip()}", flush=True)
+
+        # Wait for the process to complete
+        process.wait()
+        if process.returncode != 0:
+            raise subprocess.CalledProcessError(process.returncode, "scrap.py")
         print("scrap.py completed successfully.")
     except subprocess.CalledProcessError as e:
-        print(f"Error running scrap.py: {e}")
-        exit(1)  # Exit if scrap.py fails
+        print(f"Error running scrap.py: {e}", flush=True)
+        exit(1)
 
 if __name__ == "__main__":
     # Log the current directory for debugging
