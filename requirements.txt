@@ -6,3 +6,4 @@ openpyxl
 playwright_stealth
 playwright
 bs4
+flask
