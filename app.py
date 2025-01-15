@@ -1,6 +1,9 @@
 import subprocess
 import streamlit as st
 
+import os
+print("Current directory contents:", os.listdir('.'))
+
 def run_check():
     subprocess.run(["python", "scarp.py"], check=True)
 
