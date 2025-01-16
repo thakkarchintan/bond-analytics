@@ -20,4 +20,4 @@ ENV PYTHONUNBUFFERED=1
 EXPOSE 8501
 
 # Command to run your application
-CMD python app.py
+CMD python -m streamlit run stream.py
