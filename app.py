@@ -1,8 +1,10 @@
 import subprocess
 import threading
 import os
+import sys
 from flask import Flask
 import time
+import requests
 
 # Create a dummy Flask app to keep a port open
 app = Flask(__name__)
@@ -10,6 +12,12 @@ app = Flask(__name__)
 @app.route("/")
 def health_check():
     return "Service is running!"
+
+# Define a route to stop the Flask app
+@app.route("/shutdown", methods=["POST"])
+def shutdown():
+    print("Shutting down Flask server...")
+    sys.exit()  # This will stop the Flask server by raising a SystemExit
 
 # Function to start Flask server in a separate thread
 def start_dummy_server(port):
@@ -40,12 +48,6 @@ def run_scrap():
         print(f"Error running scrap.py: {e}", flush=True)
         exit(1)
 
-def stop_flask_server(flask_process):
-    print("Stopping Flask server...")
-    flask_process.terminate()  # Terminate Flask server process
-    flask_process.wait()  # Ensure the process is completely stopped
-    print("Flask server stopped.")
-
 if __name__ == "__main__":
     # Log the current directory for debugging
     print("Current directory contents:", os.listdir('.'))
@@ -63,8 +65,13 @@ if __name__ == "__main__":
     # Run the scrap.py script
     run_scrap()
 
-    # Stop Flask after scrap.py completes
-    stop_flask_server(flask_thread)
+    # Stop Flask by triggering the shutdown route
+    print("Stopping Flask server...")
+    try:
+        # Trigger the shutdown route
+        requests.post(f"http://127.0.0.1:{flask_port}/shutdown")
+    except requests.exceptions.RequestException as e:
+        print(f"Error stopping Flask server: {e}")
 
     # Start Streamlit after scrap.py completes and Flask is stopped
     print("Starting Streamlit...")
