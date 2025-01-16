@@ -49,7 +49,7 @@ def update_last_run_date(log_file="last_run_date.txt"):
     with open(log_file, "w") as file:
         file.write(datetime.today().strftime("%Y-%m-%d"))
 
-def update_data(url, tool, append_dates=False , retries=5):
+def update_data(url, tool, append_dates=False , retries=1):
     with sync_playwright() as p:
         # Launch browser with additional arguments and settings
         browser = p.chromium.launch(headless=True, args=[
