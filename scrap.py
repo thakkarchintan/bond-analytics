@@ -216,7 +216,6 @@ def update_data(url, tool, append_dates=False , retries=1):
         
         # Close the browser
         browser.close()
-        context.close()
 
 
 def automate_update_excel() :
