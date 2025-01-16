@@ -27,7 +27,7 @@ def health_check():
     return "Service is running!"
 
 def start_dummy_server():
-    port = int(os.getenv("PORT", 8501))  # Use Render's PORT environment variable
+    port = int(os.getenv("PORT", 10000))  # Use Render's PORT environment variable
     app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
 
 def run_scrap():
