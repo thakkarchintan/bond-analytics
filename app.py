@@ -1,23 +1,8 @@
-# import subprocess
-# import streamlit as st
-
-# import os
-# print("Current directory contents:", os.listdir('.'))
-
-# def run_check():
-#     subprocess.run(["python", "scrap.py"], check=True)
-
-# if __name__ == "__main__":
-#     # Run check.py (Playwright) first
-#     run_check()
-#     # Now run Streamlit
-#     subprocess.run(["python", "-m" , "streamlit", "run", "stream.py"], check=True)
-
-
 import subprocess
 import threading
 import os
 from flask import Flask
+import time
 
 # Create a dummy Flask app to keep a port open
 app = Flask(__name__)
@@ -26,8 +11,8 @@ app = Flask(__name__)
 def health_check():
     return "Service is running!"
 
-def start_dummy_server():
-    port = int(os.getenv("PORT", 8051))  # Use Render's PORT environment variable
+# Function to start Flask server in a separate thread
+def start_dummy_server(port):
     app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
 
 def run_scrap():
@@ -55,18 +40,33 @@ def run_scrap():
         print(f"Error running scrap.py: {e}", flush=True)
         exit(1)
 
+def stop_flask_server(flask_process):
+    print("Stopping Flask server...")
+    flask_process.terminate()  # Terminate Flask server process
+    flask_process.wait()  # Ensure the process is completely stopped
+    print("Flask server stopped.")
+
 if __name__ == "__main__":
     # Log the current directory for debugging
     print("Current directory contents:", os.listdir('.'))
 
-    # Start a dummy server in a separate thread
-    threading.Thread(target=start_dummy_server, daemon=True).start()
+    # Define the port for Flask and Streamlit
+    flask_port = int(os.getenv("PORT", 10000))  # Default port for Flask
 
-    # Run scrap.py
+    # Start the Flask server in a separate thread
+    flask_thread = threading.Thread(target=start_dummy_server, args=(flask_port,), daemon=True)
+    flask_thread.start()
+    
+    # Give Flask a moment to start
+    time.sleep(2)
+
+    # Run the scrap.py script
     run_scrap()
 
-    # Start Streamlit after scrap.py completes
-    print("Starting Streamlit...")
-    port = os.getenv("PORT", "8501")  # Default to 8501 if PORT is not set
-    subprocess.run(["streamlit", "run", "stream.py", "--server.port", port, "--server.address", "0.0.0.0"], check=True)
+    # Stop Flask after scrap.py completes
+    stop_flask_server(flask_thread)
 
+    # Start Streamlit after scrap.py completes and Flask is stopped
+    print("Starting Streamlit...")
+    streamlit_port = os.getenv("PORT", "8051")  # Default to 8051 if PORT is not set
+    subprocess.run(["python", "-m", "streamlit", "run", "stream.py", "--server.port", streamlit_port, "--server.address", "0.0.0.0"], check=True)
