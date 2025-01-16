@@ -13,6 +13,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Optional: Install specific Playwright dependencies if needed
 # RUN python -m playwright install
 
+ENV PYTHONUNBUFFERED=1
+
+
 # Expose the default port for Streamlit
 EXPOSE 8501
 
