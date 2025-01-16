@@ -1,6 +1,7 @@
 import subprocess
 import threading
 import os
+import sys
 
 def run_scrap():
     try:
@@ -11,6 +12,7 @@ def run_scrap():
             stderr=subprocess.PIPE,
             text=True  # Decode bytes to strings
         )
+
         for line in process.stdout:
             print(f"SCRAP LOG: {line.strip()}", flush=True)
         for line in process.stderr:
@@ -26,12 +28,19 @@ def run_scrap():
 def run_streamlit():
     print("Starting Streamlit...")
     port = os.getenv("PORT", "8501")  # Default to 8501 if PORT is not set
-    subprocess.run(["streamlit", "run", "stream.py", "--server.port", port, "--server.address", "0.0.0.0"], check=True)
+    process = subprocess.Popen(
+        ["streamlit", "run", "stream.py", "--server.port", port, "--server.address", "0.0.0.0"]
+    )
+    process.wait()  # Wait for Streamlit to finish before closing the script
+    print("Streamlit completed successfully.")
 
 if __name__ == "__main__":
-    # Start the scrap process in a separate thread
+    # Start the scrap process in a separate thread to run independently
     scrap_thread = threading.Thread(target=run_scrap)
     scrap_thread.start()
 
-    # Immediately start Streamlit
+    # Immediately start Streamlit without blocking the scrap thread
     run_streamlit()
+
+    # Ensure scrap thread has completed before exiting the program
+    scrap_thread.join()
