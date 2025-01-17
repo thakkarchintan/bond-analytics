@@ -49,7 +49,7 @@ def update_last_run_date(log_file="last_run_date.txt"):
     with open(log_file, "w") as file:
         file.write(datetime.today().strftime("%Y-%m-%d"))
 
-def update_data(url, tool, append_dates=False , retries=1):
+def update_data(url, tool, append_dates=False , retries=5):
     with sync_playwright() as p:
         # Launch browser with additional arguments and settings
         browser = p.chromium.launch(headless=True, args=[
@@ -140,7 +140,7 @@ def update_data(url, tool, append_dates=False , retries=1):
         data.reverse()
 
         # Open the Excel workbook
-        file_path = "Yields data.xlsx"
+        file_path = "Final.xlsx"
         wb = openpyxl.load_workbook(file_path)
         sheet = wb.active
 
@@ -234,9 +234,9 @@ def automate_update_excel() :
         {'CAD10Y': 'https://www.investing.com/rates-bonds/canada-10-year-bond-yield-historical-data'},
         {'UK10Y': 'https://in.investing.com/rates-bonds/uk-10-year-bond-yield-historical-data'},
         {'AUS10Y': 'https://in.investing.com/rates-bonds/australia-10-year-bond-yield-historical-data'},
-        {'FBTP10Y': 'https://www.investing.com/rates-bonds/italy-10-year-bond-yield-historical-data'},
+        {'FBTPY': 'https://www.investing.com/rates-bonds/italy-10-year-bond-yield-historical-data'},
         {'FBTSY': 'https://www.investing.com/rates-bonds/italy-2-year-bond-yield-historical-data'},
-        {'FOAT10Y': 'https://www.investing.com/rates-bonds/france-10-year-bond-yield-historical-data'},
+        {'FOATY': 'https://www.investing.com/rates-bonds/france-10-year-bond-yield-historical-data'},
     ]
 
     # Run the first tool with append_dates=True

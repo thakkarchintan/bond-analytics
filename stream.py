@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 st.set_page_config(layout="wide", page_title="Bond Analytics")
 
 # Path to the Excel file
-file_path = 'Yields data.xlsx'
+file_path = 'Final.xlsx'
 
 # Initialize session state
 if 'custom_formula' not in st.session_state:
