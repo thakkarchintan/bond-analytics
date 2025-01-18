@@ -6,7 +6,8 @@ from playwright.sync_api import sync_playwright
 import time
 from playwright_stealth import stealth_sync
 import random
-
+import os
+import subprocess
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -249,3 +250,26 @@ def automate_update_excel() :
     
 if not has_function_run_today():
     automate_update_excel()
+    
+repo_path = os.path.dirname(os.path.abspath(__file__))
+
+if os.path.exists(os.path.join(repo_path, ".git")):
+    print(f"The repository path is: {repo_path}")
+else:
+    print(f"'{repo_path}' is not a valid Git repository.")
+
+    
+try:
+    # Add all changes
+    subprocess.run(["git", "add", "."], cwd=repo_path, check=True)
+
+    # Commit changes
+    commit_message = "Automated commit from script"
+    subprocess.run(["git", "commit", "-m", commit_message], cwd=repo_path, check=True)
+
+    # Push changes
+    subprocess.run(["git", "push"], cwd=repo_path, check=True)
+
+    print("Changes added, committed, and pushed successfully!")
+except subprocess.CalledProcessError as e:
+    print(f"Error: {e}")
