@@ -9,6 +9,8 @@ import random
 import os
 import subprocess
 import logging
+from datetime import datetime
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -260,11 +262,14 @@ else:
 
     
 try:
+    file_path = "Final.xlsx"
+    today = datetime.now()
+    formatted_date = today.strftime("%d-%m-%Y")
     # Add all changes
-    subprocess.run(["git", "add", "."], cwd=repo_path, check=True)
+    subprocess.run(["git", "add", file_path], cwd=repo_path, check=True)
 
     # Commit changes
-    commit_message = "Automated commit from script"
+    commit_message = f"Excel data updated for date{formatted_date}"
     subprocess.run(["git", "commit", "-m", commit_message], cwd=repo_path, check=True)
 
     # Push changes
