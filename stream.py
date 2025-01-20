@@ -30,12 +30,13 @@ def home_page():
 
     # Load the data
     df = load_data(file_path)
-
-    # Sidebar for user inputs
-    st.sidebar.title('Bond Analytics')
-    
+   
     if st.sidebar.button("Logout",key="button1"):
         authenticator.logout()
+   
+    # Sidebar for user inputs
+    st.sidebar.title('Bond Analytics')
+
 
     # First dropdown for selecting analysis type
     analysis_type = st.sidebar.selectbox("Select Analysis Type", options=["Single", "Overlay"])
@@ -72,6 +73,8 @@ def home_page():
     start_date = st.sidebar.date_input("Start Date", min_date, min_value=min_date, max_value=max_date)
     end_date = st.sidebar.date_input("End Date", max_date, min_value=min_date, max_value=max_date)
 
+
+    
     # Submit button
     submit_button = st.sidebar.button('Submit')
 
