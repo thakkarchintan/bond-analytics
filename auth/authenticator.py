@@ -56,7 +56,7 @@ class Authenticator:
                     display: flex;
                     justify-content: center;
                     align-items: center;
-                    margin-right:15px;
+                    margin-right:30px;
                 }}
                 </style>
                 <div class="gcenter">
