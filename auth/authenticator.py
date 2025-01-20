@@ -56,6 +56,7 @@ class Authenticator:
                     display: flex;
                     justify-content: center;
                     align-items: center;
+                    margin-right:15px;
                 }}
                 </style>
                 <div class="gcenter">
@@ -74,11 +75,11 @@ class Authenticator:
     def check_auth(self):
 
         if st.session_state["connected"]:
-            st.toast(":green[Login successfull]")
+            st.toast(":green[Login successful]")
             return
 
         if st.session_state.get("logout"):
-            st.toast(":green[Logout successfull]")
+            st.toast(":green[Logout successful]")
             return
 
         token = self.auth_token_manager.get_decoded_token()
