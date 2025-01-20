@@ -269,7 +269,7 @@ try:
     subprocess.run(["git", "add", file_path], cwd=repo_path, check=True)
 
     # Commit changes
-    commit_message = f"Excel data updated for date{formatted_date}"
+    commit_message = f"Excel data updated for date {formatted_date}"
     subprocess.run(["git", "commit", "-m", commit_message], cwd=repo_path, check=True)
 
     # Push changes
