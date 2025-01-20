@@ -13,5 +13,5 @@ authenticator = Authenticator(
     allowed_users=allowed_users,
     token_key=os.getenv("TOKEN_KEY"),
     secret_path=client_secret_path,
-    redirect_uri="http://localhost:8501",
+    redirect_uri="https://bond-analytics-1.onrender.com/",
 )
