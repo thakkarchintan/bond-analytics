@@ -72,9 +72,10 @@ class Authenticator:
             )
 
     def check_auth(self):
-
         if st.session_state["connected"]:
-            st.toast(":green[Login successful]")
+            if not st.session_state["login_message_shown"]:
+                st.success("Login successful!")
+                st.session_state["login_message_shown"] = True
             return
 
         if st.session_state.get("logout"):

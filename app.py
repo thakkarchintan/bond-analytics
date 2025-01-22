@@ -9,6 +9,9 @@ st.set_page_config(layout="wide", page_title="Bond Analytics")
 
 if "connected" not in st.session_state:
     st.session_state["connected"] = False
+    
+if "login_message_shown" not in st.session_state:
+    st.session_state["login_message_shown"] = False
 
 # st.title("Bond Analytics")
 
