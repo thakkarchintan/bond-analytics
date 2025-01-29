@@ -145,12 +145,11 @@ def home_page():
                     line=dict(color='blue')
                 ))
                 fig.update_layout(
-                    title=primary_title,
-                    xaxis_title='Date',
-                    yaxis_title=primary_title,
-                    height=800,  # Chart height
-                    width=1000,  # Fixed width
-                    yaxis=dict(title=primary_title, titlefont=dict(color='blue')),  # Matching axis label color
+                title=dict(text=primary_title, font=dict(color='blue')),  # Updated titlefont syntax
+                xaxis_title='Date',
+                yaxis_title=primary_title,
+                height=800,
+                width=1000
                 )
                 st.plotly_chart(fig, use_container_width=True)
 
@@ -178,23 +177,41 @@ def home_page():
                 ))
 
                 # Update layout with secondary y-axis
+                # fig.update_layout(
+                #     title=f"{primary_title} vs. {overlay_title}",
+                #     xaxis_title='Date',
+                #     yaxis=dict(
+                #         title=primary_title,
+                #         titlefont=dict(color='blue'),
+                #         tickfont=dict(color='blue')
+                #     ),  # Primary y-axis (left)
+                #     yaxis2=dict(
+                #         title=overlay_title,
+                #         titlefont=dict(color='red'),
+                #         tickfont=dict(color='red'),
+                #         overlaying='y',  # Overlay on the same chart
+                #         side='right'  # Place it on the right
+                #     ),
+                #     height=800,  # Chart height
+                #     width=1000  # Fixed width
+                # )
+                
+                
                 fig.update_layout(
                     title=f"{primary_title} vs. {overlay_title}",
                     xaxis_title='Date',
                     yaxis=dict(
-                        title=primary_title,
-                        titlefont=dict(color='blue'),
+                        title=dict(text=primary_title, font=dict(color='blue')),
                         tickfont=dict(color='blue')
-                    ),  # Primary y-axis (left)
-                    yaxis2=dict(
-                        title=overlay_title,
-                        titlefont=dict(color='red'),
-                        tickfont=dict(color='red'),
-                        overlaying='y',  # Overlay on the same chart
-                        side='right'  # Place it on the right
                     ),
-                    height=800,  # Chart height
-                    width=1000  # Fixed width
+                    yaxis2=dict(
+                        title=dict(text=overlay_title, font=dict(color='red')),
+                        tickfont=dict(color='red'),
+                        overlaying='y',
+                        side='right'
+                    ),
+                    height=800,
+                    width=1000
                 )
 
                 # Display the plot
