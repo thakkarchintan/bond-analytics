@@ -59,7 +59,7 @@ class Authenticator:
                 }}
                 </style>
                 <div class="gcenter">
-                    <a href="{auth_url}" target="_blank">
+                    <a href="{auth_url}" target="_self">
                         <button style="background-color: #4285F4; margin-right:15px; color: white; border-radius: 5px; padding: 10px 50px; font-size: 20px; border: none; cursor: pointer;">
                             Login with Google
                             <img src="https://icon2.cleanpng.com/lnd/20241121/sc/bd7ce03eb1225083f951fc01171835.webp" 
