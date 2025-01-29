@@ -42,7 +42,7 @@ def home_page():
     analysis_type = st.sidebar.selectbox("Select Analysis Type", options=["Single", "Overlay"])
 
     # List of instrument columns
-    instruments = df.columns[1:]
+    instruments = df.columns[1:24]
 
     # Dropdown for selecting the primary instrument or custom option
     selected_instrument = st.sidebar.selectbox("Select Instrument", options=["Custom"] + list(instruments))
