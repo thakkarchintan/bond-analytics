@@ -265,6 +265,7 @@ try:
     file_path = "Final.xlsx"
     today = datetime.now()
     formatted_date = today.strftime("%d-%m-%Y")
+    subprocess.run(["python", "WeekendRm.py"])
     # Add all changes
     subprocess.run(["git", "add", file_path], cwd=repo_path, check=True)
 
