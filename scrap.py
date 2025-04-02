@@ -277,7 +277,7 @@ try:
     subprocess.run(["git", "commit", "-m", commit_message], cwd=repo_path, check=True)
 
     # Push changes
-    subprocess.run(["git", "push"], cwd=repo_path, check=True)
+    subprocess.run(["git", "push" , "origin", "master"], cwd=repo_path, check=True)
 
     print("Changes added, committed, and pushed successfully!")
 except subprocess.CalledProcessError as e:
