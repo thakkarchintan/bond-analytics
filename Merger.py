@@ -84,6 +84,6 @@ def update_main_excel(main_excel_path, csv_folder, date_column="Date"):
 
 
 # Example usage
-main_excel_path = "Demo2.xlsx"  # Path to the main Excel file
+main_excel_path = "Demo.xlsx"  # Path to the main Excel file
 csv_folder = "csv"  # Path to the folder containing the CSV files
 update_main_excel(main_excel_path, csv_folder)
