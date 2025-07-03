@@ -3,7 +3,7 @@ pandas
 plotly
 numpy
 openpyxl
-playwright_stealth
+playwright-stealth==1.0.6
 playwright
 bs4
 flask
@@ -12,3 +12,5 @@ extra-streamlit-components==0.1.71
 google-auth-oauthlib==1.2.1
 google-api-python-client==2.149.0
 python-dotenv==1.0.1
+setuptools
+
