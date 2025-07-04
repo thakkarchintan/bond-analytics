@@ -1,0 +1,1 @@
+from .news_summary import news_app

@@ -13,4 +13,10 @@ google-auth-oauthlib==1.2.1
 google-api-python-client==2.149.0
 python-dotenv==1.0.1
 setuptools
-
+requests
+cohere
+nltk
+sumy
+beautifulsoup4
+streamlit-aggrid
+playwright_stealth

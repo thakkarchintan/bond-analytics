@@ -1,6 +1,8 @@
 import streamlit as st
 from common import authenticator
 from stream import home_page
+from EmailCrm import *
+from NewsSummary import *
 
 
 # emails of users that are allowed to login
@@ -41,4 +43,19 @@ authenticator.login()
     
 # show content that requires login
 if st.session_state["connected"]:
- home_page()
+ # Dictionary to map app name to the app module's run function
+    APP_MAP = {
+        "Email CRM":email_crm_gmail_run,
+        "News Summarizer": news_app,
+        "Email CRM (Domain)":email_crm_outreach_chintanthakkar_run,
+        "Bond Analytics":home_page
+    }
+
+    st.set_page_config(page_title="Streamlit Multi-App", layout="wide")
+    # st.sidebar.title("🧭 Choose an App")
+
+    # Sidebar dropdown to select app
+    selected_app = st.sidebar.selectbox("Select an application", list(APP_MAP.keys()))
+
+    # Run the selected app
+    APP_MAP[selected_app]()

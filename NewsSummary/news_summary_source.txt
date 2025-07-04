@@ -1,0 +1,29 @@
+{
+  "whitelist": [
+    "New York Post",
+    "Livemint",
+    "Firstpost",
+    "BusinessLine",
+    "Forbes",
+    "The Times of India",
+    "ABC News",
+    "Newsweek",
+    "Europa.eu"
+  ],
+  "blacklist": [
+    "Dailyinterlake.com",
+    "Thekitchn.com",
+    "The Cincinnati Enquirer",
+    "Joehoft.com",
+    "Biztoc.com",
+    "Wnd.com",
+    "McCovey Chronicles",
+    "CBS Sports",
+    "Sputnikglobe.com",
+    "Khabarhub.com",
+    "Wattsupwiththat.com",
+    "Card Chronicle",
+    "Bitcoinist",
+    "Slashdot.org"
+  ]
+}

@@ -1,0 +1,72 @@
+Opened[02 Jul 2025 18:12:52]
+To: there <pratik.ashah676@gmail.com>
+Subject: t
+Body: t
+Attachment: None
+------------------------------------------------------------
+[02 Jul 2025 18:14:18]
+To: there <pratik.ashah676@gmail.com>
+Subject: t
+Body: t
+Attachment: None
+------------------------------------------------------------
+[02 Jul 2025 18:16:46]
+To: there <pratik.ashah676@gmail.com>
+Subject: Mail to verify cpanel
+Body: CPANEL VERIFICATION MAIL
+Attachment: None
+------------------------------------------------------------
+[02 Jul 2025 18:21:00]
+To: there <pratik.ashah676@gmail.com>
+Subject: Mail to verify cpanel
+Body: CPANEL VERIFICATION MAIL
+Attachment: None
+------------------------------------------------------------
+[02 Jul 2025 20:21:35]
+To: there <pratik.ashah676@gmail.com>
+Subject: Mail to verify cpanel
+Body: CPANEL VERIFICATION MAIL
+Attachment: None
+------------------------------------------------------------
+[02 Jul 2025 20:25:48]
+To: there <test-wj801oz3c@srv1.mail-tester.com>
+Subject: Mail to verify cpanel
+Body: CPANEL VERIFICATION MAIL
+Attachment: None
+------------------------------------------------------------
+[03 Jul 2025 13:07:34]
+To: there <test-wj801oz3c@srv1.mail-tester.com>
+Subject: CPANEL TEST
+Body: TESTING INFO MAIL
+Attachment: None
+------------------------------------------------------------
+[03 Jul 2025 13:11:45]
+To: there <pratik.ashah676@gmail.com>
+Subject: CPANEL TEST
+Body: CPNAEL INFO MAIL TEST
+Attachment: None
+------------------------------------------------------------
+[03 Jul 2025 13:21:59]
+To: there <pratik.ashah676@gmail.com>
+Subject: CPANEL TEST
+Body: CPNAEL INFO MAIL TEST
+Attachment: None
+------------------------------------------------------------
+[04 Jul 2025 12:21:43]
+To: there <shirishkumar1949@gmail.com>
+Subject: Your Request Has Been Received Successfully
+Body: Hi Om,  Thank you for reaching out to us. We’ve successfully received your request and our team will get back to you shortly.  If this wasn’t you, please ignore this email.  Best regards,   The Support Team
+Attachment: None
+------------------------------------------------------------
+[04 Jul 2025 12:24:35]
+To: there <shirishkumar1949@gmail.com>
+Subject:  Notice: Login from a New Device
+Body: Hi Om,  We noticed a login to your account from a new device.   Time: July 4, 2025, 12:30 PM   Location: Pune, India (approximate)  If this was you, no action is needed. If you didn’t perform this login, please reset your password immediately.  Stay safe,   Security Team
+Attachment: None
+------------------------------------------------------------
+[04 Jul 2025 12:25:57]
+To: there <shirishkumar1949@gmail.com>
+Subject: Reminder: Complete Your Profile for a Better Experience
+Body: Hi Om,  Just a quick reminder to complete your profile so you can make the most of our features. It only takes a minute and helps us personalize your experience.  👉 [Complete Profile Now](#)  Thank you for being with us!   Warm regards,   Customer Experience Team
+Attachment: None
+------------------------------------------------------------
