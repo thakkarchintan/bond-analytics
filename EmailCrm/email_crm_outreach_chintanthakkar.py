@@ -57,7 +57,7 @@ def email_crm_outreach_chintanthakkar_run():
             allow_unsafe_jscode=True,
             fit_columns_on_grid_load=True,
             theme="streamlit",
-            height=500,
+            height=700,
             enable_enterprise_modules=True
         )
 
@@ -89,10 +89,8 @@ def email_crm_outreach_chintanthakkar_run():
         sender_email = "hello@outreach.chintanthakkar.com"
         st.info(f"Using sender: {sender_email}")
 
-        if os.path.exists(DOMAIN_PASS_PATH):
-            with open(DOMAIN_PASS_PATH, "r") as f:
-                sender_password = f.read().strip()
-            st.info("✅ Domain email password loaded from domain_email_passkey.txt")
+        if DOMAIN_PASS_PATH:
+            sender_password = DOMAIN_PASS_PATH
         else:
             sender_password = st.text_input("Domain Email Password", type="password")
 

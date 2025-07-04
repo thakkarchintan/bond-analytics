@@ -71,7 +71,7 @@ def email_crm_gmail_run():
             allow_unsafe_jscode=True,
             fit_columns_on_grid_load=True,
             theme="streamlit",
-            height=500,
+            height=700,
             enable_enterprise_modules=True
         )
 

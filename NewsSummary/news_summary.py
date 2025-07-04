@@ -15,8 +15,8 @@ def news_app():
 
     env_path = Path(__file__).resolve().parent.parent / '.env'
     load_dotenv(dotenv_path=env_path)
-    COHERE_API_KEY = os.getenv("OPENROUTER_API_KEY")
-    OPENROUTER_API_KEY = os.getenv("CPANEL")
+    COHERE_API_KEY = os.getenv("COHERE_API_KEY")
+    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
     NEWS_API_KEY = os.getenv("NEWS_API_KEY")
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     SOURCE_FILE = os.path.join(BASE_DIR, "news_summary_source.txt")
