@@ -14,6 +14,8 @@ from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 
+# playwright-stealth==1.0.6
+# playwright
 
 def has_function_run_today(log_file="last_run_date.txt"):
     """Check if the function has already run today."""
