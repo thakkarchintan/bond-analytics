@@ -51,7 +51,7 @@ if st.session_state["connected"]:
         "Bond Analytics":home_page
     }
 
-    st.set_page_config(page_title="Streamlit Multi-App", layout="wide")
+    # st.set_page_config(page_title="Streamlit Multi-App", layout="wide")
     # st.sidebar.title("🧭 Choose an App")
 
     # Sidebar dropdown to select app
