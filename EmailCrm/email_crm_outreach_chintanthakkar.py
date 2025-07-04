@@ -7,6 +7,9 @@ def email_crm_outreach_chintanthakkar_run():
     from email.mime.multipart import MIMEMultipart
     import os
     import time
+    from pathlib import Path
+    from dotenv import load_dotenv
+
 
     def personalize_text(template: str, row: pd.Series, sender_name: str) -> str:
         text = template.replace("[Sender Name]", sender_name)
@@ -16,12 +19,13 @@ def email_crm_outreach_chintanthakkar_run():
                 text = text.replace(placeholder, str(row[col]))
         return text
 
-    # ----------------- PAGE CONFIG -----------------
-    st.set_page_config(layout="wide", page_title="📧 Inline Email CRM")
 
     # ----------------- CONFIG -----------------
-    EXCEL_PATH = r"D:\Streamlit multi-app setup\EmailCrm\All_Contacts_Updated.xlsx"
-    DOMAIN_PASS_PATH = "domain_email_passkey.txt"
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    env_path = Path(__file__).resolve().parent.parent / '.env'
+    load_dotenv(dotenv_path=env_path)
+    EXCEL_PATH = os.path.join(BASE_DIR, "All_Contacts_Updated.xlsx")
+    DOMAIN_PASS_PATH = os.getenv("DOMAIN_PASS_PATH")
 
     # ----------------- LOAD CONTACTS -----------------
     if not os.path.exists(EXCEL_PATH):

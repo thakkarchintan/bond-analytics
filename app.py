@@ -6,7 +6,7 @@ from NewsSummary import *
 
 
 # emails of users that are allowed to login
-st.set_page_config(layout="wide", page_title="Bond Analytics")
+# st.set_page_config(layout="wide", page_title="Bond Analytics")
 
 
 if "connected" not in st.session_state:
