@@ -10,12 +10,16 @@ def news_app():
     from sumy.nlp.tokenizers import Tokenizer
     from sumy.summarizers.text_rank import TextRankSummarizer
     from bs4 import BeautifulSoup
+    from dotenv import load_dotenv
+    from pathlib import Path
 
-    # --- Setup ---
-    COHERE_API_KEY = "YBsVhvu2hfxANHeB1OY9jUydFR4uOFQtXPpcll70"
-    OPENROUTER_API_KEY = "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"
-    NEWS_API_KEY = "0426291ed69c4344aa4a8cf2e538293a"
-    SOURCE_FILE = "news_summary_source.txt"
+    env_path = Path(__file__).resolve().parent.parent / '.env'
+    load_dotenv(dotenv_path=env_path)
+    COHERE_API_KEY = os.getenv("OPENROUTER_API_KEY")
+    OPENROUTER_API_KEY = os.getenv("CPANEL")
+    NEWS_API_KEY = os.getenv("NEWS_API_KEY")
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    SOURCE_FILE = os.path.join(BASE_DIR, "news_summary_source.txt")
 
     co = cohere.Client(COHERE_API_KEY)
     nltk.download("punkt", quiet=True)

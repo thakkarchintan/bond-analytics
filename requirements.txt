@@ -5,7 +5,6 @@ numpy
 openpyxl
 playwright-stealth==1.0.6
 playwright
-bs4
 flask
 pyjwt==2.9.0
 extra-streamlit-components==0.1.71
@@ -19,4 +18,3 @@ nltk
 sumy
 beautifulsoup4
 streamlit-aggrid
-playwright_stealth
