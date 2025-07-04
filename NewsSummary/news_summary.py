@@ -128,7 +128,7 @@ def news_app():
         return res.json().get("articles", [])
 
     # --- Streamlit UI ---
-    st.set_page_config(page_title="Headline News Summarizer", layout="wide")
+    # st.set_page_config(page_title="Headline News Summarizer", layout="wide")
     st.sidebar.title("News Search")
     query = st.sidebar.text_input("Enter topic/keyword:", "")
 
