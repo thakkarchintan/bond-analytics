@@ -19,8 +19,6 @@ def email_crm_gmail_run():
                 text = text.replace(placeholder, str(row[col]))
         return text
 
-    # ----------------- PAGE CONFIG -----------------
-    # st.set_page_config(layout="wide", page_title="📧 Inline Email CRM")
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     EXCEL_PATH = os.path.join(BASE_DIR, "All_Contacts_Updated.xlsx")
     # GMAIL_PASS_PATH = os.path.join(BASE_DIR, "gmail_passkey.txt")
