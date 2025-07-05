@@ -29,9 +29,6 @@ def custom_tab():
     # Load the data
     df = load_data(file_path)
    
-    if st.sidebar.button("Logout",key="button1"):
-        authenticator.logout()
-   
     # Sidebar for user inputs
     st.sidebar.title('Bond Analytics')
 
