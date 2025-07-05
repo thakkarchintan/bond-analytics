@@ -267,9 +267,9 @@ try:
     file_path = "Final.xlsx"
     today = datetime.now()
     formatted_date = today.strftime("%d-%m-%Y")
-    subprocess.run(["/usr/bin/python3", "WeekendRm.py"])
+    subprocess.run(["python", "WeekendRm.py"])
     logging.info("Weekends Removed")
-    subprocess.run(["/usr/bin/python3","interpolater.py"])
+    subprocess.run(["python","interpolater.py"])
     logging.info("Completed linear interpolation")
     # Add all changes
     subprocess.run(["git", "add", file_path], cwd=repo_path, check=True)
