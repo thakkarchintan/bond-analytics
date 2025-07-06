@@ -54,6 +54,8 @@ if "login_message_shown" not in st.session_state:
 
 # st.title("Bond Analytics")
 
+load_dotenv()
+
 
 
 if not st.session_state["connected"]:
@@ -80,32 +82,63 @@ authenticator.login()
     
 # show content that requires login
 if st.session_state["connected"]:
-    APP_MAP = {
-        "Email CRM":email_crm_gmail_run,
-        "News Summarizer": news_app,
-        "Email CRM (Domain)":email_crm_outreach_chintanthakkar_run,
-        "Bond Analytics":home_page
-    }
+    # APP_MAP = {
+    #     "Email CRM":email_crm_gmail_run,
+    #     "News Summarizer": news_app,
+    #     "Email CRM (Domain)":email_crm_outreach_chintanthakkar_run,
+    #     "Bond Analytics":home_page
+    # }
     
-    if st.sidebar.button("Logout",key="button1"):
+    # if st.sidebar.button("Logout",key="button1"):
+    #     authenticator.logout()
+
+    # selected_app = st.sidebar.selectbox("Select an application", list(APP_MAP.keys()))
+    # user_email = st.session_state["user_info"].get("email","None")
+    # load_dotenv()
+
+    # # Define restricted apps and allowed users
+    # restricted_apps = {
+    #     "Email CRM":os.getenv("ADMINS"),
+    #     "Email CRM (Domain)":os.getenv("ADMINS")
+    # }
+    # # Authorization check
+    # if selected_app in restricted_apps:
+    #     allowed_users = restricted_apps[selected_app]
+    #     if user_email in allowed_users:
+    #         APP_MAP[selected_app]()
+    #     else:
+    #         st.error("You do not have permission to access this section.")
+    #         st.stop()
+    # else:
+    #     APP_MAP[selected_app]()
+    APP_MAP = {
+        "Email CRM": email_crm_gmail_run,
+        "News Summarizer": news_app,
+        "Email CRM (Domain)": email_crm_outreach_chintanthakkar_run,
+        "Bond Analytics": home_page
+    }
+
+    if st.sidebar.button("Logout", key="button1"):
         authenticator.logout()
 
-    selected_app = st.sidebar.selectbox("Select an application", list(APP_MAP.keys()))
-    user_email = st.session_state["user_info"].get("email","None")
+    user_email = st.session_state["user_info"].get("email", "None")
     load_dotenv()
 
-    # Define restricted apps and allowed users
-    restricted_apps = {
-        "Email CRM":os.getenv("ADMINS"),
-        "Email CRM (Domain)":os.getenv("ADMINS")
+    # Define restricted apps
+    # restricted_apps = {
+    #     "Email CRM": os.getenv("ADMINS", ""),
+    #     "Email CRM (Domain)": os.getenv("ADMINS", "")
+    # }
+    
+    restricted_apps = [ "Email CRM" , "Email CRM (Domain)"]
+    admins = [email.strip() for email in os.getenv("ADMINS", "").split(",")]
+
+    # Show only allowed apps in dropdown
+    visible_apps = {
+        app_name: app_func
+        for app_name, app_func in APP_MAP.items()
+        if (app_name not in restricted_apps) or (user_email in admins)
     }
-    # Authorization check
-    if selected_app in restricted_apps:
-        allowed_users = restricted_apps[selected_app]
-        if user_email in allowed_users:
-            APP_MAP[selected_app]()
-        else:
-            st.error("You do not have permission to access this section.")
-            st.stop()
-    else:
-        APP_MAP[selected_app]()
+
+    selected_app = st.sidebar.selectbox("Select an application", list(visible_apps.keys()))
+    visible_apps[selected_app]()

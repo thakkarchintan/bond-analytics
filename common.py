@@ -1,10 +1,11 @@
 from auth import Authenticator
 from dotenv import load_dotenv
 import os
+import streamlit as st
 
 load_dotenv()
 
-client_secret_path = os.getenv("PATH") 
+client_secret_path = os.getenv("GOOGLE_CLIENT_SECRET") 
 
 
 allowed_users = os.getenv("ALLOWED_USERS").split(",")
