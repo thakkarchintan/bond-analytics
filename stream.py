@@ -31,13 +31,12 @@ def home_page():
     if "selected_tab" not in st.session_state:
         st.session_state.selected_tab = "Custom Formula Graphs"  # Default tab
 
-    # Sidebar: Tabs for different sections using radio buttons
-    st.session_state.selected_tab = st.sidebar.radio(
+    st.session_state.selected_tab = st.sidebar.selectbox(
         "Select Section", 
-        ["Bond Spreads & Flies", "Custom Formula Graphs"], 
-        index=1 if st.session_state.selected_tab == "Custom Formula Graphs" else 0,
-        horizontal=True
+        ["Bond Spreads & Flies", "Custom Formula Graphs"],
+        index=1 if st.session_state.get("selected_tab") == "Custom Formula Graphs" else 0
     )
+
 
     # Display content based on stored selection
     if st.session_state.selected_tab == "Bond Spreads & Flies":
