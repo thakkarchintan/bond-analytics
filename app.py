@@ -132,6 +132,9 @@ if st.session_state["connected"]:
     
     restricted_apps = [ "Email CRM" , "Email CRM (Domain)"]
     admins = [email.strip() for email in os.getenv("ADMINS", "").split(",")]
+    
+    if "admins" not in st.session_state:
+        st.session_state["admins"] = admins
 
     # Show only allowed apps in dropdown
     visible_apps = {

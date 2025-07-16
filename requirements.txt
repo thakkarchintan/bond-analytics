@@ -18,3 +18,4 @@ cohere==4.33.0
 nltk
 sumy
 streamlit-aggrid
+firebase-admin
