@@ -93,6 +93,14 @@ def email_crm_outreach_chintanthakkar_run():
             sender_password = DOMAIN_PASS_PATH
         else:
             sender_password = st.text_input("Domain Email Password", type="password")
+            
+        delay = st.number_input(
+            label="Enter delay in seconds:",
+            min_value=0,  
+            max_value=100, 
+            value=1,     
+            step=1        
+            )
 
         subject = st.text_input("Subject (use [Name], [Sender Name])")
         body = st.text_area("Email Body (use [Name], [Sender Name])", height=200)
@@ -104,6 +112,8 @@ def email_crm_outreach_chintanthakkar_run():
 
     # ----------------- SEND EMAIL -----------------
     if send_button:
+        if not delay:
+            st.warning("⚠️ Delay time required.")
         if selected_rows.empty:
             st.warning("⚠️ No contacts selected.")
         elif not sender_email or not sender_password or not subject or not body:
@@ -161,7 +171,7 @@ def email_crm_outreach_chintanthakkar_run():
                         st.error(f"❌ Failed for {recipient_name} ({recipient_email}): {e}")
 
                     progress.progress((i + 1) / total)
-                    time.sleep(1)
+                    time.sleep(delay)
 
                 server.quit()
                 edited_df.to_excel(EXCEL_PATH, index=False)
