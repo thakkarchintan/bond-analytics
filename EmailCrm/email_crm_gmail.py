@@ -144,6 +144,14 @@ def email_crm_gmail_run():
         # Load password
         if not sender_password:
             sender_password = st.text_input("Enter Email Password", type="password")
+            
+        delay = st.number_input(
+        label="Enter delay in seconds:",
+        min_value=0,  
+        max_value=100, 
+        value=1,     
+        step=1        
+            )
 
         # Email content
         subject = st.text_input("Subject (use [Name], [Sender Name])")
@@ -158,6 +166,8 @@ def email_crm_gmail_run():
 
     # ----------------- SEND EMAIL -----------------
     if send_button:
+        if not delay:
+            st.warning("⚠️ Delay time required.")
         if selected_rows.empty:
             st.warning("⚠️ No contacts selected.")
         elif not sender_email or not sender_password or not subject or not body:
@@ -229,7 +239,7 @@ def email_crm_gmail_run():
                         st.error(f"❌ Failed for {recipient_name} ({recipient_email}): {e}")
 
                     progress.progress((i + 1) / total)
-                    time.sleep(1)
+                    time.sleep(delay)
 
                 server.quit()
 
