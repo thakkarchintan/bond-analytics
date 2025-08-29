@@ -68,28 +68,13 @@ def custom_tab():
     analysis_type = st.sidebar.selectbox("Select Analysis Type", options=["Single", "Overlay"],key="overlayInput")
 
     # List of instrument columns
-    instruments = df.columns[1:24]
+    instruments = df.columns[1:32]
 
     # Dropdown for selecting the primary instrument or custom option
     selected_instrument = st.sidebar.selectbox("Select Instrument", options=["Custom"] + list(instruments))
 
     # Text box for custom formula input when "Custom" is selected for the primary instrument
     if selected_instrument == "Custom":
-        # Show dropdown only if admin and saved formulas exist
-        if user_email in admins and saved_formulas:
-            selected_saved_formula = st.sidebar.selectbox(
-                "Choose from saved formulas", saved_formulas + ["<Write New Formula>"] ,  key="primary_formula_selector"
-            )
-
-            if selected_saved_formula != "<Write New Formula>":
-                st.session_state.custom_formula = selected_saved_formula
-            else:
-                # Let user write a new one
-                st.session_state.custom_formula = st.sidebar.text_area(
-                    "Enter Custom Formula (e.g., 'EU 10-Year - EU 5-Year + 2')",
-                    value=st.session_state.custom_formula
-                )
-        else:
             # Default text input when no saved formulas or not admin
             st.session_state.custom_formula = st.sidebar.text_area(
                 "Enter Custom Formula (e.g., 'EU 10-Year - EU 5-Year + 2')",
@@ -102,22 +87,22 @@ def custom_tab():
     if analysis_type == "Overlay":
         overlay_instrument = st.sidebar.selectbox("Select Overlay Instrument", options=["Custom"] + list(instruments),key="overlay_formula_selector")
         
-        # Text box for custom formula input when "Custom" is selected for the overlay instrument
-        if overlay_instrument == "Custom":
-            if user_email in admins and saved_formulas:
-                selected_saved_formula = st.sidebar.selectbox(
-                    "Choose from saved formulas", saved_formulas + ["<Write New Formula>"],key="saved formulas"
-                )
+        # # Text box for custom formula input when "Custom" is selected for the overlay instrument
+        # if overlay_instrument == "Custom":
+        #     if user_email in admins and saved_formulas:
+        #         selected_saved_formula = st.sidebar.selectbox(
+        #             "Choose from saved formulas", saved_formulas + ["<Write New Formula>"],key="saved formulas"
+        #         )
 
-                if selected_saved_formula != "<Write New Formula>":
-                    st.session_state.overlay_custom_formula = selected_saved_formula
-                else:
-                    st.session_state.overlay_custom_formula = st.sidebar.text_area(
-                            "Enter Overlay Custom Formula (e.g., 'EU 2-Year - EU 10-Year')",
-                            value=st.session_state.overlay_custom_formula
-                        )
-            else:
-                st.session_state.overlay_custom_formula = st.sidebar.text_area(
+        #         if selected_saved_formula != "<Write New Formula>":
+        #             st.session_state.overlay_custom_formula = selected_saved_formula
+        #         else:
+        #             st.session_state.overlay_custom_formula = st.sidebar.text_area(
+        #                     "Enter Overlay Custom Formula (e.g., 'EU 2-Year - EU 10-Year')",
+        #                     value=st.session_state.overlay_custom_formula
+        #                 )
+        #     else:
+        st.session_state.overlay_custom_formula = st.sidebar.text_area(
                             "Enter Overlay Custom Formula (e.g., 'EU 2-Year - EU 10-Year')",
                             value=st.session_state.overlay_custom_formula
                         )
