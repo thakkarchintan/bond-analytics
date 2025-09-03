@@ -41,7 +41,7 @@ def heatmap_tab():
     instruments = df.columns[1:32]
 
     # Dropdown for selecting instrument
-    selected_instrument = st.sidebar.selectbox("Select Instrument", options=list(instruments))
+    # selected_instrument = st.sidebar.selectbox("Select Instrument", options=list(instruments))
 
     # Date inputs
     min_date = df['Date'].min().date()
@@ -55,33 +55,33 @@ def heatmap_tab():
     if submit_button:
         if start_date > end_date:
             st.sidebar.error('End Date must be on or after Start Date')
-    else:
-        # Filter data by date
-        filtered_df = df[(df['Date'] >= pd.to_datetime(start_date)) & (df['Date'] <= pd.to_datetime(end_date))].copy()
+        else:
+            # Filter data by date
+            filtered_df = df[(df['Date'] >= pd.to_datetime(start_date)) & (df['Date'] <= pd.to_datetime(end_date))].copy()
 
-        # Compute daily change for all instruments
-        daily_changes = filtered_df[instruments].diff().dropna()
+            # Compute daily change for all instruments
+            daily_changes = filtered_df[instruments].diff().dropna()
 
-        # Correlation matrix of daily changes
-        corr_matrix = daily_changes.corr()
+            # Correlation matrix of daily changes
+            corr_matrix = daily_changes.corr()
 
-        # Build square heatmap
-        fig = go.Figure(data=go.Heatmap(
-            z=corr_matrix.values,
-            x=corr_matrix.columns,
-            y=corr_matrix.index,
-            colorscale='RdYlGn',
-            zmin=-1, zmax=1,  # correlation range
-            colorbar=dict(title="Correlation")
-        ))
+            # Build square heatmap
+            fig = go.Figure(data=go.Heatmap(
+                z=corr_matrix.values,
+                x=corr_matrix.columns,
+                y=corr_matrix.index,
+                colorscale='RdYlGn',
+                zmin=-1, zmax=1,  # correlation range
+                colorbar=dict(title="Correlation")
+            ))
 
-        fig.update_layout(
-            title=f"Correlation Heatmap ({start_date.strftime('%d-%b-%Y')} → {end_date.strftime('%d-%b-%Y')})",
-            xaxis=dict(
-                side="bottom",
-                tickangle=-90   # makes x-axis labels vertical
-            ),
-            height=800,
-            width=900
-        )
-        st.plotly_chart(fig, use_container_width=True, key="corr_heatmap")
+            fig.update_layout(
+                title=f"Correlation Heatmap ({start_date.strftime('%d-%b-%Y')} → {end_date.strftime('%d-%b-%Y')})",
+                xaxis=dict(
+                    side="bottom",
+                    tickangle=-90   # makes x-axis labels vertical
+                ),
+                height=800,
+                width=900
+            )
+            st.plotly_chart(fig, use_container_width=True, key="corr_heatmap")

@@ -225,24 +225,46 @@ def update_data(url, tool, append_dates=False , retries=5):
 
 def automate_update_excel() :
     url_data = [
+        # --- US Bonds ---
         {'US2Y': 'https://in.investing.com/rates-bonds/u.s.-2-year-bond-yield-historical-data'},
         {'US5Y': 'https://in.investing.com/rates-bonds/u.s.-5-year-bond-yield-historical-data'},
         {'US10Y': 'https://in.investing.com/rates-bonds/u.s.-10-year-bond-yield-historical-data'},
         {'US30Y': 'https://in.investing.com/rates-bonds/u.s.-30-year-bond-yield-historical-data'},
+
+        # --- German Bonds ---
         {'FGBSY': 'https://in.investing.com/rates-bonds/germany-2-year-bond-yield-historical-data'},
         {'FGBMY': 'https://in.investing.com/rates-bonds/germany-5-year-bond-yield-historical-data'},
         {'FGBLY': 'https://in.investing.com/rates-bonds/germany-10-year-bond-yield-historical-data'},
         {'FGBXY': 'https://in.investing.com/rates-bonds/germany-30-year-bond-yield-historical-data'},
+
+        # --- Canadian Bonds ---
         {'CAD2Y': 'https://www.investing.com/rates-bonds/canada-2-year-bond-yield-historical-data'},
         {'CAD3Y': 'https://www.investing.com/rates-bonds/canada-3-year-bond-yield-historical-data'},
         {'CAD5Y': 'https://www.investing.com/rates-bonds/canada-5-year-bond-yield-historical-data'},
         {'CAD10Y': 'https://www.investing.com/rates-bonds/canada-10-year-bond-yield-historical-data'},
+
+        # --- UK & Australia ---
         {'UK10Y': 'https://in.investing.com/rates-bonds/uk-10-year-bond-yield-historical-data'},
         {'AUS10Y': 'https://in.investing.com/rates-bonds/australia-10-year-bond-yield-historical-data'},
+
+        # --- Italy & France Bonds ---
         {'FBTPY': 'https://www.investing.com/rates-bonds/italy-10-year-bond-yield-historical-data'},
         {'FBTSY': 'https://www.investing.com/rates-bonds/italy-2-year-bond-yield-historical-data'},
         {'FOATY': 'https://www.investing.com/rates-bonds/france-10-year-bond-yield-historical-data'},
+
+        # --- Indices (Newly Added) ---
+        {'DJIA':  'https://www.investing.com/indices/us-30-historical-data'},
+        {'SPX':   'https://www.investing.com/indices/us-spx-500-historical-data'},
+        {'NQ':    'https://www.investing.com/indices/nasdaq-composite-historical-data'},
+        {'FSMI':  'https://www.investing.com/indices/switzerland-20-historical-data'},
+        {'AEX':   'https://www.investing.com/indices/netherlands-25-historical-data'},
+        {'CAC40': 'https://www.investing.com/indices/france-40-historical-data'},
+        {'FTSE':  'https://www.investing.com/indices/uk-100-historical-data'},
+        {'FDAX':  'https://www.investing.com/indices/germany-30-historical-data'},
     ]
+    
+     # {'FESX':  'https://www.investing.com/indices/eu-stoxx50-historical-data'},
+
 
     # Run the first tool with append_dates=True
     for i, entry in enumerate(url_data):
