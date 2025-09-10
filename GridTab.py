@@ -50,21 +50,7 @@ def grid_tab():
             
             
             
-    if saved_formulas:
-        st.sidebar.subheader("Manage Saved Formulas")
-
-        # Dropdown to select a formula
-        selected_formula = st.sidebar.selectbox(
-            "Select formula to delete:",
-            saved_formulas,
-            key="formula_dropdown"
-        )
-
-        # Delete button
-        if st.sidebar.button("Delete Formula"):
-            delete_formula_from_list(user_email, selected_formula)
-            st.sidebar.success(f"Deleted formula: {selected_formula}")
-            st.rerun()
+   
         
     # Dictionary: Formula Name -> Formula Logic
     formulas = {
@@ -113,6 +99,28 @@ def grid_tab():
 
     # Sidebar: Number of Columns Selection
     num_cols = st.sidebar.slider("Select number of columns per row", min_value=1, max_value=4, value=2)
+    
+    if saved_formulas:
+        st.sidebar.markdown(
+        """
+        <hr style="border: 1px solid #ccc; margin-top: 20px; margin-bottom: 10px;">
+        """,
+        unsafe_allow_html=True
+        )
+        st.sidebar.subheader("Manage Saved Formulas")
+
+        # Dropdown to select a formula
+        selected_formula = st.sidebar.selectbox(
+            "Select formula to delete:",
+            saved_formulas,
+            key="formula_dropdown"
+        )
+
+        # Delete button
+        if st.sidebar.button("Delete Formula"):
+            delete_formula_from_list(user_email, selected_formula)
+            st.sidebar.success(f"Deleted formula: {selected_formula}")
+            st.rerun()
 
     # Define Grid Layout
     formula_names = list(formulas.keys())
