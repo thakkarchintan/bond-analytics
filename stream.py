@@ -34,7 +34,7 @@ def home_page():
 
     st.session_state.selected_tab = st.sidebar.selectbox(
         "Select Section", 
-        ["Bond Spreads & Flies", "Custom Formula Graphs","Heatmap"],
+        ["Bond Spreads & Flies", "Custom Formula Graphs"],
         index=1 if st.session_state.get("selected_tab") == "Custom Formula Graphs" else 0
     )
 
@@ -44,6 +44,5 @@ def home_page():
         grid_tab()
     elif st.session_state.selected_tab == "Custom Formula Graphs":
         custom_tab()
-    elif st.session_state.selected_tab == "Heatmap":
-        heatmap_tab()
+
     

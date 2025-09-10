@@ -1,6 +1,7 @@
 import streamlit as st
 from common import authenticator
 from stream import home_page
+from HeatmapTab import heatmap_tab
 from EmailCrm import *
 from NewsSummary import *
 from dotenv import load_dotenv
@@ -112,10 +113,9 @@ if st.session_state["connected"]:
     # else:
     #     APP_MAP[selected_app]()
     APP_MAP = {
-        "Email CRM": email_crm_gmail_run,
         "News Summarizer": news_app,
-        "Email CRM (Domain)": email_crm_outreach_chintanthakkar_run,
-        "Bond Analytics": home_page
+        "Bond Analytics": home_page,
+        "Correlation Matrix": heatmap_tab
     }
 
     if st.sidebar.button("Logout", key="button1"):
