@@ -102,7 +102,8 @@ def custom_tab():
         #                     value=st.session_state.overlay_custom_formula
         #                 )
         #     else:
-        st.session_state.overlay_custom_formula = st.sidebar.text_area(
+        if overlay_instrument == "Custom":
+            st.session_state.overlay_custom_formula = st.sidebar.text_area(
                             "Enter Overlay Custom Formula (e.g., 'EU 2-Year - EU 10-Year')",
                             value=st.session_state.overlay_custom_formula
                         )
