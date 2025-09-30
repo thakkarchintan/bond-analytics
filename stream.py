@@ -25,7 +25,7 @@
 import streamlit as st
 from GridTab import grid_tab
 from CustomTab import custom_tab
-from HeatmapTab import heatmap_tab
+from portfolio_rebalance import portfolio_rebalance
 
 def home_page():
     # Initialize session state for tab selection
@@ -34,7 +34,7 @@ def home_page():
 
     st.session_state.selected_tab = st.sidebar.selectbox(
         "Select Section", 
-        ["Bond Spreads & Flies", "Custom Formula Graphs"],
+        ["Bond Spreads & Flies", "Custom Formula Graphs","Portfolio Rebalance"],
         index=1 if st.session_state.get("selected_tab") == "Custom Formula Graphs" else 0
     )
 
@@ -44,5 +44,7 @@ def home_page():
         grid_tab()
     elif st.session_state.selected_tab == "Custom Formula Graphs":
         custom_tab()
+    elif st.session_state.selected_tab == "Portfolio Rebalance":
+        portfolio_rebalance()
 
     
