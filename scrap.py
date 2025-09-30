@@ -261,6 +261,7 @@ def automate_update_excel() :
         {'CAC40': 'https://www.investing.com/indices/france-40-historical-data'},
         {'FTSE':  'https://www.investing.com/indices/uk-100-historical-data'},
         {'FDAX':  'https://www.investing.com/indices/germany-30-historical-data'},
+        {'Gold (USD)':  ' https://www.investing.com/commodities/gold-historical-data'},
     ]
     
      # {'FESX':  'https://www.investing.com/indices/eu-stoxx50-historical-data'},
