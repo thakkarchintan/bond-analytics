@@ -6,7 +6,6 @@ from pandas.tseries.offsets import MonthEnd, QuarterEnd, DateOffset
 
 def portfolio_rebalance() :
     
-    st.set_page_config(layout="wide", page_title="Portfolio Rebalancer")
 
 
     @st.cache_data
