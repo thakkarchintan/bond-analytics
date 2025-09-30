@@ -44,5 +44,5 @@ def linear_interpolate_excel(file_path, columns_to_interpolate):
 
 if __name__ == "__main__":
     input_file = "Final.xlsx"  # Path to the input Excel file
-    columns = ['US2Y', 'US5Y', 'US10Y', 'US30Y', 'FGBSY', 'FGBMY', 'FGBLY', 'FGBXY', 'CAD2Y', 'CAD3Y', 'CAD5Y', 'CAD10Y', 'UK10Y', 'AUS10Y', 'FBTPY', 'FBTSY', 'FOATY']
+    columns = ['US2Y', 'US5Y', 'US10Y', 'US30Y', 'FGBSY', 'FGBMY', 'FGBLY', 'FGBXY', 'CAD2Y', 'CAD3Y', 'CAD5Y', 'CAD10Y', 'UK10Y', 'AUS10Y', 'FBTPY', 'FBTSY', 'FOATY','AEX','CAC40','DIJA','FDAX','FSMI','FTSE','NQ','SPX','Gold (US)']  # List of columns to interpolate
     linear_interpolate_excel(input_file, columns)
