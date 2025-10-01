@@ -68,7 +68,7 @@ def custom_tab():
     analysis_type = st.sidebar.selectbox("Select Analysis Type", options=["Single", "Overlay"],key="overlayInput")
 
     # List of instrument columns
-    instruments = df.columns[1:32]
+    instruments = df.columns[1:33]
 
     # Dropdown for selecting the primary instrument or custom option
     selected_instrument = st.sidebar.selectbox("Select Instrument", options=["Custom"] + list(instruments))

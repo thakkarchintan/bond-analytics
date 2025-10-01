@@ -15,8 +15,8 @@ def portfolio_rebalance() :
         df.dropna(subset=['Date'], inplace=True)
         return df
 
-    st.title("Portfolio Backtester — Fixed Weights + Periodic Rebalance")
-    st.markdown("Upload an Excel/CSV where the **first column** is Date and each subsequent column is a product's daily price series.")
+    # st.title("Portfolio Backtester — Fixed Weights + Periodic Rebalance")
+    # st.markdown("Upload an Excel/CSV where the **first column** is Date and each subsequent column is a product's daily price series.")
 
     # File upload
     # uploaded_file = st.sidebar.file_uploader("Upload Excel or CSV", type=["xlsx", "xls", "csv"])
@@ -243,7 +243,7 @@ def portfolio_rebalance() :
     for asset in selected:
         fig.add_trace(go.Scatter(x=individual_values.index, y=individual_values[asset], mode='lines', name=f"{asset}"))
     # portfolio
-    fig.add_trace(go.Scatter(x=portfolio_values.index, y=portfolio_values, mode='lines', name='Portfolio', line=dict(width=3, dash='dash')))
+    fig.add_trace(go.Scatter(x=portfolio_values.index, y=portfolio_values, mode='lines', name='Portfolio', line=dict(width=3, )))
     fig.update_layout(title='Equity Curves (individual assets + portfolio)', xaxis_title='Date', yaxis_title='Value')
     st.plotly_chart(fig, use_container_width=True)
 
