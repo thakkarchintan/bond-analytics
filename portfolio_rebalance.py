@@ -235,6 +235,17 @@ def portfolio_rebalance() :
     port_mdd = max_drawdown(portfolio_values)
     port_daily_ret = portfolio_values.pct_change().dropna()
     port_sharpe = sharpe_ratio(port_daily_ret, risk_free_rate)
+    
+    # Compute Chart values (normalized to same starting capital)
+    chart_values = pd.DataFrame(index=prices.index)
+    for asset in selected:
+        w = target_weights[asset]
+        raw_series = prices[asset] / w
+        # scale to match initial_capital at start
+        chart_values[f"{asset}-Chart"] = raw_series / raw_series.iloc[0] * initial_capital
+
+        # Add portfolio
+        chart_values["Portfolio"] = portfolio_values
 
     # Show results
     st.subheader("Equity Curves")
@@ -244,14 +255,35 @@ def portfolio_rebalance() :
         fig.add_trace(go.Scatter(x=individual_values.index, y=individual_values[asset], mode='lines', name=f"{asset}"))
     # portfolio
     fig.add_trace(go.Scatter(x=portfolio_values.index, y=portfolio_values, mode='lines', name='Portfolio', line=dict(width=3, )))
+    fig.add_trace(go.Scatter(
+    x=chart_values.index,
+    y=chart_values[selected[0] + "-Chart"],  
+    mode='lines',
+    name='Price/Weight',
+    line=dict(color='green', width=2)
+))
     fig.update_layout(title='Equity Curves (individual assets + portfolio)', xaxis_title='Date', yaxis_title='Value')
+    
     st.plotly_chart(fig, use_container_width=True)
+    
 
     # Metrics table
     metrics_df = pd.DataFrame(metrics).set_index('Asset')
     metrics_df.loc['Portfolio'] = [port_cagr, port_mdd, port_sharpe]
     metrics_df = metrics_df.rename(columns={0: 'CAGR', 1: 'Max Drawdown', 2: 'Sharpe'}) if False else metrics_df
 
+    results = pd.concat([individual_values, portfolio_values.rename('Portfolio')], axis=1)
+    csv = results.to_csv(index=True)
+
+    # Create 3 columns, put button in the last one
+    col1, col2, col3 = st.columns([3, 3, 2])
+    with col3:
+        st.download_button(
+            "Download equity curves (CSV)", 
+            csv, 
+            file_name='equity_curves.csv', 
+            mime='text/csv'
+        )
     # Format and show
     st.subheader("Performance Metrics")
     display_df = metrics_df.copy()
@@ -259,16 +291,21 @@ def portfolio_rebalance() :
     display_df['Max Drawdown'] = display_df['Max Drawdown'].map(lambda x: f"{x:.2%}" if pd.notnull(x) else "N/A")
     display_df['Sharpe'] = display_df['Sharpe'].map(lambda x: f"{x:.2f}" if pd.notnull(x) else "N/A")
     st.table(display_df)
+    
+    
 
-    # Show rebalance summary
     st.subheader("Rebalance Details")
     st.write(f"Rebalance frequency: {rebalance_freq}")
-    st.write(f"Rebalance dates used (sample up to 50): {list(rebalance_dates[:50])}")
+
+        # Convert dates to table with proper formatting
+    rebalance_table = pd.DataFrame({
+            "Rebalance Date": [d.strftime("%d-%b-%Y") for d in rebalance_dates[:50]]
+        })
+
+    st.table(rebalance_table)
 
     # Allow download of results
-    results = pd.concat([individual_values, portfolio_values.rename('Portfolio')], axis=1)
-    csv = results.to_csv(index=True)
-    st.download_button("Download equity curves (CSV)", csv, file_name='equity_curves.csv', mime='text/csv')
+    
 
     # else:
     #     st.info("Upload an Excel/CSV file to get started. The first column must be dates and subsequent columns prices for each product.")
