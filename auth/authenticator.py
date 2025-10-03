@@ -12,7 +12,7 @@ class Authenticator:
         redirect_uri: str,
         token_key: str,
         cookie_name: str = "auth_jwt",
-        token_duration_days: int = 1,
+        token_duration_days: int = 30,
     ):
         st.session_state["connected"] = st.session_state.get("connected", False)
         self.allowed_users = allowed_users
