@@ -20,14 +20,14 @@ def safe_to_datetime(series, colname="Date"):
     return pd.Series(parsed, index=series.index)
 
 # usage
-df_market = pd.read_excel("Gold.xlsx")
+df_market = pd.read_excel("from.xlsx")
 df_instruments = pd.read_excel("test.xlsx")
 
 df_market['Date'] = safe_to_datetime(df_market['Date'], "market.Date")
 df_instruments['Date'] = safe_to_datetime(df_instruments['Date'], "instrument.Date")
 
 merged_df = pd.merge(df_instruments, df_market, on="Date", how="left")
-merged_df.rename(columns={"Price": "Gold (USD)"}, inplace=True)
+merged_df.rename(columns={"Price": "BTC (USD)"}, inplace=True)
 
 merged_df['Date'] = merged_df['Date'].dt.strftime("%d-%b-%Y")
 merged_df.to_excel("merged_output.xlsx", index=False)
