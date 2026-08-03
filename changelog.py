@@ -1,5 +1,18 @@
 CHANGELOG = [
     {
+        "id": 2,
+        "version": "1.2",
+        "timestamp": "03 Aug 2026, 11:08 IST",
+        "category": "Performance",
+        "title": "Data pre-load on login — sidebar controls no longer freeze on cold start",
+        "description": [
+            "market data (Final.xlsx) is now loaded once in app.py immediately after login, before any tab function runs",
+            "a 'Loading market data...' spinner shows in the main area during this one-time load — sidebar app/section selectors remain fully interactive",
+            "all tab functions call load_data() which returns the @st.cache_data result instantly; no tab ever blocks waiting for disk I/O again",
+            "pre-load runs once per browser session (tracked via st.session_state['data_warmed']); subsequent tab switches and reruns are unaffected",
+        ],
+    },
+    {
         "id": 1,
         "version": "1.1",
         "timestamp": "03 Aug 2026, 10:46 IST",

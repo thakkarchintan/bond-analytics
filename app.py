@@ -6,6 +6,7 @@ from portfolio_rebalance import portfolio_rebalance
 from EmailCrm import *
 from NewsSummary import *
 from ChangelogTab import changelog_tab
+from data import load_data
 from dotenv import load_dotenv
 import os
 
@@ -106,4 +107,14 @@ if st.session_state["connected"]:
     }
 
     selected_app = st.sidebar.selectbox("Select an application", list(visible_apps.keys()))
+
+    # Pre-warm the data cache once per session so all tabs respond instantly.
+    # load_data() is @st.cache_data — this call pays the Excel load cost here
+    # (with a visible spinner) rather than inside a tab where sidebar controls
+    # would be frozen while waiting.
+    if "data_warmed" not in st.session_state:
+        with st.spinner("Loading market data..."):
+            load_data()
+        st.session_state["data_warmed"] = True
+
     visible_apps[selected_app]()
