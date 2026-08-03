@@ -1,58 +1,17 @@
 import streamlit as st
-import pandas as pd
 import plotly.graph_objects as go
-from firebase_config import firebase_config
+from data import load_data
+from firebase_utils import get_formula_list, add_formula, delete_formula
+
 
 def grid_tab():
-    db = None
-    saved_formulas = None
     user_email = st.session_state["user_info"].get("email", "None")
     admins = st.session_state["admins"]
-    
-    @st.cache_data
-    def load_data():
-        df = pd.read_excel("Final.xlsx")  # Update file path
-        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")  # Ensure Date is in datetime format
-        return df.dropna(subset=["Date"])  # Drop rows where Date is NaT
-    
-    if user_email in admins :
-            db = firebase_config()
-            def add_formula_to_list(user_id, formula_text):
-                """Append new formula to user's formula list."""
-                doc_ref = db.collection("formulas").document(user_id)
-                doc = doc_ref.get()
-                if doc.exists:
-                    data = doc.to_dict()
-                    current_list = data.get("formula_list", [])
-                    if formula_text not in current_list:
-                        current_list.append(formula_text)
-                        doc_ref.set({"formula_list": current_list}, merge=True)
-                else:
-                    doc_ref.set({"formula_list": [formula_text]})
-                
-            def load_formula_list(user_id):
-                """Fetch the user's saved formula list."""
-                doc = db.collection("formulas").document(user_id).get()
-                if doc.exists:
-                    return doc.to_dict().get("formula_list", [])
-                return []
-            def delete_formula_from_list(user_id, formula_text):
-                """Remove a formula from user's saved formula list."""
-                doc_ref = db.collection("formulas").document(user_id)
-                doc = doc_ref.get()
-                if doc.exists:
-                    data = doc.to_dict()
-                    current_list = data.get("formula_list", [])
-                    if formula_text in current_list:
-                        current_list.remove(formula_text)
-                    doc_ref.set({"formula_list": current_list}, merge=True)
-            saved_formulas = load_formula_list(user_email)
-            
-            
-            
-   
-        
-    # Dictionary: Formula Name -> Formula Logic
+
+    saved_formulas = None
+    if user_email in admins:
+        saved_formulas = get_formula_list(user_email)
+
     formulas = {
         "Eurex 5-10 Spread": "FGBLY - FGBMY",
         "Eurex 2-5 Spread": "FGBMY - FGBSY",
@@ -73,23 +32,20 @@ def grid_tab():
         "UK vs. German 10Y": "UK10Y - FGBLY",
         "UK vs. Australian 10Y": "UK10Y - AUS10Y",
         "US vs. Australian 10Y": "US10Y - AUS10Y",
-        "Canadian vs. US 2-5-10 Fly": "CAD10Y - 2 * CAD5Y + CAD2Y - US10Y + 2 * US5Y - US2Y"
+        "Canadian vs. US 2-5-10 Fly": "CAD10Y - 2 * CAD5Y + CAD2Y - US10Y + 2 * US5Y - US2Y",
     }
-    
-    print("Saved Formulas",saved_formulas)
-    
+
     if saved_formulas:
         for f in saved_formulas:
-            formulas[f] = f   # formula = formula
+            formulas[f] = f
 
-    # Load Data
     df = load_data()
 
-    # Sidebar: Date Range Selection
     min_date, max_date = df["Date"].min().date(), df["Date"].max().date()
     start_date = st.sidebar.date_input("Start Date", min_date, min_value=min_date, max_value=max_date)
     end_date = st.sidebar.date_input("End Date", max_date, min_value=min_date, max_value=max_date)
 
+    import pandas as pd
     start_date, end_date = pd.to_datetime(start_date), pd.to_datetime(end_date)
     df_filtered = df[(df["Date"] >= start_date) & (df["Date"] <= end_date)].reset_index(drop=True)
 
@@ -97,32 +53,22 @@ def grid_tab():
         st.warning(f"⚠️ No data available from {start_date.date()} to {end_date.date()}!")
         st.stop()
 
-    # Sidebar: Number of Columns Selection
     num_cols = st.sidebar.slider("Select number of columns per row", min_value=1, max_value=4, value=2)
-    
+
     if saved_formulas:
         st.sidebar.markdown(
-        """
-        <hr style="border: 1px solid #ccc; margin-top: 20px; margin-bottom: 10px;">
-        """,
-        unsafe_allow_html=True
+            '<hr style="border: 1px solid #ccc; margin-top: 20px; margin-bottom: 10px;">',
+            unsafe_allow_html=True,
         )
         st.sidebar.subheader("Manage Saved Formulas")
-
-        # Dropdown to select a formula
         selected_formula = st.sidebar.selectbox(
-            "Select formula to delete:",
-            saved_formulas,
-            key="formula_dropdown"
+            "Select formula to delete:", saved_formulas, key="formula_dropdown"
         )
-
-        # Delete button
         if st.sidebar.button("Delete Formula"):
-            delete_formula_from_list(user_email, selected_formula)
+            delete_formula(user_email, selected_formula)
             st.sidebar.success(f"Deleted formula: {selected_formula}")
             st.rerun()
 
-    # Define Grid Layout
     formula_names = list(formulas.keys())
     for i in range(0, len(formula_names), num_cols):
         cols = st.columns(num_cols)
@@ -131,28 +77,28 @@ def grid_tab():
             if idx < len(formula_names):
                 formula_name = formula_names[idx]
                 formula_logic = formulas[formula_name]
-                
+
                 try:
                     df_filtered["Computed"] = df_filtered.eval(formula_logic)
                 except Exception as e:
                     st.error(f"Error computing {formula_name}: {e}")
                     continue
-                
+
                 fig = go.Figure()
                 fig.add_trace(go.Scatter(
-                    x=df_filtered['Date'],
-                    y=df_filtered['Computed'],
-                    mode='lines',
+                    x=df_filtered["Date"],
+                    y=df_filtered["Computed"],
+                    mode="lines",
                     name=formula_name,
-                    line=dict(color='blue')
+                    line=dict(color="blue"),
                 ))
                 fig.update_layout(
-                    title=dict(text=formula_name, font=dict(color='blue')),
-                    xaxis_title='Date',
+                    title=dict(text=formula_name, font=dict(color="blue")),
+                    xaxis_title="Date",
                     yaxis_title=formula_name,
                     height=600,
                     width=800,
-                    xaxis=dict(showgrid=True, tickangle=-45)
+                    xaxis=dict(showgrid=True, tickangle=-45),
                 )
 
                 with col:
