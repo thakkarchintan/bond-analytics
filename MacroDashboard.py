@@ -233,6 +233,97 @@ def _render_section(
             _bar_latest(fdf, col, yaxis_title, year_to, active, height)
 
 
+# ── Correlation scatter ────────────────────────────────────────────────────────
+
+def _scatter(
+    fdf: pd.DataFrame,
+    x_col: str,
+    y_col: str,
+    x_label: str,
+    y_label: str,
+    title: str,
+    countries: list[str],
+) -> None:
+    fig = go.Figure()
+    for country in countries:
+        cdf = fdf[fdf["Country"] == country].dropna(subset=[x_col, y_col])
+        if cdf.empty:
+            continue
+        clr = COUNTRY_COLORS.get(country, "#888")
+        fig.add_trace(go.Scatter(
+            x=cdf[x_col], y=cdf[y_col],
+            name=country,
+            mode="markers",
+            marker=dict(color=clr, size=8, opacity=0.85,
+                        line=dict(width=1, color=_BG)),
+            text=cdf["Year"].astype(str),
+            hovertemplate=(
+                f"<b>{country}</b><br>"
+                f"{x_label}: %{{x:.1f}}<br>"
+                f"{y_label}: %{{y:.2f}}%<br>"
+                "Year: %{text}<extra></extra>"
+            ),
+        ))
+    fig.update_layout(
+        height=420,
+        title=dict(text=title, font=dict(size=13, color=_T1), x=0),
+        xaxis_title=x_label,
+        yaxis_title=y_label,
+        **_layout(),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def _correlation_section(
+    fdf: pd.DataFrame,
+    countries: list[str],
+    year_to: int,
+    compare: bool,
+) -> None:
+    has_yield = fdf["TenY_Govt_Yield"].notna().any()
+
+    if not has_yield:
+        _pending(
+            "Correlation: Debt/GDP vs 10Y Yield",
+            "10-year yield data not yet available for the selected countries.",
+        )
+        _pending(
+            "Correlation: Fiscal Balance vs 10Y Yield",
+            "10-year yield data not yet available for the selected countries.",
+        )
+        return
+
+    _section(
+        "Correlation: Debt/GDP vs 10Y Yield",
+        "Each dot = one country × one year · higher debt tends to precede higher yields",
+    )
+    c1, c2 = st.columns(2)
+    with c1:
+        _scatter(fdf, "Debt_GDP", "TenY_Govt_Yield",
+                 "Debt/GDP %", "10Y Yield %",
+                 "Debt/GDP vs 10Y Yield — all years", countries)
+    with c2:
+        snap = fdf[fdf["Year"] == year_to]
+        _scatter(snap, "Debt_GDP", "TenY_Govt_Yield",
+                 "Debt/GDP %", "10Y Yield %",
+                 f"Debt/GDP vs 10Y Yield — {year_to} only", countries)
+
+    _section(
+        "Correlation: Fiscal Balance vs 10Y Yield",
+        "Each dot = one country × one year · wider deficits can pressure borrowing costs",
+    )
+    c1, c2 = st.columns(2)
+    with c1:
+        _scatter(fdf, "Fiscal_Balance_GDP", "TenY_Govt_Yield",
+                 "Fiscal Balance % GDP", "10Y Yield %",
+                 "Fiscal Balance vs 10Y Yield — all years", countries)
+    with c2:
+        snap = fdf[fdf["Year"] == year_to]
+        _scatter(snap, "Fiscal_Balance_GDP", "TenY_Govt_Yield",
+                 "Fiscal Balance % GDP", "10Y Yield %",
+                 f"Fiscal Balance vs 10Y Yield — {year_to} only", countries)
+
+
 # ── Snapshot section ───────────────────────────────────────────────────────────
 
 def _snapshot(fdf: pd.DataFrame, year_to: int, countries: list[str]) -> None:
@@ -459,15 +550,40 @@ def macro_dashboard() -> None:
         year_to=year_to,
     )
 
-    # ── 8–12. Pending sections ─────────────────────────────────────────────────
-    _pending(
-        "10Y Government Yield",
-        "10-year benchmark government bond yield data not yet integrated.",
+    # ── 8. 10Y Government Yield ───────────────────────────────────────────────
+    _render_section(
+        fdf, "TenY_Govt_Yield",
+        title="10Y Government Bond Yield %",
+        section_title="10Y Government Yield",
+        subtitle=(
+            "Annual average · USA/UK/Canada/Germany/France: Final.xlsx daily data · "
+            "Japan/Italy/Brazil/India/China: OECD MEI_FIN (IRLT)"
+        ),
+        yaxis_title="%",
+        fmt=".2f",
+        height=400,
+        countries=selected,
+        compare=compare,
+        show_bar=True,
+        year_to=year_to,
     )
-    _pending(
-        "Policy Rate",
-        "Central bank policy rate data not yet integrated.",
+
+    # ── 9. Policy Rate ────────────────────────────────────────────────────────
+    _render_section(
+        fdf, "Policy_Rate",
+        title="Short-term Interest Rate %",
+        section_title="Policy Rate",
+        subtitle="3-month interbank / money market rate · OECD MEI_FIN (IRSTCI) · annual average",
+        yaxis_title="%",
+        fmt=".2f",
+        height=380,
+        countries=selected,
+        compare=compare,
+        show_bar=True,
+        year_to=year_to,
     )
+
+    # ── 10. Bond Issuance (still pending) ─────────────────────────────────────
     _pending(
         "Government Bond Issuance",
         "Gross government bond issuance (USD bn) data not yet integrated.",
@@ -476,14 +592,9 @@ def macro_dashboard() -> None:
         "Bond Issuance / GDP",
         "Requires gross bond issuance data — will calculate automatically once integrated.",
     )
-    _pending(
-        "Correlation: Debt/GDP vs 10Y Yield",
-        "10-year government yield data required for this scatter analysis.",
-    )
-    _pending(
-        "Correlation: Fiscal Balance vs 10Y Yield",
-        "10-year government yield data required for this scatter analysis.",
-    )
+
+    # ── 11 & 12. Correlations ─────────────────────────────────────────────────
+    _correlation_section(fdf, selected, year_to, compare)
 
     # ── 13. Download ──────────────────────────────────────────────────────────
     _section("Download Data", "Filtered dataset as CSV")

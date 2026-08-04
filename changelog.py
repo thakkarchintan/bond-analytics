@@ -1,5 +1,23 @@
 CHANGELOG = [
     {
+        "id": 9,
+        "version": "1.9",
+        "timestamp": "05 Aug 2026, 01:00 IST",
+        "category": "Feature",
+        "title": "OECD live rates, activated macro dashboard sections, Bond Calculator",
+        "description": [
+            "macro_data.py: live OECD MEI_FIN fetch (IRLT = 10Y yield, IRSTCI = short-term rate) for Japan, Italy, Brazil, India, China — refreshed every hour",
+            "Annual 10Y yield for USA/UK/Canada/Germany/France sourced from Final.xlsx daily data (US10Y, UK10Y, CAD10Y, FGBLY, FOATY) — annual average computed; OECD fills remaining countries",
+            "Instrument metadata (Firestore) auto-extends the 10Y mapping: any instrument tagged Fixed Income Bonds + 10Y maturity is automatically included in the annual yield calculation",
+            "Global Macro Dashboard section 8 (10Y Govt Yield) and section 9 (Policy Rate) now live with real data and bar snapshots",
+            "Correlation sections 11 & 12 now active: Debt/GDP vs 10Y Yield and Fiscal Balance vs 10Y Yield; each shows all-years scatter + latest-year scatter side by side",
+            "load_macro_data now has ttl=3600 so metadata tag changes propagate within an hour",
+            "New tab: Bond Calculator — full bond pricer with pure Python math (no QuantLib dependency)",
+            "Bond Calculator features: price↔YTM (Newton-Raphson solve), Macaulay duration, modified duration, convexity, DV01, price-yield curve with duration tangent, ±25/50/100/200bp scenario table and bar chart, cashflow timeline, expandable concept explainer for students",
+            "Bond Calculator is available to all logged-in users",
+        ],
+    },
+    {
         "id": 8,
         "version": "1.8",
         "timestamp": "04 Aug 2026, 02:30 IST",

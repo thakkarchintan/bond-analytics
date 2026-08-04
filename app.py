@@ -7,6 +7,7 @@ from NewsSummary import *
 from ChangelogTab import changelog_tab
 from MacroDashboard import macro_dashboard
 from YieldCurves import yield_curves
+from BondCalculator import bond_calculator
 from data import load_data
 from dotenv import load_dotenv
 import os
@@ -130,6 +131,7 @@ if st.session_state["connected"]:
         "News Summarizer": news_app,
         "Global Macro Dashboard": macro_dashboard,
         "Global Yield Curves": yield_curves,
+        "Bond Calculator": bond_calculator,
         "Changelog": changelog_tab,
     }
 
