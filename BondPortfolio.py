@@ -1,7 +1,6 @@
 """
 Bond Portfolio Builder
-Select from a universe of 30 sovereign bonds, size positions,
-and analyse portfolio-level risk metrics and analytics.
+One accordion, four maturity buckets in a row, check/uncheck + size per bond.
 """
 from __future__ import annotations
 
@@ -41,8 +40,16 @@ _GRN  = "#10b981"
 _RED  = "#ef4444"
 _AMB  = "#fbbf24"
 
+# ── Maturity buckets ──────────────────────────────────────────────────────────
+# (label, accent-colour, lo-exclusive, hi-inclusive)
+BUCKETS = [
+    ("2Y",  _BLUE,   0.0,  2.5),
+    ("5Y",  _AMB,    2.5,  7.0),
+    ("10Y", _GRN,    7.0, 15.0),
+    ("30Y", "#a78bfa", 15.0, 50.0),
+]
+
 # ── Bond universe (30 sovereign bonds) ────────────────────────────────────────
-# ytm and coupon are % values; maturity in years; freq = coupon payments/year
 
 BOND_UNIVERSE: list[dict] = [
     # USA — semi-annual
@@ -90,7 +97,7 @@ BOND_UNIVERSE: list[dict] = [
 
 _BOND_BY_ID: dict[str, dict] = {b["id"]: b for b in BOND_UNIVERSE}
 
-MATURITY_BUCKETS = [
+MATURITY_BUCKETS_CHART = [
     ("0–2Y",   0,   2),
     ("2–5Y",   2,   5),
     ("5–10Y",  5,  10),
@@ -98,21 +105,16 @@ MATURITY_BUCKETS = [
 ]
 
 
-# ── Pure bond math helpers ─────────────────────────────────────────────────────
+# ── Pure bond math ─────────────────────────────────────────────────────────────
 
 def _metrics(b: dict) -> dict:
-    """Pre-compute all metrics for one bond at its reference YTM."""
-    c = b["coupon"] / 100
-    y = b["ytm"] / 100
-    f, m, freq = b["face"], b["maturity"], b["freq"]
-    px    = bond_price(f, c, m, y, freq)
-    mac   = macaulay_duration(f, c, m, y, freq)
-    mod   = modified_duration(f, c, m, y, freq)
-    conv  = convexity(f, c, m, y, freq)
-    dv01  = mod * px * 0.0001
-    prem  = (px - f) / f * 100
-    return dict(price=px, mac_dur=mac, mod_dur=mod, conv=conv, dv01=dv01,
-                prem_disc=prem)
+    c, y, f, m, freq = b["coupon"] / 100, b["ytm"] / 100, b["face"], b["maturity"], b["freq"]
+    px   = bond_price(f, c, m, y, freq)
+    mac  = macaulay_duration(f, c, m, y, freq)
+    mod  = modified_duration(f, c, m, y, freq)
+    conv = convexity(f, c, m, y, freq)
+    dv01 = mod * px * 0.0001
+    return dict(price=px, mac_dur=mac, mod_dur=mod, conv=conv, dv01=dv01)
 
 
 # ── UI helpers ─────────────────────────────────────────────────────────────────
@@ -137,8 +139,8 @@ def _val_card(label: str, value: str, sub: str = "", accent: str = _BLUE) -> str
         if sub else ""
     )
     return (
-        f'<div style="background:{_CARD};border:1px solid {_EDGE};border-left:3px solid {accent};'
-        f'border-radius:8px;padding:14px 12px;">'
+        f'<div style="background:{_CARD};border:1px solid {_EDGE};'
+        f'border-left:3px solid {accent};border-radius:8px;padding:14px 12px;">'
         f'<div style="font-size:10px;color:{_T2};text-transform:uppercase;'
         f'letter-spacing:.1em;margin-bottom:5px;">{label}</div>'
         f'<div style="font-size:20px;font-weight:700;color:{_T1};">{value}</div>'
@@ -149,8 +151,7 @@ def _val_card(label: str, value: str, sub: str = "", accent: str = _BLUE) -> str
 def _layout(**kw) -> dict:
     base = dict(
         template="plotly_dark",
-        paper_bgcolor=_CARD,
-        plot_bgcolor=_BG,
+        paper_bgcolor=_CARD, plot_bgcolor=_BG,
         margin=dict(l=62, r=20, t=44, b=44),
         font=dict(color=_T1, size=12),
         xaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2),
@@ -164,138 +165,133 @@ def _layout(**kw) -> dict:
     return base
 
 
+# ── Bond item inside a bucket column ──────────────────────────────────────────
+
+def _bond_item(b: dict) -> None:
+    """Render one bond row: checkbox + (if ticked) units stepper."""
+    clr   = COUNTRY_COLORS.get(b["country"], _T2)
+    label = (
+        f':{b["country"]}  '
+        f'<span style="color:{_T2};font-size:11px;">'
+        f'{b["coupon"]:.3f}%  ·  YTM {b["ytm"]:.2f}%</span>'
+    )
+    checked = st.checkbox(
+        b["country"],
+        key=f"chk_{b['id']}",
+        help=f"{b['name']}  |  coupon {b['coupon']:.3f}%  |  YTM {b['ytm']:.2f}%  |  {b['freq']}× p.a.",
+    )
+    if checked:
+        # Compact +/- stepper via session_state buttons
+        unit_key = f"units_{b['id']}"
+        if unit_key not in st.session_state:
+            st.session_state[unit_key] = 100
+
+        c_minus, c_val, c_plus = st.columns([1, 2, 1])
+        with c_minus:
+            if st.button("−", key=f"dec_{b['id']}",
+                         help="−10 units", use_container_width=True):
+                st.session_state[unit_key] = max(10, st.session_state[unit_key] - 10)
+        with c_val:
+            st.markdown(
+                f'<div style="text-align:center;background:{_BG};border:1px solid {_EDGE};'
+                f'border-radius:4px;padding:4px 0;font-weight:700;font-size:13px;'
+                f'color:{_T1};line-height:32px;">'
+                f'{st.session_state[unit_key]}</div>',
+                unsafe_allow_html=True,
+            )
+        with c_plus:
+            if st.button("+", key=f"inc_{b['id']}",
+                         help="+10 units", use_container_width=True):
+                st.session_state[unit_key] += 10
+
+        # Show live position value
+        m  = _metrics(b)
+        mv = m["price"] * st.session_state[unit_key]
+        st.markdown(
+            f'<div style="font-size:10px;color:{_T3};text-align:center;'
+            f'margin-bottom:6px;">${mv:,.0f}</div>',
+            unsafe_allow_html=True,
+        )
+
+    # Thin divider between bonds
+    st.markdown(
+        f'<hr style="border:none;border-top:1px solid {_EDGE};margin:4px 0;">',
+        unsafe_allow_html=True,
+    )
+
+
 # ── Main tab ───────────────────────────────────────────────────────────────────
 
 def bond_portfolio() -> None:
     st.markdown(
         '<h2 style="color:#0f172a;margin:0 0 2px;">Bond Portfolio Builder</h2>'
         '<div style="font-size:12px;color:#475569;">'
-        '30 sovereign bonds · select, size positions, analyse portfolio risk</div>'
+        '30 sovereign bonds · check to add · +/− to size · metrics update live</div>'
         '<hr style="border:none;border-top:1px solid #e2e8f0;margin:12px 0 8px;">',
         unsafe_allow_html=True,
     )
 
-    # ── Sidebar ───────────────────────────────────────────────────────────────
+    # ── Sidebar country filter ────────────────────────────────────────────────
     st.sidebar.markdown(
         f'<div style="font-size:10px;color:{_T2};text-transform:uppercase;'
         f'letter-spacing:.1em;margin:20px 0 8px;padding-bottom:6px;'
-        f'border-bottom:1px solid {_EDGE};">Portfolio Filters</div>',
+        f'border-bottom:1px solid {_EDGE};">Show Countries</div>',
         unsafe_allow_html=True,
     )
     all_countries = sorted({b["country"] for b in BOND_UNIVERSE})
     country_filter = st.sidebar.multiselect(
-        "Filter by country", all_countries, default=all_countries,
-        key="bp_country_filter",
-    )
-
-    # ── Bond Selection ────────────────────────────────────────────────────────
-    _section("Select Bonds", "Choose bonds from the universe; size each position below")
-    filtered = [b for b in BOND_UNIVERSE if b["country"] in country_filter]
-    bond_options = {b["id"]: f"{b['name']}  —  {b['coupon']:.3f}% coupon · {b['ytm']:.2f}% YTM"
-                   for b in filtered}
-
-    selected_ids: list[str] = st.multiselect(
-        "Bonds",
-        options=list(bond_options.keys()),
-        format_func=lambda bid: bond_options[bid],
-        default=[],
-        key="bp_selected",
+        "Countries", all_countries, default=all_countries, key="bp_country_filter",
         label_visibility="collapsed",
     )
+    visible = [b for b in BOND_UNIVERSE if b["country"] in country_filter]
 
-    if not selected_ids:
-        st.info("Select one or more bonds above to build your portfolio.")
-        return
+    # ── Single accordion: 4 maturity boxes in one row ─────────────────────────
+    with st.expander("Bond Universe — check bonds to add, use +/− to size positions",
+                     expanded=True):
 
-    selected_bonds = [_BOND_BY_ID[bid] for bid in selected_ids]
+        bucket_cols = st.columns(4)
 
-    # ── Position sizing + individual detail accordions ─────────────────────────
-    _section("Position Details", "Expand each bond to set units and view individual metrics")
-
-    units: dict[str, int] = {}
-    bond_calcs: dict[str, dict] = {}
-
-    for b in selected_bonds:
-        m = _metrics(b)
-        bond_calcs[b["id"]] = m
-        clr = COUNTRY_COLORS.get(b["country"], _T2)
-        prem_label = "Premium" if m["prem_disc"] > 0.01 else "Discount" if m["prem_disc"] < -0.01 else "Par"
-        accent_clr = _GRN if m["prem_disc"] >= 0 else _RED
-
-        with st.expander(
-            f"**{b['name']}**  ·  {b['country']}  ·  {b['coupon']:.3f}% coupon  ·  "
-            f"YTM {b['ytm']:.2f}%  ·  Price ${m['price']:,.2f}",
-            expanded=False,
-        ):
-            col_u, col_i = st.columns([1, 3])
-            with col_u:
-                u = st.number_input(
-                    "Units (× face)",
-                    min_value=0, max_value=100_000, value=100, step=10,
-                    key=f"units_{b['id']}",
-                    help=f"Each unit = ${b['face']:,.0f} face value",
-                )
-                units[b["id"]] = u
-                mv = m["price"] * u
+        for col, (blabel, bcolor, lo, hi) in zip(bucket_cols, BUCKETS):
+            bonds_in_bucket = [b for b in visible if lo < b["maturity"] <= hi]
+            with col:
+                # Bucket header card
                 st.markdown(
-                    f'<div style="margin-top:8px;font-size:12px;color:{_T2};">'
-                    f'Market value: <b style="color:{_T1}">${mv:,.2f}</b></div>',
+                    f'<div style="background:{_BG};border-top:3px solid {bcolor};'
+                    f'border-radius:6px 6px 0 0;padding:8px 0;text-align:center;'
+                    f'margin-bottom:10px;">'
+                    f'<span style="font-size:18px;font-weight:800;color:{_T1};">'
+                    f'{blabel}</span>'
+                    f'<span style="font-size:10px;color:{_T2};display:block;'
+                    f'margin-top:1px;">{len(bonds_in_bucket)} bonds</span></div>',
                     unsafe_allow_html=True,
                 )
+                if not bonds_in_bucket:
+                    st.markdown(
+                        f'<div style="color:{_T3};font-size:11px;text-align:center;">'
+                        f'No bonds visible<br>(adjust country filter)</div>',
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    for b in bonds_in_bucket:
+                        _bond_item(b)
 
-            with col_i:
-                cards_html = (
-                    f'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">'
-                    + _val_card("Price", f"${m['price']:,.4f}", prem_label, accent_clr)
-                    + _val_card("Mac Duration", f"{m['mac_dur']:.3f} yrs", "Avg cashflow timing", _AMB)
-                    + _val_card("Mod Duration", f"{m['mod_dur']:.3f}", "% Δprice / 1% Δyield", _AMB)
-                    + _val_card("Convexity", f"{m['conv']:.3f}", "2nd-order sensitivity", _T2)
-                    + _val_card("DV01 / unit", f"${m['dv01']:,.4f}", "$ per 1bp per unit", _GRN)
-                    + _val_card("DV01 total", f"${m['dv01']*u:,.2f}", f"for {u} units", _GRN)
-                    + '</div>'
-                )
-                st.markdown(cards_html, unsafe_allow_html=True)
+    # ── Collect selected bonds from session_state ─────────────────────────────
+    selected_bonds = [b for b in BOND_UNIVERSE
+                      if st.session_state.get(f"chk_{b['id']}", False)]
 
-            # Mini price-yield snippet
-            ytm_c = b["ytm"] / 100
-            y_range = [y / 10000 for y in range(
-                max(1, int(ytm_c * 10000) - 200),
-                int(ytm_c * 10000) + 201, 5
-            )]
-            px_curve = [
-                bond_price(b["face"], b["coupon"] / 100, b["maturity"], y, b["freq"])
-                for y in y_range
-            ]
-            fig_mini = go.Figure()
-            fig_mini.add_trace(go.Scatter(
-                x=[y * 100 for y in y_range], y=px_curve,
-                line=dict(color=clr, width=2), showlegend=False,
-                hovertemplate="YTM %{x:.2f}% → $%{y:,.2f}<extra></extra>",
-            ))
-            fig_mini.add_trace(go.Scatter(
-                x=[b["ytm"]], y=[m["price"]],
-                mode="markers", showlegend=False,
-                marker=dict(color=_GRN, size=10, line=dict(width=2, color=_BG)),
-                hovertemplate=f"Current: YTM {b['ytm']}% → ${m['price']:,.4f}<extra></extra>",
-            ))
-            fig_mini.update_layout(
-                height=200,
-                title=dict(text="Price–Yield", font=dict(size=11, color=_T2), x=0),
-                xaxis_title="YTM (%)",
-                yaxis_title="Price",
-                **_layout(margin=dict(l=50, r=10, t=30, b=30)),
-            )
-            st.plotly_chart(fig_mini, use_container_width=True)
+    if not selected_bonds:
+        st.info("Check one or more bonds above to build your portfolio.")
+        return
 
-    # Ensure units populated for any bond with no expander interaction yet
-    for b in selected_bonds:
-        if b["id"] not in units:
-            units[b["id"]] = st.session_state.get(f"units_{b['id']}", 100)
+    units: dict[str, int] = {
+        b["id"]: st.session_state.get(f"units_{b['id']}", 100)
+        for b in selected_bonds
+    }
 
     # ── Portfolio computation ─────────────────────────────────────────────────
     rows = []
     for b in selected_bonds:
-        m  = bond_calcs[b["id"]]
+        m  = _metrics(b)
         u  = units[b["id"]]
         mv = m["price"] * u
         rows.append({
@@ -318,16 +314,16 @@ def bond_portfolio() -> None:
     total_mv = df["mv"].sum()
 
     if total_mv == 0:
-        st.warning("All positions are zero units — set units in the expanders above.")
+        st.warning("All positions are zero — use + to add units.")
         return
 
-    df["weight"] = df["mv"] / total_mv
-    port_ytm     = (df["ytm"]     * df["weight"]).sum()
-    port_mac_dur = (df["mac_dur"] * df["weight"]).sum()
-    port_mod_dur = (df["mod_dur"] * df["weight"]).sum()
-    port_conv    = (df["conv"]    * df["weight"]).sum()
-    port_dv01    = (df["dv01_u"]  * df["units"]).sum()
-    n_bonds      = len(df)
+    df["weight"]    = df["mv"] / total_mv
+    port_ytm        = (df["ytm"]     * df["weight"]).sum()
+    port_mac_dur    = (df["mac_dur"] * df["weight"]).sum()
+    port_mod_dur    = (df["mod_dur"] * df["weight"]).sum()
+    port_conv       = (df["conv"]    * df["weight"]).sum()
+    port_dv01       = (df["dv01_u"]  * df["units"]).sum()
+    n_bonds         = len(df)
 
     # ── Portfolio summary ─────────────────────────────────────────────────────
     _section(
@@ -335,24 +331,24 @@ def bond_portfolio() -> None:
         f"{n_bonds} bond{'s' if n_bonds != 1 else ''} · "
         f"Total market value ${total_mv:,.2f}",
     )
-    summary_cards = [
-        ("Total Market Value", f"${total_mv:,.2f}", "",            _BLUE),
-        ("Wtd Avg YTM",        f"{port_ytm*100:.3f}%", "by market value", _AMB),
-        ("Macaulay Duration",  f"{port_mac_dur:.3f} yrs", "portfolio avg", _AMB),
-        ("Modified Duration",  f"{port_mod_dur:.3f}", "% Δpx / 1% Δyield", _AMB),
-        ("Convexity",          f"{port_conv:.3f}", "portfolio avg",  _T2),
-        ("Portfolio DV01",     f"${port_dv01:,.2f}", "$ per 1bp move total", _GRN),
+    cards = [
+        ("Total Market Value", f"${total_mv:,.2f}",   "",                   _BLUE),
+        ("Wtd Avg YTM",        f"{port_ytm*100:.3f}%", "by market value",   _AMB),
+        ("Macaulay Duration",  f"{port_mac_dur:.3f} yrs", "avg cashflow timing", _AMB),
+        ("Modified Duration",  f"{port_mod_dur:.3f}",  "% Δpx / 1% Δyield", _AMB),
+        ("Convexity",          f"{port_conv:.3f}",     "portfolio avg",      _T2),
+        ("Portfolio DV01",     f"${port_dv01:,.2f}",   "$ per 1bp total",   _GRN),
     ]
     html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:8px;">'
-    for lbl, val, sub, acc in summary_cards:
+    for lbl, val, sub, acc in cards:
         html += _val_card(lbl, val, sub, acc)
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
-    # Scenario P&L
+    # Rate shock scenarios
     st.markdown(
-        f'<div style="font-size:12px;color:{_T2};margin:16px 0 6px;">'
-        f'Rate shock scenarios (portfolio-level ΔMV)</div>',
+        f'<div style="font-size:12px;color:{_T2};margin:18px 0 6px;">'
+        f'Rate shock scenarios — portfolio ΔMV (duration + convexity approx.)</div>',
         unsafe_allow_html=True,
     )
     shocks = [-200, -100, -50, -25, 25, 50, 100, 200]
@@ -368,91 +364,85 @@ def bond_portfolio() -> None:
             "ΔMV ($)":     f"${dmv:+,.2f}",
             "ΔMV (%)":     f"{dmv / total_mv * 100:+.3f}%",
         })
-    scen_df = pd.DataFrame(scen_rows)
+
     def _colour(row):
-        bp = int(row["Shock (bps)"].replace("+", ""))
-        c = "#d1fae5" if bp < 0 else "#fee2e2" if bp > 0 else ""
-        return [f"background-color:{c}" if c else "" for _ in row]
-    st.dataframe(scen_df.style.apply(_colour, axis=1),
-                 use_container_width=True, hide_index=True)
+        bp  = int(row["Shock (bps)"].replace("+", ""))
+        col = "#d1fae5" if bp < 0 else "#fee2e2"
+        return [f"background-color:{col}" for _ in row]
+
+    st.dataframe(
+        pd.DataFrame(scen_rows).style.apply(_colour, axis=1),
+        use_container_width=True, hide_index=True,
+    )
 
     # ── Analytics ─────────────────────────────────────────────────────────────
     _section("Portfolio Analytics")
+    r1c1, r1c2 = st.columns(2)
 
-    row1_c1, row1_c2 = st.columns(2)
-
-    # 1. Country allocation donut
-    with row1_c1:
-        country_mv = df.groupby("country")["mv"].sum().reset_index()
-        fig_pie = go.Figure(go.Pie(
-            labels=country_mv["country"],
-            values=country_mv["mv"],
-            hole=0.55,
-            marker_colors=[COUNTRY_COLORS.get(c, "#888") for c in country_mv["country"]],
+    # Country allocation donut
+    with r1c1:
+        cmv = df.groupby("country")["mv"].sum().reset_index()
+        fig = go.Figure(go.Pie(
+            labels=cmv["country"], values=cmv["mv"], hole=0.55,
+            marker_colors=[COUNTRY_COLORS.get(c, "#888") for c in cmv["country"]],
             textfont=dict(color=_T1, size=11),
             hovertemplate="%{label}<br>$%{value:,.2f} (%{percent})<extra></extra>",
         ))
-        fig_pie.update_layout(
+        fig.update_layout(
             height=320,
             title=dict(text="Country Allocation", font=dict(size=13, color=_T1), x=0),
-            **_layout(margin=dict(l=20, r=20, t=44, b=20),
-                      legend=dict(font=dict(size=10, color=_T1), bgcolor="rgba(0,0,0,0)")),
+            **_layout(margin=dict(l=20, r=20, t=44, b=20)),
         )
-        st.plotly_chart(fig_pie, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
 
-    # 2. Maturity profile
-    with row1_c2:
-        bucket_labels = [b[0] for b in MATURITY_BUCKETS]
-        bucket_mv = []
-        for lbl, lo, hi in MATURITY_BUCKETS:
-            mv_sum = df[(df["maturity"] > lo) & (df["maturity"] <= hi)]["mv"].sum()
-            bucket_mv.append(mv_sum)
-        fig_mat = go.Figure(go.Bar(
-            x=bucket_labels, y=bucket_mv,
-            marker_color=[_BLUE, _AMB, _GRN, _RED],
+    # Maturity profile
+    with r1c2:
+        lbls  = [b[0] for b in MATURITY_BUCKETS_CHART]
+        bmv   = [
+            df[(df["maturity"] > lo) & (df["maturity"] <= hi)]["mv"].sum()
+            for _, lo, hi in MATURITY_BUCKETS_CHART
+        ]
+        fig = go.Figure(go.Bar(
+            x=lbls, y=bmv,
+            marker_color=[_BLUE, _AMB, _GRN, "#a78bfa"],
             hovertemplate="%{x}<br>$%{y:,.2f}<extra></extra>",
         ))
-        fig_mat.update_layout(
+        fig.update_layout(
             height=320,
-            title=dict(text="Maturity Profile (Market Value)", font=dict(size=13, color=_T1), x=0),
-            yaxis_title="Market Value ($)",
-            showlegend=False,
-            **_layout(legend=dict(visible=False), margin=dict(l=62, r=20, t=44, b=44)),
+            title=dict(text="Maturity Profile (Market Value)",
+                       font=dict(size=13, color=_T1), x=0),
+            yaxis_title="Market Value ($)", showlegend=False,
+            **_layout(margin=dict(l=62, r=20, t=44, b=44)),
         )
-        st.plotly_chart(fig_mat, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
 
-    row2_c1, row2_c2 = st.columns(2)
+    r2c1, r2c2 = st.columns(2)
 
-    # 3. DV01 contribution by bond
-    with row2_c1:
-        df_dv = df.assign(dv01_total=df["dv01_u"] * df["units"]).sort_values("dv01_total")
-        fig_dv = go.Figure(go.Bar(
-            y=df_dv["name"],
-            x=df_dv["dv01_total"],
-            orientation="h",
-            marker_color=[COUNTRY_COLORS.get(c, "#888") for c in df_dv["country"]],
+    # DV01 contribution
+    with r2c1:
+        ddf = df.assign(dv01_total=df["dv01_u"] * df["units"]).sort_values("dv01_total")
+        fig = go.Figure(go.Bar(
+            y=ddf["name"], x=ddf["dv01_total"], orientation="h",
+            marker_color=[COUNTRY_COLORS.get(c, "#888") for c in ddf["country"]],
             hovertemplate="%{y}<br>DV01: $%{x:,.2f}<extra></extra>",
         ))
-        fig_dv.update_layout(
+        fig.update_layout(
             height=320,
-            title=dict(text="DV01 Contribution by Bond", font=dict(size=13, color=_T1), x=0),
-            xaxis_title="DV01 ($)",
-            showlegend=False,
-            **_layout(legend=dict(visible=False),
-                      margin=dict(l=160, r=20, t=44, b=44)),
+            title=dict(text="DV01 Contribution by Bond",
+                       font=dict(size=13, color=_T1), x=0),
+            xaxis_title="DV01 ($)", showlegend=False,
+            **_layout(margin=dict(l=160, r=20, t=44, b=44)),
         )
-        st.plotly_chart(fig_dv, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
 
-    # 4. Yield positioning scatter (maturity vs YTM, bubble = market value)
-    with row2_c2:
-        fig_yc = go.Figure()
+    # Yield positioning scatter
+    with r2c2:
+        fig = go.Figure()
         for country in df["country"].unique():
             cdf = df[df["country"] == country]
-            fig_yc.add_trace(go.Scatter(
-                x=cdf["maturity"],
-                y=cdf["ytm"] * 100,
-                mode="markers",
-                name=country,
+            fig.add_trace(go.Scatter(
+                x=cdf["maturity"], y=cdf["ytm"] * 100,
+                mode="markers", name=country,
                 marker=dict(
                     color=COUNTRY_COLORS.get(country, "#888"),
                     size=cdf["mv"] / cdf["mv"].max() * 30 + 8,
@@ -461,41 +451,38 @@ def bond_portfolio() -> None:
                 ),
                 text=cdf["name"],
                 hovertemplate=(
-                    "<b>%{text}</b><br>"
-                    "Maturity: %{x}Y<br>"
+                    "<b>%{text}</b><br>Maturity: %{x}Y<br>"
                     "YTM: %{y:.2f}%<extra></extra>"
                 ),
             ))
-        fig_yc.update_layout(
+        fig.update_layout(
             height=320,
             title=dict(text="Yield Positioning (bubble ∝ market value)",
                        font=dict(size=13, color=_T1), x=0),
-            xaxis_title="Maturity (years)",
-            yaxis_title="YTM (%)",
+            xaxis_title="Maturity (years)", yaxis_title="YTM (%)",
             **_layout(margin=dict(l=62, r=20, t=44, b=44)),
         )
-        st.plotly_chart(fig_yc, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
 
     # ── Holdings table ────────────────────────────────────────────────────────
     _section("Holdings Summary")
-    display_df = df[[
+    disp = df[[
         "name", "country", "coupon", "maturity", "ytm",
         "price", "units", "mv", "weight", "mod_dur", "dv01_u",
     ]].copy()
-    display_df.columns = [
+    disp.columns = [
         "Bond", "Country", "Coupon %", "Maturity (Y)", "YTM %",
         "Price", "Units", "Market Value", "Weight", "Mod Dur", "DV01/unit",
     ]
-    display_df["Coupon %"]    = (display_df["Coupon %"] * 100).round(3)
-    display_df["YTM %"]       = (display_df["YTM %"] * 100).round(3)
-    display_df["Price"]       = display_df["Price"].round(4)
-    display_df["Market Value"] = display_df["Market Value"].round(2)
-    display_df["Weight"]      = (display_df["Weight"] * 100).round(2).astype(str) + "%"
-    display_df["Mod Dur"]     = display_df["Mod Dur"].round(3)
-    display_df["DV01/unit"]   = display_df["DV01/unit"].round(4)
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
+    disp["Coupon %"]     = (disp["Coupon %"] * 100).round(3)
+    disp["YTM %"]        = (disp["YTM %"] * 100).round(3)
+    disp["Price"]        = disp["Price"].round(4)
+    disp["Market Value"] = disp["Market Value"].round(2)
+    disp["Weight"]       = (disp["Weight"] * 100).round(2).astype(str) + "%"
+    disp["Mod Dur"]      = disp["Mod Dur"].round(3)
+    disp["DV01/unit"]    = disp["DV01/unit"].round(4)
+    st.dataframe(disp, use_container_width=True, hide_index=True)
 
-    # Download
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button(
         "⬇  Download Portfolio CSV", csv,
