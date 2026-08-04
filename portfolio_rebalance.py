@@ -32,13 +32,13 @@ def portfolio_rebalance():
         start = index[0]
         end = index[-1]
         if freq == "Monthly":
-            dates = pd.date_range(start=start, end=end, freq="M")
+            dates = pd.date_range(start=start, end=end, freq="ME")
         elif freq == "Quarterly":
-            dates = pd.date_range(start=start, end=end, freq="Q")
+            dates = pd.date_range(start=start, end=end, freq="QE")
         elif freq == "Half-Yearly":
-            dates = pd.date_range(start=start, end=end, freq="6M")
+            dates = pd.date_range(start=start, end=end, freq="6ME")
         else:
-            dates = pd.date_range(start=start, end=end, freq="A")
+            dates = pd.date_range(start=start, end=end, freq="YE")
 
         rebalance_dates = [start]
         for d in dates:
