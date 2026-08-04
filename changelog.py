@@ -1,5 +1,34 @@
 CHANGELOG = [
     {
+        "id": 12,
+        "version": "1.12",
+        "timestamp": "05 Aug 2026, 14:00 IST",
+        "category": "Fix",
+        "title": "Portfolio Rebalance freq error, heatmap silent failure, date picker CSS",
+        "description": [
+            "Portfolio Rebalance: updated pandas date_range frequency aliases — 'M'/'Q'/'6M'/'A' removed in pandas 2.2, replaced with 'ME'/'QE'/'6ME'/'YE' (month/quarter/year-end); tab was throwing ValueError on every load",
+            "Correlation Heatmap: wrapped computation in try/except so errors surface as a visible red box instead of silently producing a blank screen; added numeric-column filter before .corr() to avoid dtype issues; added empty-range guard",
+            "Correlation Heatmap: removed key= parameter from st.plotly_chart (only supported in Streamlit >=1.37, caused silent failure on deployed version); figure now persisted in session_state so it survives reruns after button state resets",
+            "Date picker year selector: removed overly broad ul[role='listbox'] CSS that was setting max-height:none globally, causing the year list in st.date_input calendar popups to render without scroll (impossibly tall); the app selector dropdown with 9 items fits the default popup height without the override",
+        ],
+    },
+    {
+        "id": 11,
+        "version": "1.11",
+        "timestamp": "05 Aug 2026, 12:00 IST",
+        "category": "UI",
+        "title": "Bond Portfolio — compact selection UI, $100k face value, DV01 by maturity",
+        "description": [
+            "Bond selection redesigned: each bond row is now a compact checkbox (country name) with coupon/YTM shown in small text below — removes visual bulk from the accordion",
+            "Face value changed to $100,000 per bond; qty = number of bonds (1 unit = 1 × $100k bond); stepper now increments by 1 instead of 10",
+            "Stepper shows live market value as $xM below the − qty + control",
+            "Maturity bucket headers simplified to a coloured underline only — removed heavy card styling that made the accordion disproportionately large",
+            "New chart: DV01 by Maturity Bucket (2Y / 5Y / 10Y / 30Y) — shows where duration risk is concentrated across the curve; sits alongside the existing DV01 by Bond chart",
+            "Yield Positioning scatter moved to full-width row below the 2×2 chart grid",
+            "Holdings table: Qty column added; Market Value and DV01/bond shown in whole dollars",
+        ],
+    },
+    {
         "id": 10,
         "version": "1.10",
         "timestamp": "05 Aug 2026, 10:00 IST",
