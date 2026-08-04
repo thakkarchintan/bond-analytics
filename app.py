@@ -6,6 +6,7 @@ from portfolio_rebalance import portfolio_rebalance
 from NewsSummary import *
 from ChangelogTab import changelog_tab
 from MacroDashboard import macro_dashboard
+from YieldCurves import yield_curves
 from data import load_data
 from dotenv import load_dotenv
 import os
@@ -128,6 +129,7 @@ if st.session_state["connected"]:
         "Portfolio Rebalance": portfolio_rebalance,
         "News Summarizer": news_app,
         "Global Macro Dashboard": macro_dashboard,
+        "Global Yield Curves": yield_curves,
         "Changelog": changelog_tab,
     }
 

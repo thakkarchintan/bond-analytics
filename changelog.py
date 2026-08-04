@@ -1,5 +1,23 @@
 CHANGELOG = [
     {
+        "id": 8,
+        "version": "1.8",
+        "timestamp": "04 Aug 2026, 02:30 IST",
+        "category": "Feature",
+        "title": "Instrument Metadata editor + Global Yield Curves tab",
+        "description": [
+            "Bond Analytics → Instrument Metadata (admin only — professionalbuzz@gmail.com): inline-editable table covering every instrument in Final.xlsx; columns: Country, Asset Class (Fixed Income Bonds / FX / Equity Index / Commodity / Money Market / Credit Spread / Other), Maturity (1M–30Y / N/A), Notes",
+            "Table uses st.data_editor with SelectboxColumn dropdowns; filter bar narrows the list by instrument name; Save button persists to Firestore app_config/instrument_metadata",
+            "When a filtered view is saved, edits merge with the full dataset so hidden rows are never overwritten",
+            "New app tab: Global Yield Curves — visible to all logged-in users",
+            "Yield Curves sidebar: country multiselect, up to 10 date pickers (Add / × remove); each picker snaps to the nearest available date in the data",
+            "One chart per selected country: x-axis = maturity tenors (1M → 30Y), y-axis = yield %, each selected date as a separate coloured line overlaid on one chart",
+            "Hover shows tenor label, exact yield, and the date trace name; if selected date has no data the nearest date is shown with an arrow annotation in the legend",
+            "firebase_utils.py: added get_instrument_metadata() and save_instrument_metadata() backed by Firestore app_config/instrument_metadata",
+            "stream.py: Instrument Metadata section injected into Bond Analytics section selector for admin users only; non-admins see no change",
+        ],
+    },
+    {
         "id": 7,
         "version": "1.7",
         "timestamp": "04 Aug 2026, 23:55 IST",
