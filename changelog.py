@@ -1,5 +1,16 @@
 CHANGELOG = [
     {
+        "id": 5,
+        "version": "1.5",
+        "timestamp": "04 Aug 2026, 21:45 IST",
+        "category": "Fix",
+        "title": "Restore sidebar expand button after collapse",
+        "description": [
+            "header { visibility: hidden } was hiding the Streamlit sidebar expand chevron along with the toolbar, making the sidebar unrecoverable once collapsed",
+            "Replaced with [data-testid='stToolbar'] { visibility: hidden } — hides the Deploy/options toolbar only, leaves the sidebar toggle visible",
+        ],
+    },
+    {
         "id": 4,
         "version": "1.4",
         "timestamp": "04 Aug 2026, 21:38 IST",

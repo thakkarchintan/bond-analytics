@@ -12,10 +12,10 @@ import os
 # ── Global styles ────────────────────────────────────────────────────────────
 _CSS = """
 <style>
-/* Remove Streamlit chrome */
-#MainMenu  { visibility: hidden; }
-footer     { visibility: hidden; }
-header     { visibility: hidden; }
+/* Remove Streamlit chrome — keep header visible so sidebar toggle works */
+#MainMenu                        { visibility: hidden; }
+footer                           { visibility: hidden; }
+[data-testid="stToolbar"]        { visibility: hidden; }
 
 /* Tighter content area */
 .block-container {
