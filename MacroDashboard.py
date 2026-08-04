@@ -90,7 +90,8 @@ def _layout(**kw) -> dict:
         font=dict(color=_T1, size=12),
         legend=dict(
             orientation="h", yanchor="bottom", y=1.02,
-            xanchor="right", x=1, font=dict(size=11),
+            xanchor="right", x=1, font=dict(size=11, color=_T1),
+            bgcolor="rgba(0,0,0,0)",
         ),
         xaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2),
                    showline=True, linecolor=_EDGE),
@@ -175,6 +176,7 @@ def _bar_latest(
     yaxis_title: str,
     year: int,
     countries: list[str],
+    height: int = 400,
 ) -> None:
     snap = (
         fdf[(fdf["Year"] == year) & (fdf["Country"].isin(countries))]
@@ -190,7 +192,7 @@ def _bar_latest(
         hovertemplate="%{x}: %{y:.1f}<extra></extra>",
     ))
     fig.update_layout(
-        height=300,
+        height=height,
         title=dict(text=f"Latest ({year})", font=dict(size=12, color=_T1), x=0),
         yaxis_title=yaxis_title,
         showlegend=False,
@@ -222,13 +224,13 @@ def _render_section(
             with c1:
                 _line_compare(fdf, col, title, yaxis_title, fmt, height, active)
             with c2:
-                _bar_latest(fdf, col, yaxis_title, year_to, active)
+                _bar_latest(fdf, col, yaxis_title, year_to, active, height)
         else:
             _line_compare(fdf, col, title, yaxis_title, fmt, height, active)
     else:
         _line_small_multiples(fdf, col, yaxis_title, fmt, active)
         if show_bar:
-            _bar_latest(fdf, col, yaxis_title, year_to, active)
+            _bar_latest(fdf, col, yaxis_title, year_to, active, height)
 
 
 # ── Snapshot section ───────────────────────────────────────────────────────────
@@ -258,23 +260,46 @@ def _snapshot(fdf: pd.DataFrame, year_to: int, countries: list[str]) -> None:
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
-    # Country scorecard
+    # Country scorecard table
     score_cols = {
-        "GDP_USD":             f"GDP USD bn",
-        "Real_GDP_Growth":     "Growth %",
-        "CPI_Inflation":       "Inflation %",
-        "Debt_GDP":            "Debt/GDP %",
-        "Fiscal_Balance_GDP":  "Fiscal Bal %",
+        "GDP_USD":               "GDP USD bn",
+        "Real_GDP_Growth":       "Growth %",
+        "CPI_Inflation":         "Inflation %",
+        "Debt_GDP":              "Debt/GDP %",
+        "Fiscal_Balance_GDP":    "Fiscal Bal %",
         "Govt_Debt_Outstanding": "Debt USD bn",
     }
-    available = {k: v for k, v in score_cols.items() if k in snap.columns}
-    display = (
-        snap.set_index("Country")[list(available.keys())]
-        .reindex(countries)
-        .rename(columns=available)
-        .round(1)
+    avail_keys = [k for k in score_cols if k in snap.columns]
+    snap_idx = snap.set_index("Country").reindex(countries)
+
+    th_style = (
+        f"padding:9px 14px;text-align:center;color:{_T2};font-size:11px;"
+        f"text-transform:uppercase;letter-spacing:.06em;font-weight:600;"
     )
-    st.dataframe(display, use_container_width=True)
+    headers_html = (
+        f'<th style="{th_style}text-align:left;">Country</th>'
+        + "".join(f'<th style="{th_style}">{score_cols[k]}</th>' for k in avail_keys)
+    )
+
+    rows_html = ""
+    for country in countries:
+        clr = COUNTRY_COLORS.get(country, _T2)
+        cells = f'<td style="padding:9px 14px;font-weight:600;color:{clr};">{country}</td>'
+        for k in avail_keys:
+            v = snap_idx.loc[country, k] if country in snap_idx.index else float("nan")
+            cell = f"{v:.1f}" if not pd.isna(v) else "—"
+            cells += f'<td style="padding:9px 14px;text-align:center;color:{_T1};">{cell}</td>'
+        rows_html += f'<tr style="border-bottom:1px solid {_EDGE};">{cells}</tr>'
+
+    st.markdown(
+        f'<div style="background:{_CARD};border:1px solid {_EDGE};border-radius:8px;'
+        f'overflow:hidden;margin-bottom:16px;">'
+        f'<table style="width:100%;border-collapse:collapse;">'
+        f'<thead><tr style="border-bottom:2px solid {_EDGE};">{headers_html}</tr></thead>'
+        f'<tbody>{rows_html}</tbody>'
+        f'</table></div>',
+        unsafe_allow_html=True,
+    )
 
 
 # ── Main entry point ───────────────────────────────────────────────────────────
@@ -324,8 +349,8 @@ def macro_dashboard() -> None:
 
     # ── Page header ────────────────────────────────────────────────────────────
     st.markdown(
-        f'<h2 style="color:{_T1};margin:0 0 2px;">Global Macro Dashboard</h2>'
-        f'<div style="font-size:12px;color:{_T2};">'
+        f'<h2 style="color:#0f172a;margin:0 0 2px;">Global Macro Dashboard</h2>'
+        f'<div style="font-size:12px;color:#475569;">'
         f'{len(selected)} countries · {year_from}–{year_to} · '
         f'{"Compare mode" if compare else "Small multiples"} · '
         f'Source: IMF WEO &amp; GDD</div>'
