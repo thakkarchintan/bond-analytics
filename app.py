@@ -120,9 +120,6 @@ if st.session_state["connected"]:
         "Changelog": changelog_tab,
     }
 
-    if st.sidebar.button("Logout", key="button1"):
-        authenticator.logout()
-
     user_email = st.session_state["user_info"].get("email", "None")
 
     admins = [email.strip() for email in os.getenv("ADMINS", "").split(",")]
@@ -146,3 +143,11 @@ if st.session_state["connected"]:
         st.session_state["data_warmed"] = True
 
     visible_apps[selected_app]()
+
+    # Logout pinned to bottom of sidebar
+    st.sidebar.markdown(
+        '<hr style="border:none; border-top:1px solid #475569; margin:1.5rem 0 0.75rem;">',
+        unsafe_allow_html=True,
+    )
+    if st.sidebar.button("Logout", key="button1"):
+        authenticator.logout()

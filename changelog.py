@@ -1,5 +1,17 @@
 CHANGELOG = [
     {
+        "id": 4,
+        "version": "1.4",
+        "timestamp": "04 Aug 2026, 21:38 IST",
+        "category": "UI",
+        "title": "Logout button moved to sidebar bottom with divider",
+        "description": [
+            "Logout button moved from top of sidebar to bottom — renders after all tab-specific controls so it stays out of the way during normal use",
+            "Solid #475569 horizontal rule added above the button as a visual separator",
+            "Button remains full-width (inherits existing width:100% sidebar button CSS)",
+        ],
+    },
+    {
         "id": 3,
         "version": "1.3",
         "timestamp": "04 Aug 2026, 21:26 IST",
