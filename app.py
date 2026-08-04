@@ -3,52 +3,94 @@ from common import authenticator
 from stream import home_page
 from HeatmapTab import heatmap_tab
 from portfolio_rebalance import portfolio_rebalance
-from EmailCrm import *
 from NewsSummary import *
 from ChangelogTab import changelog_tab
 from data import load_data
 from dotenv import load_dotenv
 import os
 
+# ── Global styles ────────────────────────────────────────────────────────────
+_CSS = """
+<style>
+/* Remove Streamlit chrome */
+#MainMenu  { visibility: hidden; }
+footer     { visibility: hidden; }
+header     { visibility: hidden; }
 
-def toast_auto_dismiss(message, duration=2000, toast_type="success"):
-    bg_colors = {
-        "success": "#28a745",
-        "error": "#dc3545",
-        "info": "#17a2b8",
-        "warning": "#ffc107",
-    }
-    color = bg_colors.get(toast_type, "#28a745")
-    st.markdown(
-        f"""
-        <div id="custom-toast" style="
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: {color};
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-            font-weight: bold;
-            z-index: 10000;
-        ">
-            {message}
-        </div>
-        <script>
-            setTimeout(function() {{
-                var toast = document.getElementById("custom-toast");
-                if (toast) {{
-                    toast.style.display = "none";
-                }}
-            }}, {duration});
-        </script>
-        """,
-        unsafe_allow_html=True,
-    )
+/* Tighter content area */
+.block-container {
+    padding-top: 1.5rem;
+    padding-bottom: 2rem;
+}
 
+/* Dark sidebar */
+[data-testid="stSidebar"] {
+    background-color: #1e293b;
+}
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] .stMarkdown p,
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] span {
+    color: #e2e8f0 !important;
+}
+
+/* Sidebar selectboxes */
+[data-testid="stSidebar"] [data-baseweb="select"] > div:first-child {
+    background-color: #334155 !important;
+    border-color: #475569 !important;
+}
+[data-testid="stSidebar"] [data-baseweb="select"] * {
+    color: #f1f5f9 !important;
+    background-color: #334155 !important;
+}
+
+/* Sidebar date inputs */
+[data-testid="stSidebar"] input[type="text"],
+[data-testid="stSidebar"] input[type="number"] {
+    background-color: #334155 !important;
+    color: #f1f5f9 !important;
+    border-color: #475569 !important;
+}
+
+/* Sidebar buttons */
+[data-testid="stSidebar"] .stButton > button {
+    width: 100%;
+    background-color: #334155 !important;
+    border: 1px solid #475569 !important;
+    color: #f1f5f9 !important;
+    border-radius: 6px;
+    font-weight: 500;
+}
+[data-testid="stSidebar"] .stButton > button:hover {
+    background-color: #475569 !important;
+    border-color: #64748b !important;
+}
+
+/* Sidebar slider track */
+[data-testid="stSidebar"] [data-testid="stSlider"] div[role="slider"] {
+    background-color: #1e40af !important;
+}
+
+/* Main area button polish */
+.stButton > button {
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+/* Sidebar HR divider */
+[data-testid="stSidebar"] hr {
+    border-color: #334155;
+}
+</style>
+"""
 
 st.set_page_config(page_title="Bond Analytics", layout="wide")
+st.markdown(_CSS, unsafe_allow_html=True)
+
+load_dotenv()
 
 if "connected" not in st.session_state:
     st.session_state["connected"] = False
@@ -56,21 +98,11 @@ if "connected" not in st.session_state:
 if "login_message_shown" not in st.session_state:
     st.session_state["login_message_shown"] = False
 
-load_dotenv()
-
 if not st.session_state["connected"]:
     st.markdown(
         """
-        <style>
-        .center {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-top:200px;
-        }
-        </style>
-        <div class="center">
-            <h1>Bond Analytics</h1>
+        <div style="display:flex; justify-content:center; align-items:center; margin-top:200px;">
+            <h1 style="color:#0f172a;">Bond Analytics</h1>
         </div>
         """,
         unsafe_allow_html=True,
@@ -81,10 +113,10 @@ authenticator.login()
 
 if st.session_state["connected"]:
     APP_MAP = {
-        "News Summarizer": news_app,
         "Bond Analytics": home_page,
         "Correlation Matrix": heatmap_tab,
         "Portfolio Rebalance": portfolio_rebalance,
+        "News Summarizer": news_app,
         "Changelog": changelog_tab,
     }
 
@@ -92,14 +124,12 @@ if st.session_state["connected"]:
         authenticator.logout()
 
     user_email = st.session_state["user_info"].get("email", "None")
-    load_dotenv()
 
-    restricted_apps = ["Email CRM", "Email CRM (Domain)", "Changelog"]
     admins = [email.strip() for email in os.getenv("ADMINS", "").split(",")]
-
     if "admins" not in st.session_state:
         st.session_state["admins"] = admins
 
+    restricted_apps = ["Changelog"]
     visible_apps = {
         app_name: app_func
         for app_name, app_func in APP_MAP.items()
@@ -108,10 +138,8 @@ if st.session_state["connected"]:
 
     selected_app = st.sidebar.selectbox("Select an application", list(visible_apps.keys()))
 
-    # Pre-warm the data cache once per session so all tabs respond instantly.
-    # load_data() is @st.cache_data — this call pays the Excel load cost here
-    # (with a visible spinner) rather than inside a tab where sidebar controls
-    # would be frozen while waiting.
+    # Pre-warm data cache once per session — pays the Excel load cost here with
+    # a spinner so sidebar controls are never frozen inside a tab function.
     if "data_warmed" not in st.session_state:
         with st.spinner("Loading market data..."):
             load_data()

@@ -3,6 +3,9 @@ pandas
 plotly
 numpy
 openpyxl
+# playwright and playwright-stealth kept for future use (scrap.py) — browser
+# binaries not installed in Docker; add `RUN playwright install chromium` to
+# Dockerfile when ready to activate
 playwright-stealth==1.0.6
 playwright
 beautifulsoup4
@@ -17,5 +20,4 @@ requests
 cohere==4.33.0
 nltk
 sumy
-streamlit-aggrid
 firebase-admin

@@ -1,5 +1,22 @@
 CHANGELOG = [
     {
+        "id": 3,
+        "version": "1.3",
+        "timestamp": "04 Aug 2026, 21:26 IST",
+        "category": "Performance",
+        "title": "Slim Docker image · dark sidebar theme · EmailCrm removed",
+        "description": [
+            "Switched Docker base from mcr.microsoft.com/playwright/python:v1.21.0-focal (~1.5 GB) to python:3.11-slim (~120 MB) — eliminates bundled browser binaries that the live app never uses; expected 60-70% reduction in cold-start time",
+            "Added Docker layer caching: requirements.txt is copied and pip-installed before the app code, so re-deploys only reinstall packages when requirements.txt changes (was reinstalling everything on every push)",
+            "Playwright Python packages kept in requirements.txt for future use (scrap.py); browser binaries not installed — add 'RUN playwright install --with-deps chromium' to Dockerfile when ready to activate",
+            "Removed streamlit-aggrid from requirements.txt — was only used by EmailCrm which is now removed",
+            "EmailCrm module removed entirely (email_crm_gmail.py, email_crm_outreach_chintanthakkar.py, __init__.py deleted)",
+            "Added .streamlit/config.toml: navy primary (#1e40af), off-white background (#f8f9fc), white widget backgrounds, system sans-serif font — applied app-wide via Streamlit theming",
+            "Dark sidebar (#1e293b) with matching select boxes, date inputs, buttons, and slider in slate palette — hides Streamlit header/footer/hamburger menu for a cleaner product feel",
+            "Bond Analytics moved to first position in app dropdown (was second after News Summarizer)",
+        ],
+    },
+    {
         "id": 2,
         "version": "1.2",
         "timestamp": "03 Aug 2026, 11:08 IST",
