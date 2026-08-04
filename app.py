@@ -8,6 +8,7 @@ from ChangelogTab import changelog_tab
 from MacroDashboard import macro_dashboard
 from YieldCurves import yield_curves
 from BondCalculator import bond_calculator
+from BondPortfolio import bond_portfolio
 from data import load_data
 from dotenv import load_dotenv
 import os
@@ -87,6 +88,12 @@ footer    { visibility: hidden; }
     border-color: #334155;
 }
 
+/* App-selector dropdown — show full list without inner scroll */
+ul[role="listbox"] {
+    max-height: none !important;
+    overflow-y: visible !important;
+}
+
 /* Sidebar expand button (visible when sidebar is collapsed) */
 [data-testid="collapsedControl"] {
     background-color: #1e293b !important;
@@ -131,7 +138,8 @@ if st.session_state["connected"]:
         "News Summarizer": news_app,
         "Global Macro Dashboard": macro_dashboard,
         "Global Yield Curves": yield_curves,
-        "Bond Calculator": bond_calculator,
+        "Bond Pricing & Calculator": bond_calculator,
+        "Bond Portfolio": bond_portfolio,
         "Changelog": changelog_tab,
     }
 

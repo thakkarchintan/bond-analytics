@@ -1,5 +1,23 @@
 CHANGELOG = [
     {
+        "id": 10,
+        "version": "1.10",
+        "timestamp": "05 Aug 2026, 10:00 IST",
+        "category": "Feature",
+        "title": "Bond Portfolio Builder + dropdown UX + Bond Pricing & Calculator rename",
+        "description": [
+            "New tab: Bond Portfolio Builder — select from a universe of 30 sovereign bonds across 11 countries (USA, Germany, UK, Japan, France, Italy, Canada, Australia, India, Brazil, China), covering 2Y–30Y maturities",
+            "Each bond has its own accordion: set number of units, view price, Macaulay duration, modified duration, convexity, DV01/unit, total DV01, and a mini price–yield chart",
+            "Portfolio-level Key Metrics: total market value, weighted-average YTM, Macaulay/modified duration, convexity, aggregate DV01",
+            "Rate shock scenario table: ±25/50/100/200bp estimated ΔMV (exact first-order + convexity approximation), colour-coded",
+            "Analytics section: Country Allocation donut, Maturity Profile bar chart (0–2Y / 2–5Y / 5–10Y / 10–30Y buckets), DV01 Contribution horizontal bar, Yield Positioning bubble scatter (x=maturity, y=YTM, size∝ market value)",
+            "Holdings Summary table with download-to-CSV button",
+            "Sidebar country filter narrows the bond universe available for selection",
+            "Bond Pricing & Calculator renamed from Bond Calculator — name is consistent across dropdown and tab header",
+            "App-selector dropdown: removed max-height constraint on the listbox popup so all apps show in one view without an inner scrollbar",
+        ],
+    },
+    {
         "id": 9,
         "version": "1.9",
         "timestamp": "05 Aug 2026, 01:00 IST",
