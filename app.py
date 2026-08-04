@@ -12,10 +12,9 @@ import os
 # ── Global styles ────────────────────────────────────────────────────────────
 _CSS = """
 <style>
-/* Remove Streamlit chrome — keep header visible so sidebar toggle works */
-#MainMenu                        { visibility: hidden; }
-footer                           { visibility: hidden; }
-[data-testid="stToolbar"]        { visibility: hidden; }
+/* Hide only branding — never touch header/toolbar so sidebar toggle always works */
+#MainMenu { visibility: hidden; }
+footer    { visibility: hidden; }
 
 /* Tighter content area */
 .block-container {

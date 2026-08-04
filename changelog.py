@@ -1,5 +1,17 @@
 CHANGELOG = [
     {
+        "id": 6,
+        "version": "1.6",
+        "timestamp": "04 Aug 2026, 21:52 IST",
+        "category": "Fix",
+        "title": "Sidebar expand definitively fixed — stop hiding header entirely",
+        "description": [
+            "stToolbar selector was still catching the sidebar expand control in Streamlit's DOM, keeping the sidebar permanently collapsed",
+            "Removed all header/toolbar CSS hiding — only #MainMenu and footer are hidden (pure branding, no interactive controls)",
+            "Sidebar toggle now always accessible regardless of Streamlit version's internal DOM layout",
+        ],
+    },
+    {
         "id": 5,
         "version": "1.5",
         "timestamp": "04 Aug 2026, 21:45 IST",
