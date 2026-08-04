@@ -88,12 +88,6 @@ footer    { visibility: hidden; }
     border-color: #334155;
 }
 
-/* App-selector dropdown — show full list without inner scroll */
-ul[role="listbox"] {
-    max-height: none !important;
-    overflow-y: visible !important;
-}
-
 /* Sidebar expand button (visible when sidebar is collapsed) */
 [data-testid="collapsedControl"] {
     background-color: #1e293b !important;
