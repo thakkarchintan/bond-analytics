@@ -51,7 +51,7 @@ def changelog_tab():
         unsafe_allow_html=True,
     )
 
-    for entry in reversed(CHANGELOG):
+    for entry in CHANGELOG:
         bullets_html = "".join(
             f'<div class="cl-bullet">• {b}</div>' for b in entry["description"]
         )

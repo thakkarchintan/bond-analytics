@@ -84,6 +84,16 @@ footer    { visibility: hidden; }
 [data-testid="stSidebar"] hr {
     border-color: #334155;
 }
+
+/* Sidebar expand button (visible when sidebar is collapsed) */
+[data-testid="collapsedControl"] {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+[data-testid="collapsedControl"] svg {
+    fill: #22d3ee !important;
+    color: #22d3ee !important;
+}
 </style>
 """
 
