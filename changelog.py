@@ -2,7 +2,7 @@ CHANGELOG = [
     {
         "id": 12,
         "version": "1.12",
-        "timestamp": "05 Aug 2026, 14:00 IST",
+        "timestamp": "05 Aug 2026, 01:10 IST",
         "category": "Fix",
         "title": "Portfolio Rebalance freq error, heatmap silent failure, date picker CSS",
         "description": [
@@ -15,7 +15,7 @@ CHANGELOG = [
     {
         "id": 11,
         "version": "1.11",
-        "timestamp": "05 Aug 2026, 12:00 IST",
+        "timestamp": "05 Aug 2026, 01:10 IST",
         "category": "UI",
         "title": "Bond Portfolio — compact selection UI, $100k face value, DV01 by maturity",
         "description": [
