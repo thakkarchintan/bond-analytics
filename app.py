@@ -5,6 +5,7 @@ from HeatmapTab import heatmap_tab
 from portfolio_rebalance import portfolio_rebalance
 from NewsSummary import *
 from ChangelogTab import changelog_tab
+from MacroDashboard import macro_dashboard
 from data import load_data
 from dotenv import load_dotenv
 import os
@@ -116,6 +117,7 @@ if st.session_state["connected"]:
         "Correlation Matrix": heatmap_tab,
         "Portfolio Rebalance": portfolio_rebalance,
         "News Summarizer": news_app,
+        "Global Macro Dashboard": macro_dashboard,
         "Changelog": changelog_tab,
     }
 
