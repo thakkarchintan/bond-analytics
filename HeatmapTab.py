@@ -55,4 +55,7 @@ def heatmap_tab():
                 height=800,
                 width=900,
             )
-            st.plotly_chart(fig, use_container_width=True, key="corr_heatmap")
+            st.session_state["corr_fig"] = fig
+
+    if "corr_fig" in st.session_state:
+        st.plotly_chart(st.session_state["corr_fig"], use_container_width=True)
