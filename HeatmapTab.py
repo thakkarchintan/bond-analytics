@@ -2,21 +2,52 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from data import load_data
-from firebase_utils import get_formula_list
+from firebase_utils import get_instrument_metadata
+
+
+@st.cache_data(ttl=300)
+def _load_metadata() -> dict:
+    return get_instrument_metadata()
 
 
 def heatmap_tab():
-    user_email = st.session_state["user_info"].get("email", "None")
-    admins = st.session_state["admins"]
-
-    if user_email in admins:
-        saved_formulas = get_formula_list(user_email)
-
     df = load_data()
-    instruments = df.columns[1:]
+    all_instruments = list(df.columns[1:])
 
-    st.sidebar.title("Bond Analytics - Heatmap")
+    st.sidebar.title("Correlation Matrix")
 
+    # ── Asset class filter ────────────────────────────────────────────────────
+    meta = _load_metadata()
+    inst_class = {
+        inst: meta.get(inst, {}).get("asset_class", "") or "Untagged"
+        for inst in all_instruments
+    }
+    available_classes = sorted(set(inst_class.values()))
+
+    st.sidebar.markdown(
+        '<div style="font-size:11px;color:#94a3b8;text-transform:uppercase;'
+        'letter-spacing:.08em;margin:12px 0 4px;">Asset Class</div>',
+        unsafe_allow_html=True,
+    )
+    selected_classes = st.sidebar.multiselect(
+        "Asset Classes",
+        options=available_classes,
+        default=available_classes,
+        key="hm_asset_classes",
+        label_visibility="collapsed",
+    )
+
+    instruments = [i for i in all_instruments if inst_class[i] in selected_classes]
+
+    if len(instruments) < 2:
+        st.sidebar.warning("Select at least 2 instruments via the asset class filter.")
+
+    # ── Date range ────────────────────────────────────────────────────────────
+    st.sidebar.markdown(
+        '<div style="font-size:11px;color:#94a3b8;text-transform:uppercase;'
+        'letter-spacing:.08em;margin:12px 0 4px;">Date Range</div>',
+        unsafe_allow_html=True,
+    )
     min_date = df["Date"].min().date()
     max_date = df["Date"].max().date()
     start_date = st.sidebar.date_input(
@@ -33,12 +64,20 @@ def heatmap_tab():
             st.sidebar.error("End Date must be on or after Start Date")
         else:
             try:
+                if len(instruments) < 2:
+                    st.warning("Select at least 2 asset classes to compute a correlation matrix.")
+                    return
+
                 filtered_df = df[
                     (df["Date"] >= pd.to_datetime(start_date))
                     & (df["Date"] <= pd.to_datetime(end_date))
                 ].copy()
 
-                numeric_cols = filtered_df[instruments].select_dtypes(include="number").columns
+                numeric_cols = (
+                    filtered_df[instruments]
+                    .select_dtypes(include="number")
+                    .columns
+                )
                 # Drop only the first row (always NaN after diff); let corr()
                 # handle per-pair NaN so sparse columns (e.g. BTC) don't wipe the matrix
                 daily_changes = filtered_df[numeric_cols].diff().iloc[1:]

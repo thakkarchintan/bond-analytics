@@ -1,5 +1,19 @@
 CHANGELOG = [
     {
+        "id": 15,
+        "version": "1.15",
+        "timestamp": "05 Aug 2026, 08:28 IST",
+        "category": "Feature",
+        "title": "Correlation Matrix — filter by Asset Class from Instrument Metadata",
+        "description": [
+            "New sidebar multiselect: Asset Class — populated from the Instrument Metadata table in Firestore; shows all tagged asset classes present in the data (Fixed Income Bonds, FX, Equity Index, Commodity, Money Market, Credit Spread, Other) plus 'Untagged' for instruments not yet tagged",
+            "Selecting one or more asset classes limits the correlation matrix to only the instruments belonging to those classes — e.g. select 'Fixed Income Bonds' only to see a pure fixed-income correlation heatmap",
+            "All asset classes selected by default so existing behaviour is unchanged for users who don't filter",
+            "Metadata loaded from Firestore with a 5-minute cache (ttl=300) to avoid hitting the DB on every rerun",
+            "Guard added: if fewer than 2 instruments remain after filtering, a warning is shown instead of attempting to compute a degenerate matrix",
+        ],
+    },
+    {
         "id": 14,
         "version": "1.14",
         "timestamp": "05 Aug 2026, 08:17 IST",
