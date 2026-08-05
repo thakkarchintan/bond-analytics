@@ -1,5 +1,16 @@
 CHANGELOG = [
     {
+        "id": 14,
+        "version": "1.14",
+        "timestamp": "05 Aug 2026, 08:17 IST",
+        "category": "Fix",
+        "title": "Correlation heatmap — sparse columns (BTC etc.) no longer blank the matrix",
+        "description": [
+            "Root cause: .dropna() on the diff'd frame dropped any row where ANY column had a NaN — instruments like BTC (no data pre-2010) caused every row in early date ranges to be dropped, leaving an empty frame and the 'not enough data' warning even when plenty of data exists",
+            "Fix: drop only the first row (always NaN from .diff()), then pass the full frame to .corr() which computes pairwise correlations using available observations per column pair — sparse columns no longer eliminate valid rows for other instruments",
+        ],
+    },
+    {
         "id": 13,
         "version": "1.13",
         "timestamp": "05 Aug 2026, 07:37 IST",

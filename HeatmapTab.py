@@ -39,7 +39,9 @@ def heatmap_tab():
                 ].copy()
 
                 numeric_cols = filtered_df[instruments].select_dtypes(include="number").columns
-                daily_changes = filtered_df[numeric_cols].diff().dropna()
+                # Drop only the first row (always NaN after diff); let corr()
+                # handle per-pair NaN so sparse columns (e.g. BTC) don't wipe the matrix
+                daily_changes = filtered_df[numeric_cols].diff().iloc[1:]
 
                 if daily_changes.empty or len(daily_changes) < 2:
                     st.warning("Not enough data in the selected date range to compute correlations.")
