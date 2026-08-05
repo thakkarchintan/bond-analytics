@@ -1,5 +1,27 @@
 CHANGELOG = [
     {
+        "id": 16,
+        "version": "1.16",
+        "timestamp": "05 Aug 2026, 11:16 IST",
+        "category": "Feature",
+        "title": "Global Capital Markets Dashboard — equity vs bond markets across 10 countries",
+        "description": [
+            "New tab: Global Capital Markets — 9 sections, year slider 2005–2023, all charts update as you move through time",
+            "Data sources: World Bank REST API (equity market cap, listed companies, population, stock turnover — free, no key) + IMF Datamapper API (GDP USD, Gross Govt Debt % GDP — free, no key); BIS corporate bond data excluded as their SDMX API returned 406/500 on all tested endpoints from this environment",
+            "Section 1 — Global Snapshot: 6 metric cards (global equity cap, global govt bond market, total capital market, combined GDP, avg equity/GDP, avg bond/GDP)",
+            "Section 2 — Market Size Comparison: stacked horizontal bar — equity + govt bonds side by side for all 10 countries (US dominance immediately visible, Japan/China bond market scale is striking)",
+            "Section 3 — Equity vs Bond Scatter: signature chart — x=equity, y=govt bonds, bubble=GDP; 45° line shows which countries are bond-dominant (Japan) vs equity-dominant (USA, India)",
+            "Section 4 — Equity/GDP: who has the deepest equity market relative to economy",
+            "Section 5 — Govt Bond/GDP: Japan at 220% of GDP stands out immediately",
+            "Section 6 — Total Capital Market Ranking: stacked Equity + Govt Bonds, ranked",
+            "Section 7 — Historical Evolution: three time-series charts (equity, govt bonds, total) from 2005 to 2023 — watch China rise, India emerge, Japan stay flat, USA dominate throughout",
+            "Section 8 — Interesting Ratios: Bond/Equity ratio bar chart + GDP vs Total Capital bubble chart (bubble ∝ population)",
+            "Section 9 — Capital Markets DNA table: country, GDP, equity, govt bonds, equity/GDP, bond/GDP, bond/equity ratio, financing model classification (Market-based / Bank-based / Government debt-heavy / State-led / Mixed)",
+            "Sidebar: year slider 2005–2023, section toggles so instructors can hide/show sections mid-lecture",
+            "24-hour cache (ttl=86400) on data fetch — World Bank/IMF data doesn't change daily; cache cleared when app restarts",
+        ],
+    },
+    {
         "id": 15,
         "version": "1.15",
         "timestamp": "05 Aug 2026, 08:28 IST",

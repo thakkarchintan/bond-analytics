@@ -6,6 +6,7 @@ from portfolio_rebalance import portfolio_rebalance
 from NewsSummary import *
 from ChangelogTab import changelog_tab
 from MacroDashboard import macro_dashboard
+from CapitalMarkets import capital_markets
 from YieldCurves import yield_curves
 from BondCalculator import bond_calculator
 from BondPortfolio import bond_portfolio
@@ -131,6 +132,7 @@ if st.session_state["connected"]:
         "Portfolio Rebalance": portfolio_rebalance,
         "News Summarizer": news_app,
         "Global Macro Dashboard": macro_dashboard,
+        "Global Capital Markets": capital_markets,
         "Global Yield Curves": yield_curves,
         "Bond Pricing & Calculator": bond_calculator,
         "Bond Portfolio": bond_portfolio,
