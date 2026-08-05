@@ -442,22 +442,6 @@ def _section9_dna(yr_df: pd.DataFrame, year: int) -> None:
     dna_df = pd.DataFrame(rows)
     st.dataframe(dna_df, use_container_width=True, hide_index=True)
 
-    st.markdown(
-        f'<div style="font-size:12px;color:{_T2};margin-top:6px;line-height:1.7;'
-        f'width:100%;max-width:100%;">'
-        f'<b style="color:{_T1}">Market-based</b> (USA, UK, Canada, Australia): '
-        f'companies raise money primarily through equity and bond markets.<br>'
-        f'<b style="color:{_T1}">Bank-based</b> (Germany): '
-        f'companies rely heavily on bank loans; listed equity market is relatively small.<br>'
-        f'<b style="color:{_T1}">Government debt-heavy</b> (Japan): '
-        f'the govt bond market dwarfs everything else; bond/equity &gt; 2×.<br>'
-        f'<b style="color:{_T1}">State-led</b> (China): '
-        f'large markets but government-directed; rapid growth from a low base in 2005.<br>'
-        f'<b style="color:{_T1}">Mixed / developing</b> (India, Brazil): '
-        f'growing equity markets, high govt debt, capital markets deepening over time.'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────
@@ -563,6 +547,13 @@ def capital_markets() -> None:
 
     if show["dna"]:
         _section9_dna(yr_df, year)
+        st.markdown(
+            "**Market-based** (USA, UK, Canada, Australia): companies raise money primarily through equity and bond markets.  \n"
+            "**Bank-based** (Germany): companies rely heavily on bank loans; listed equity market is relatively small.  \n"
+            "**Government debt-heavy** (Japan): the govt bond market dwarfs everything else; bond/equity > 2×.  \n"
+            "**State-led** (China): large markets but government-directed; rapid growth from a low base in 2005.  \n"
+            "**Mixed / developing** (India, Brazil): growing equity markets, high govt debt, capital markets deepening over time."
+        )
 
     # Footer note
     st.markdown(

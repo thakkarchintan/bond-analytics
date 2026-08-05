@@ -1,5 +1,16 @@
 CHANGELOG = [
     {
+        "id": 24,
+        "version": "1.24",
+        "timestamp": "05 Aug 2026, 21:05 IST",
+        "category": "Polish",
+        "title": "Capital Markets — financing model blurb truly full-width",
+        "description": [
+            "Moved the Market-based / Bank-based / Government debt-heavy blurb OUT of _section9_dna (where it was constrained by an HTML div) and into the main capital_markets() body as a native st.markdown call",
+            "Native st.markdown (no unsafe_allow_html wrapper) renders at the full Streamlit content width — the div-based approach was the root cause of the narrow rendering",
+        ],
+    },
+    {
         "id": 23,
         "version": "1.23",
         "timestamp": "05 Aug 2026, 20:48 IST",
