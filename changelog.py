@@ -1,5 +1,23 @@
 CHANGELOG = [
     {
+        "id": 18,
+        "version": "1.18",
+        "timestamp": "05 Aug 2026, 12:24 IST",
+        "category": "Feature",
+        "title": "Bond Portfolio — Yield Shock Scenario Builder + Risk & Impact Analysis",
+        "description": [
+            "New section at the bottom of Bond Portfolio: Yield Shock Scenario Builder — a compact grid of number inputs (basis points) organised by economy (rows) and maturity bucket (2Y / 3Y / 5Y / 10Y / 30Y columns); all 11 sovereign economies shown",
+            "Portfolio economies shown in bold/white; non-portfolio economies greyed — shocks for economies not in portfolio produce zero P&L impact (noted in footer)",
+            "9 preset buttons in two rows: parallel shifts (+25bp, +50bp, +100bp, -25bp, -50bp, -100bp), curve trades (Bear Steepen, Bull Flatten), and Reset; clicking a preset fills the entire grid and reruns instantly",
+            "Impact analysis section auto-renders below the grid whenever at least one shock is non-zero — no separate submit button needed",
+            "Impact analysis — 4 summary cards: Total ΔMV ($), Total ΔMV (% of portfolio), Biggest Gain (bond + amount), Biggest Loss (bond + amount)",
+            "Impact analysis — P&L by country (horizontal bar, green/red by direction) and P&L by maturity bucket (vertical bar) shown side by side",
+            "Impact analysis — full-width waterfall chart showing per-bond P&L attribution (sorted worst-to-best, Total bar at end)",
+            "Impact analysis — detailed table: Bond, Country, Shock (bps), Old YTM, New YTM, Old Price, New Price, Qty, Old MV, New MV, ΔMV; rows coloured green/red",
+            "Exact bond pricing used for impact (full bond_price() recalculation with new YTM), not duration approximation",
+        ],
+    },
+    {
         "id": 17,
         "version": "1.17",
         "timestamp": "05 Aug 2026, 11:38 IST",

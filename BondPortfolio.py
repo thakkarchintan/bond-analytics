@@ -106,6 +106,51 @@ MAT_BUCKETS_CHART = [
     ("10–30Y", 10, 30),
 ]
 
+# ── Scenario builder constants ────────────────────────────────────────────────
+
+# Display columns: 2Y | 3Y | 5Y | 10Y | 30Y
+_TENOR_LABELS = ["2Y", "3Y", "5Y", "10Y", "30Y"]
+
+# Map bond maturity → column index (0=2Y, 1=3Y, 2=5Y, 3=10Y, 4=30Y)
+def _tenor_col(mat: float) -> int:
+    if mat <= 2.5: return 0
+    if mat <= 4.0: return 1
+    if mat <= 7.0: return 2
+    if mat <= 15.0: return 3
+    return 4
+
+# (country, col_idx) → bond  (unique per country per tenor bucket)
+_BOND_GRID: dict[tuple[str, int], dict] = {
+    (b["country"], _tenor_col(b["maturity"])): b for b in BOND_UNIVERSE
+}
+
+_DISPLAY_COUNTRIES = [
+    ("USA",            "USA"),
+    ("Germany",        "Germany"),
+    ("United Kingdom", "UK"),
+    ("Japan",          "Japan"),
+    ("France",         "France"),
+    ("Italy",          "Italy"),
+    ("Canada",         "Canada"),
+    ("Australia",      "Australia"),
+    ("India",          "India"),
+    ("Brazil",         "Brazil"),
+    ("China",          "China"),
+]
+
+# Preset shocks keyed by tenor column index
+_PRESET_SHOCKS: dict[str, dict[int, int]] = {
+    "+25bp":         {i: 25   for i in range(5)},
+    "+50bp":         {i: 50   for i in range(5)},
+    "+100bp":        {i: 100  for i in range(5)},
+    "-25bp":         {i: -25  for i in range(5)},
+    "-50bp":         {i: -50  for i in range(5)},
+    "-100bp":        {i: -100 for i in range(5)},
+    "Bear Steepen":  {0: 30, 1: 45, 2: 65, 3: 90, 4: 110},
+    "Bull Flatten":  {0: -20, 1: -35, 2: -55, 3: -80, 4: -100},
+    "Reset":         {i: 0   for i in range(5)},
+}
+
 
 # ── Bond math ─────────────────────────────────────────────────────────────────
 
@@ -210,6 +255,265 @@ def _bond_row(b: dict) -> None:
             f'margin-bottom:2px;">${mv/1e6:.3f}M</div>',
             unsafe_allow_html=True,
         )
+
+
+# ── Scenario builder ──────────────────────────────────────────────────────────
+
+def _apply_preset(name: str) -> None:
+    col_shocks = _PRESET_SHOCKS[name]
+    for b in BOND_UNIVERSE:
+        st.session_state[f"shock_{b['id']}"] = col_shocks[_tenor_col(b["maturity"])]
+
+
+def _scenario_builder(portfolio_ids: set[str]) -> None:
+    _section(
+        "Yield Shock Scenario",
+        "Set basis-point changes per economy and maturity — impact analysis updates below",
+    )
+
+    # Preset buttons — row 1: parallel, row 2: curve + reset
+    row1 = ["+25bp", "+50bp", "+100bp", "-25bp", "-50bp", "-100bp"]
+    row2 = ["Bear Steepen", "Bull Flatten", "Reset"]
+
+    c1s = st.columns(len(row1))
+    for col, name in zip(c1s, row1):
+        with col:
+            if st.button(name, key=f"pbtn_{name}", use_container_width=True):
+                _apply_preset(name)
+                st.rerun()
+
+    c2s = st.columns(len(row2))
+    for col, name in zip(c2s, row2):
+        with col:
+            if st.button(name, key=f"pbtn_{name}", use_container_width=True):
+                _apply_preset(name)
+                st.rerun()
+
+    st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
+
+    # Initialise all shock keys to 0 on first render
+    for b in BOND_UNIVERSE:
+        if f"shock_{b['id']}" not in st.session_state:
+            st.session_state[f"shock_{b['id']}"] = 0
+
+    # Header row
+    widths = [1.8] + [0.85] * 5
+    hcols = st.columns(widths)
+    hcols[0].markdown(
+        f'<div style="font-size:10px;font-weight:600;color:{_T2};'
+        f'text-transform:uppercase;letter-spacing:.08em;">Economy</div>',
+        unsafe_allow_html=True,
+    )
+    for i, lbl in enumerate(_TENOR_LABELS):
+        hcols[i + 1].markdown(
+            f'<div style="font-size:10px;font-weight:600;color:{_T2};'
+            f'text-transform:uppercase;letter-spacing:.08em;text-align:center;">{lbl}</div>',
+            unsafe_allow_html=True,
+        )
+
+    # One row per economy
+    for country_full, country_short in _DISPLAY_COUNTRIES:
+        in_portfolio = any(
+            b["id"] in portfolio_ids
+            for b in BOND_UNIVERSE if b["country"] == country_full
+        )
+        color  = _T1 if in_portfolio else _T3
+        weight = "600" if in_portfolio else "400"
+        rcols  = st.columns(widths)
+        with rcols[0]:
+            st.markdown(
+                f'<div style="font-size:11px;color:{color};font-weight:{weight};'
+                f'padding-top:9px;">{country_short}</div>',
+                unsafe_allow_html=True,
+            )
+        for i in range(5):
+            bond = _BOND_GRID.get((country_full, i))
+            with rcols[i + 1]:
+                if bond:
+                    st.number_input(
+                        "bps",
+                        key=f"shock_{bond['id']}",
+                        min_value=-1000,
+                        max_value=1000,
+                        step=1,
+                        label_visibility="collapsed",
+                    )
+                else:
+                    st.markdown(
+                        f'<div style="height:38px;display:flex;align-items:center;'
+                        f'justify-content:center;font-size:12px;color:{_EDGE};">—</div>',
+                        unsafe_allow_html=True,
+                    )
+
+    st.markdown(
+        f'<div style="font-size:11px;color:{_T3};margin-top:6px;">'
+        f'Bold economies have bonds in your portfolio. '
+        f'Shocks for economies not in your portfolio have no P&L impact.</div>',
+        unsafe_allow_html=True,
+    )
+
+
+# ── Impact analysis ────────────────────────────────────────────────────────────
+
+def _impact_analysis(df: pd.DataFrame, total_mv: float) -> None:
+    # Collect per-bond shocks and compute new prices
+    shock_rows = []
+    for _, row in df.iterrows():
+        bid       = row["id"]
+        shock_bps = int(st.session_state.get(f"shock_{bid}", 0))
+        b         = _BOND_BY_ID[bid]
+        new_ytm   = max(b["ytm"] / 100 + shock_bps / 10_000, 0.0001)
+        new_px    = bond_price(b["face"], b["coupon"] / 100, b["maturity"], new_ytm, b["freq"])
+        delta_mv  = (new_px - row["price"]) * row["units"]
+        shock_rows.append(dict(
+            id=bid, name=row["name"], country=row["country"], bucket=row["bucket"],
+            shock_bps=shock_bps,
+            old_ytm=b["ytm"],
+            new_ytm=new_ytm * 100,
+            old_price=row["price"], new_price=new_px,
+            old_mv=row["mv"], new_mv=new_px * row["units"],
+            delta_mv=delta_mv, units=row["units"],
+        ))
+
+    sdf         = pd.DataFrame(shock_rows)
+    total_delta = sdf["delta_mv"].sum()
+    has_shock   = sdf["shock_bps"].ne(0).any()
+
+    if not has_shock:
+        _section(
+            "Risk & Impact Analysis",
+            "Set yield shocks above — portfolio P&L will appear here",
+        )
+        st.info("All yield shocks are zero. Adjust basis points in the scenario builder to see impact.")
+        return
+
+    pct = total_delta / total_mv * 100
+    _section(
+        "Risk & Impact Analysis",
+        f"Scenario total  {'+' if total_delta >= 0 else ''}${total_delta:,.0f}  "
+        f"({'+'if pct >= 0 else ''}{pct:.3f}% of portfolio)",
+    )
+
+    # ── Summary cards ─────────────────────────────────────────────────────────
+    worst = sdf.loc[sdf["delta_mv"].idxmin()]
+    best  = sdf.loc[sdf["delta_mv"].idxmax()]
+    n_moved = sdf["shock_bps"].ne(0).sum()
+    cards = [
+        ("Total ΔMV",
+         f"${total_delta:+,.0f}",
+         f"{pct:+.3f}% of portfolio",
+         _GRN if total_delta >= 0 else _RED),
+        ("Biggest gain",
+         f"${best['delta_mv']:+,.0f}",
+         best["name"],
+         _GRN),
+        ("Biggest loss",
+         f"${worst['delta_mv']:+,.0f}",
+         worst["name"],
+         _RED),
+        ("Bonds impacted",
+         str(n_moved),
+         f"of {len(sdf)} in portfolio",
+         _T2),
+    ]
+    html = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">'
+    for lbl, val, sub, acc in cards:
+        html += _val_card(lbl, val, sub, acc)
+    html += "</div>"
+    st.markdown(html, unsafe_allow_html=True)
+
+    # ── Charts ────────────────────────────────────────────────────────────────
+    c1, c2 = st.columns(2)
+
+    with c1:
+        cdf = sdf.groupby("country")["delta_mv"].sum().reset_index().sort_values("delta_mv")
+        fig = go.Figure(go.Bar(
+            x=cdf["delta_mv"], y=cdf["country"], orientation="h",
+            marker_color=[_GRN if v >= 0 else _RED for v in cdf["delta_mv"]],
+            hovertemplate="<b>%{y}</b><br>ΔMV: $%{x:+,.0f}<extra></extra>",
+        ))
+        fig.add_vline(x=0, line=dict(color=_T3, width=1))
+        fig.update_layout(
+            height=300,
+            title=dict(text="P&L by country", font=dict(size=13, color=_T1), x=0),
+            xaxis_title="ΔMV ($)", showlegend=False,
+            **_chart_layout(margin=dict(l=130, r=20, t=40, b=44)),
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    with c2:
+        bucket_order = [b[0] for b in BUCKETS]
+        bdf = (
+            sdf.groupby("bucket")["delta_mv"]
+            .sum()
+            .reindex(bucket_order)
+            .fillna(0)
+            .reset_index()
+        )
+        fig = go.Figure(go.Bar(
+            x=bdf["bucket"], y=bdf["delta_mv"],
+            marker_color=[_GRN if v >= 0 else _RED for v in bdf["delta_mv"]],
+            hovertemplate="%{x}<br>ΔMV: $%{y:+,.0f}<extra></extra>",
+        ))
+        fig.add_hline(y=0, line=dict(color=_T3, width=1))
+        fig.update_layout(
+            height=300,
+            title=dict(text="P&L by maturity bucket", font=dict(size=13, color=_T1), x=0),
+            yaxis_title="ΔMV ($)", showlegend=False,
+            **_chart_layout(margin=dict(l=72, r=20, t=40, b=44)),
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Waterfall: P&L attribution per bond (sorted worst → best)
+    wdf = sdf.sort_values("delta_mv")
+    x_labels  = wdf["name"].tolist() + ["Total"]
+    y_values  = wdf["delta_mv"].tolist() + [total_delta]
+    measures  = ["relative"] * len(wdf) + ["total"]
+    text_vals = [f"${v:+,.0f}" for v in y_values]
+
+    fig = go.Figure(go.Waterfall(
+        x=x_labels, y=y_values, measure=measures,
+        connector=dict(line=dict(color=_EDGE, width=1, dash="dot")),
+        increasing=dict(marker_color=_GRN),
+        decreasing=dict(marker_color=_RED),
+        totals=dict(marker_color=_BLUE),
+        text=text_vals, textposition="outside",
+        textfont=dict(color=_T1, size=9),
+        hovertemplate="%{x}<br>ΔMV: $%{y:+,.0f}<extra></extra>",
+    ))
+    fig.update_layout(
+        height=320,
+        title=dict(text="P&L attribution — by bond", font=dict(size=13, color=_T1), x=0),
+        yaxis_title="ΔMV ($)", showlegend=False,
+        **_chart_layout(margin=dict(l=72, r=20, t=40, b=90)),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # ── Detail table ──────────────────────────────────────────────────────────
+    disp = sdf[[
+        "name", "country", "shock_bps", "old_ytm", "new_ytm",
+        "old_price", "new_price", "units", "old_mv", "new_mv", "delta_mv",
+    ]].copy()
+    disp.columns = [
+        "Bond", "Country", "Shock (bps)", "Old YTM (%)", "New YTM (%)",
+        "Old Price", "New Price", "Qty", "Old MV ($)", "New MV ($)", "ΔMV ($)",
+    ]
+    disp["Old YTM (%)"]  = disp["Old YTM (%)"].round(3)
+    disp["New YTM (%)"]  = disp["New YTM (%)"].round(3)
+    disp["Old Price"]    = disp["Old Price"].round(2)
+    disp["New Price"]    = disp["New Price"].round(2)
+    disp["Old MV ($)"]   = disp["Old MV ($)"].round(0).astype(int)
+    disp["New MV ($)"]   = disp["New MV ($)"].round(0).astype(int)
+    disp["ΔMV ($)"]      = disp["ΔMV ($)"].round(0).astype(int)
+
+    def _row_color(row):
+        clr = "#d1fae5" if row["ΔMV ($)"] >= 0 else "#fee2e2"
+        return [f"background-color:{clr}"] * len(row)
+
+    st.dataframe(
+        disp.style.apply(_row_color, axis=1),
+        use_container_width=True, hide_index=True,
+    )
 
 
 # ── Main tab ───────────────────────────────────────────────────────────────────
@@ -497,3 +801,8 @@ def bond_portfolio() -> None:
         "⬇  Download Portfolio CSV", csv,
         file_name="bond_portfolio.csv", mime="text/csv",
     )
+
+    # ── Yield shock scenario + impact analysis ────────────────────────────────
+    portfolio_ids = {b["id"] for b in selected}
+    _scenario_builder(portfolio_ids)
+    _impact_analysis(df, total_mv)
