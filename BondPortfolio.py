@@ -215,44 +215,20 @@ def _chart_layout(**kw) -> dict:
 # ── Compact bond row inside a bucket column ────────────────────────────────────
 
 def _bond_row(b: dict) -> None:
-    """Checkbox + stepper on same row, detail line below."""
+    """Checkbox + number_input stepper if selected."""
     unit_key = f"units_{b['id']}"
-    if unit_key not in st.session_state:
-        st.session_state[unit_key] = 1
-
-    # Single row: [checkbox name] [−] [qty] [+] [$xM]
-    c_name, c_dec, c_qty, c_inc, c_mv = st.columns([6, 1, 1, 1, 3])
-    with c_name:
-        checked = st.checkbox(b["country"], key=f"chk_{b['id']}", help=b["name"])
-
-    if checked:
-        qty = st.session_state[unit_key]
-        mv  = _metrics(b)["price"] * qty
-        with c_dec:
-            if st.button("−", key=f"dec_{b['id']}"):
-                st.session_state[unit_key] = max(1, qty - 1)
-        with c_qty:
-            st.markdown(
-                f'<div style="text-align:center;font-size:12px;font-weight:500;'
-                f'color:inherit;padding-top:5px;">{qty}</div>',
-                unsafe_allow_html=True,
-            )
-        with c_inc:
-            if st.button("+", key=f"inc_{b['id']}"):
-                st.session_state[unit_key] = qty + 1
-        with c_mv:
-            st.markdown(
-                f'<div style="font-size:10px;color:{_T3};padding-top:7px;">'
-                f'${mv/1e6:.2f}M</div>',
-                unsafe_allow_html=True,
-            )
-
-    # Detail line always visible
+    checked = st.checkbox(b["country"], key=f"chk_{b['id']}", help=b["name"])
     st.markdown(
         f'<div style="font-size:10px;color:{_T3};margin:-6px 0 4px 24px;">'
         f'{b["coupon"]:.2f}% · YTM {b["ytm"]:.2f}%</div>',
         unsafe_allow_html=True,
     )
+    if checked:
+        qty = st.number_input(
+            "Qty", min_value=1, step=1, key=unit_key, label_visibility="collapsed",
+        )
+        mv = _metrics(b)["price"] * qty
+        st.caption(f"${mv/1e6:.2f}M")
 
 
 # ── Scenario builder ──────────────────────────────────────────────────────────

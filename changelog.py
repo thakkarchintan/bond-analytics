@@ -1,5 +1,16 @@
 CHANGELOG = [
     {
+        "id": 21,
+        "version": "1.21",
+        "timestamp": "05 Aug 2026, 14:13 IST",
+        "category": "Polish",
+        "title": "Bond Portfolio — replace custom qty stepper with native st.number_input",
+        "description": [
+            "Removed all custom column layouts and HTML for the +/- stepper; replaced with a single st.number_input (min=1, step=1) which provides native Streamlit +/- buttons with correct alignment and theme support",
+            "Market value shown via st.caption below the input — no custom styling",
+        ],
+    },
+    {
         "id": 20,
         "version": "1.20",
         "timestamp": "05 Aug 2026, 13:58 IST",
