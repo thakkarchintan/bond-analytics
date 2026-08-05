@@ -215,47 +215,44 @@ def _chart_layout(**kw) -> dict:
 # ── Compact bond row inside a bucket column ────────────────────────────────────
 
 def _bond_row(b: dict) -> None:
-    """Checkbox + small detail + qty stepper if selected."""
-    checked = st.checkbox(
-        b["country"],
-        key=f"chk_{b['id']}",
-        help=f"{b['name']}",
-    )
-    # Small detail line always visible
-    st.markdown(
-        f'<div style="font-size:10px;color:{_T3};margin:-6px 0 4px 24px;">'
-        f'{b["coupon"]:.2f}% · YTM {b["ytm"]:.2f}%</div>',
-        unsafe_allow_html=True,
-    )
+    """Checkbox + stepper on same row, detail line below."""
+    unit_key = f"units_{b['id']}"
+    if unit_key not in st.session_state:
+        st.session_state[unit_key] = 1
+
+    # Single row: [checkbox name] [−] [qty] [+] [$xM]
+    c_name, c_dec, c_qty, c_inc, c_mv = st.columns([6, 1, 1, 1, 3])
+    with c_name:
+        checked = st.checkbox(b["country"], key=f"chk_{b['id']}", help=b["name"])
 
     if checked:
-        unit_key = f"units_{b['id']}"
-        if unit_key not in st.session_state:
-            st.session_state[unit_key] = 1
-
         qty = st.session_state[unit_key]
         mv  = _metrics(b)["price"] * qty
-
-        # Compact inline stepper: [−] qty [+]  $xM
-        c1, c2, c3, c4 = st.columns([1, 1, 1, 3])
-        with c1:
+        with c_dec:
             if st.button("−", key=f"dec_{b['id']}"):
                 st.session_state[unit_key] = max(1, qty - 1)
-        with c2:
+        with c_qty:
             st.markdown(
-                f'<div style="text-align:center;font-size:12px;font-weight:600;'
-                f'color:{_T1};padding-top:6px;">{qty}</div>',
+                f'<div style="text-align:center;font-size:12px;font-weight:500;'
+                f'color:inherit;padding-top:5px;">{qty}</div>',
                 unsafe_allow_html=True,
             )
-        with c3:
+        with c_inc:
             if st.button("+", key=f"inc_{b['id']}"):
                 st.session_state[unit_key] = qty + 1
-        with c4:
+        with c_mv:
             st.markdown(
                 f'<div style="font-size:10px;color:{_T3};padding-top:7px;">'
                 f'${mv/1e6:.2f}M</div>',
                 unsafe_allow_html=True,
             )
+
+    # Detail line always visible
+    st.markdown(
+        f'<div style="font-size:10px;color:{_T3};margin:-6px 0 4px 24px;">'
+        f'{b["coupon"]:.2f}% · YTM {b["ytm"]:.2f}%</div>',
+        unsafe_allow_html=True,
+    )
 
 
 # ── Scenario builder ──────────────────────────────────────────────────────────

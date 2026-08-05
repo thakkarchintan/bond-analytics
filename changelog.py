@@ -1,5 +1,17 @@
 CHANGELOG = [
     {
+        "id": 20,
+        "version": "1.20",
+        "timestamp": "05 Aug 2026, 13:58 IST",
+        "category": "Polish",
+        "title": "Bond Portfolio — qty stepper on same row as bond name, fixed invisible number",
+        "description": [
+            "Stepper now shares a single row with the checkbox: [bond name] [−] [qty] [+] [$xM] — no separate row for buttons",
+            "Fixed qty number invisible in light mode (was #f1f5f9 near-white); now uses color:inherit so it adapts to light/dark theme automatically",
+            "Buttons are natural (not use_container_width) so they stay tight against the qty number",
+        ],
+    },
+    {
         "id": 19,
         "version": "1.19",
         "timestamp": "05 Aug 2026, 12:54 IST",
