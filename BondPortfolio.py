@@ -233,28 +233,29 @@ def _bond_row(b: dict) -> None:
         if unit_key not in st.session_state:
             st.session_state[unit_key] = 1
 
-        c1, c2, c3 = st.columns([1, 1, 1])
+        qty = st.session_state[unit_key]
+        mv  = _metrics(b)["price"] * qty
+
+        # Compact inline stepper: [−] qty [+]  $xM
+        c1, c2, c3, c4 = st.columns([1, 1, 1, 3])
         with c1:
-            if st.button("−", key=f"dec_{b['id']}", use_container_width=True):
-                st.session_state[unit_key] = max(1, st.session_state[unit_key] - 1)
+            if st.button("−", key=f"dec_{b['id']}"):
+                st.session_state[unit_key] = max(1, qty - 1)
         with c2:
-            qty = st.session_state[unit_key]
             st.markdown(
-                f'<div style="text-align:center;background:{_BG};border:1px solid {_EDGE};'
-                f'border-radius:4px;padding:3px 0;font-weight:700;font-size:13px;'
-                f'color:{_T1};line-height:30px;">{qty}</div>',
+                f'<div style="text-align:center;font-size:12px;font-weight:600;'
+                f'color:{_T1};padding-top:6px;">{qty}</div>',
                 unsafe_allow_html=True,
             )
         with c3:
-            if st.button("+", key=f"inc_{b['id']}", use_container_width=True):
-                st.session_state[unit_key] += 1
-
-        mv = _metrics(b)["price"] * st.session_state[unit_key]
-        st.markdown(
-            f'<div style="font-size:10px;color:{_T3};text-align:center;'
-            f'margin-bottom:2px;">${mv/1e6:.3f}M</div>',
-            unsafe_allow_html=True,
-        )
+            if st.button("+", key=f"inc_{b['id']}"):
+                st.session_state[unit_key] = qty + 1
+        with c4:
+            st.markdown(
+                f'<div style="font-size:10px;color:{_T3};padding-top:7px;">'
+                f'${mv/1e6:.2f}M</div>',
+                unsafe_allow_html=True,
+            )
 
 
 # ── Scenario builder ──────────────────────────────────────────────────────────

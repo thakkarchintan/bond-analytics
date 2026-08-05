@@ -1,5 +1,16 @@
 CHANGELOG = [
     {
+        "id": 19,
+        "version": "1.19",
+        "timestamp": "05 Aug 2026, 12:54 IST",
+        "category": "Polish",
+        "title": "Bond Portfolio — compact quantity stepper",
+        "description": [
+            "Replaced the bulky full-width ± button columns with a narrow inline stepper: [−] qty [+] $xM on a single row",
+            "Qty display is plain text (no box/border), buttons are default size (not use_container_width), market value sits inline to the right",
+        ],
+    },
+    {
         "id": 18,
         "version": "1.18",
         "timestamp": "05 Aug 2026, 12:24 IST",
