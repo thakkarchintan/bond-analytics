@@ -1,5 +1,19 @@
 CHANGELOG = [
     {
+        "id": 17,
+        "version": "1.17",
+        "timestamp": "05 Aug 2026, 11:38 IST",
+        "category": "Enhancement",
+        "title": "Global Capital Markets — disk-cached data + Refresh button with stale-while-revalidate UX",
+        "description": [
+            "Data is now pre-fetched and committed to the repo as capital_markets_cache.parquet — app loads in under 1 second on cold start instead of spending 30–60 seconds calling World Bank + IMF APIs",
+            "Refresh Data button added to the sidebar (below the year slider) — clicking it serves current data immediately, shows a banner 'Refreshing data…' while API calls run, then auto-swaps in the new data and dismisses the banner; no blank page during the refresh",
+            "Last refreshed date shown in the sidebar so users know how fresh the data is",
+            "Cache strategy: @st.cache_data with no TTL (data served from parquet file, not re-fetched unless Refresh is explicitly clicked); parquet file overwritten and Streamlit cache cleared on each refresh",
+            "Fallback: if the parquet file is ever absent (fresh deploy without the file), the app fetches from APIs and saves the file for subsequent loads",
+        ],
+    },
+    {
         "id": 16,
         "version": "1.16",
         "timestamp": "05 Aug 2026, 11:16 IST",

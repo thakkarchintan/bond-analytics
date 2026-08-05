@@ -8,12 +8,21 @@ Sources (all free, no API key):
 Derived:
   Govt Bond Outstanding  ≈  Gross Govt Debt (% GDP)  ×  GDP (USD)
   Total Capital Market   =  Equity + Govt Bonds
+
+Caching strategy:
+  Data is saved to CACHE_FILE (committed to the repo) and loaded from disk on
+  every startup — no API calls on cold start.  Use refresh_capital_markets_data()
+  to pull fresh data from the APIs and overwrite the cache.
 """
 from __future__ import annotations
+
+from pathlib import Path
 
 import requests
 import pandas as pd
 import streamlit as st
+
+CACHE_FILE = Path(__file__).parent / "capital_markets_cache.parquet"
 
 # ── Country universe ───────────────────────────────────────────────────────────
 
@@ -109,33 +118,21 @@ def _imf_indicator(indicator: str) -> pd.DataFrame:
         return pd.DataFrame(columns=["ISO3", "Year", indicator])
 
 
-# ── Main loader ────────────────────────────────────────────────────────────────
+# ── Build / persist helpers ────────────────────────────────────────────────────
 
-@st.cache_data(ttl=86400, show_spinner=False)
-def load_capital_markets_data() -> pd.DataFrame:
-    """
-    Returns a long-format DataFrame:
-      ISO3, Country, Year, Equity_USD, GDP_USD, Debt_GDP_Pct,
-      GovtBond_USD, Total_Cap_USD, Listed_Cos, Population, Turnover_Ratio
-    All USD values are in trillions.
-    """
-    # World Bank indicators
-    eq   = _wb_indicator("CM.MKT.LCAP.CD")      # Equity market cap (USD)
-    lst  = _wb_indicator("CM.MKT.LDOM.NO")       # Listed domestic companies
-    pop  = _wb_indicator("SP.POP.TOTL")           # Population
-    trn  = _wb_indicator("CM.MKT.TRNR")          # Stock turnover ratio (%)
+def _build_dataframe() -> pd.DataFrame:
+    """Fetch all indicators from World Bank + IMF and return a clean DataFrame."""
+    eq   = _wb_indicator("CM.MKT.LCAP.CD")
+    lst  = _wb_indicator("CM.MKT.LDOM.NO")
+    pop  = _wb_indicator("SP.POP.TOTL")
+    trn  = _wb_indicator("CM.MKT.TRNR")
+    gdp  = _imf_indicator("NGDPD")
+    dbt  = _imf_indicator("GGXWDG_NGDP")
 
-    # IMF indicators
-    gdp  = _imf_indicator("NGDPD")               # GDP (USD billions)
-    dbt  = _imf_indicator("GGXWDG_NGDP")         # Gross Govt Debt (% GDP)
-
-    # Build base skeleton: every country × every year
     base = pd.DataFrame(
         [(iso3, yr) for iso3 in COUNTRY_META for yr in YEARS],
         columns=["ISO3", "Year"],
     )
-
-    # Merge all sources
     for df, col in [
         (eq,  "CM.MKT.LCAP.CD"),
         (lst, "CM.MKT.LDOM.NO"),
@@ -147,34 +144,24 @@ def load_capital_markets_data() -> pd.DataFrame:
         if not df.empty:
             base = base.merge(df[["ISO3", "Year", col]], on=["ISO3", "Year"], how="left")
 
-    # Rename to friendly names
     base = base.rename(columns={
         "CM.MKT.LCAP.CD": "Equity_Raw",
         "CM.MKT.LDOM.NO": "Listed_Cos",
         "SP.POP.TOTL":    "Population",
         "CM.MKT.TRNR":   "Turnover_Ratio",
-        "NGDPD":          "GDP_Bn",         # USD billions
+        "NGDPD":          "GDP_Bn",
         "GGXWDG_NGDP":   "Debt_GDP_Pct",
     })
-
-    # Convert to trillions
-    base["Equity_USD"]    = base["Equity_Raw"] / 1e12
-    base["GDP_USD"]       = base["GDP_Bn"] / 1e3           # bn → T
-    base["GovtBond_USD"]  = base["Debt_GDP_Pct"] / 100 * base["GDP_USD"]
-    base["Total_Cap_USD"] = base["Equity_USD"] + base["GovtBond_USD"]
-
-    # Equity/GDP and GovtBond/GDP ratios (%)
+    base["Equity_USD"]        = base["Equity_Raw"] / 1e12
+    base["GDP_USD"]           = base["GDP_Bn"] / 1e3
+    base["GovtBond_USD"]      = base["Debt_GDP_Pct"] / 100 * base["GDP_USD"]
+    base["Total_Cap_USD"]     = base["Equity_USD"] + base["GovtBond_USD"]
     base["Equity_GDP_Pct"]    = base["Equity_USD"] / base["GDP_USD"] * 100
     base["GovtBond_GDP_Pct"]  = base["GovtBond_USD"] / base["GDP_USD"] * 100
     base["Bond_Equity_Ratio"] = base["GovtBond_USD"] / base["Equity_USD"]
-
-    # Attach country names and region
     base["Country"] = base["ISO3"].map(_ISO3_NAME)
     base["Region"]  = base["ISO3"].map({iso3: m["region"] for iso3, m in COUNTRY_META.items()})
-
-    # Sort
     base = base.sort_values(["ISO3", "Year"]).reset_index(drop=True)
-
     cols = [
         "ISO3", "Country", "Region", "Year",
         "Equity_USD", "GDP_USD", "Debt_GDP_Pct", "GovtBond_USD", "Total_Cap_USD",
@@ -182,3 +169,36 @@ def load_capital_markets_data() -> pd.DataFrame:
         "Listed_Cos", "Population", "Turnover_Ratio",
     ]
     return base[[c for c in cols if c in base.columns]]
+
+
+def refresh_capital_markets_data() -> pd.DataFrame:
+    """
+    Fetch fresh data from World Bank + IMF, overwrite CACHE_FILE, clear the
+    Streamlit cache so the next call to load_capital_markets_data() reads the new file.
+    Returns the freshly built DataFrame.
+    """
+    df = _build_dataframe()
+    df.to_parquet(CACHE_FILE, index=False)
+    load_capital_markets_data.clear()
+    return df
+
+
+# ── Main loader ────────────────────────────────────────────────────────────────
+
+@st.cache_data(show_spinner=False)
+def load_capital_markets_data() -> pd.DataFrame:
+    """
+    Loads from the committed parquet cache (instant on cold start).
+    Falls back to live API fetch only when the cache file is missing.
+
+    Returns a long-format DataFrame:
+      ISO3, Country, Year, Equity_USD, GDP_USD, Debt_GDP_Pct,
+      GovtBond_USD, Total_Cap_USD, Listed_Cos, Population, Turnover_Ratio
+    All USD values are in trillions.
+    """
+    if CACHE_FILE.exists():
+        return pd.read_parquet(CACHE_FILE)
+    # Cache file missing — fetch from APIs and save for next time
+    df = _build_dataframe()
+    df.to_parquet(CACHE_FILE, index=False)
+    return df

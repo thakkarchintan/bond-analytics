@@ -10,8 +10,11 @@ import plotly.graph_objects as go
 import plotly.express as px
 import streamlit as st
 
+from datetime import datetime
+
 from capital_markets_data import (
-    load_capital_markets_data, COUNTRY_COLORS, FINANCING_MODEL, YEARS
+    load_capital_markets_data, refresh_capital_markets_data,
+    CACHE_FILE, COUNTRY_COLORS, FINANCING_MODEL, YEARS
 )
 
 # ── Visual constants ───────────────────────────────────────────────────────────
@@ -498,15 +501,37 @@ def capital_markets() -> None:
         "dna":        st.sidebar.checkbox("Capital Markets DNA",      value=True, key="cm_s9"),
     }
 
+    # ── Data freshness + refresh ──────────────────────────────────────────────
+    st.sidebar.markdown(
+        f'<div style="font-size:10px;color:{_T2};text-transform:uppercase;'
+        f'letter-spacing:.1em;margin:16px 0 6px;padding-bottom:4px;'
+        f'border-bottom:1px solid {_EDGE};">Data</div>',
+        unsafe_allow_html=True,
+    )
+    if CACHE_FILE.exists():
+        mtime = datetime.fromtimestamp(CACHE_FILE.stat().st_mtime)
+        st.sidebar.caption(f"Last refreshed: {mtime.strftime('%d %b %Y, %H:%M')}")
+    else:
+        st.sidebar.caption("No local cache — will fetch from APIs")
+
+    refresh_clicked = st.sidebar.button("Refresh Data", key="cm_refresh")
+
     # ── Load data ─────────────────────────────────────────────────────────────
-    with st.spinner("Loading market data from World Bank & IMF…"):
+    # If refresh was clicked: show current data immediately (fast from cache),
+    # then fetch new data in the background and swap in when ready.
+    if refresh_clicked:
+        full_df = load_capital_markets_data()   # serve stale data while we fetch
+        refresh_banner = st.info(
+            "Refreshing data from World Bank & IMF — current data shown below…",
+            icon="🔄",
+        )
+        yr_df = full_df[full_df["Year"] == year].copy()
+    else:
         full_df = load_capital_markets_data()
-
-    if full_df.empty:
-        st.error("Failed to load data. Please try again later.")
-        return
-
-    yr_df = full_df[full_df["Year"] == year].copy()
+        if full_df.empty:
+            st.error("Failed to load data. Please try again later.")
+            return
+        yr_df = full_df[full_df["Year"] == year].copy()
 
     # ── Sections ──────────────────────────────────────────────────────────────
     if show["snapshot"]:
@@ -552,3 +577,10 @@ def capital_markets() -> None:
         f'GDP data — IMF World Economic Outlook.</div>',
         unsafe_allow_html=True,
     )
+
+    # ── Execute deferred refresh after page has rendered ─────────────────────
+    if refresh_clicked:
+        with st.spinner("Fetching fresh data from World Bank & IMF…"):
+            refresh_capital_markets_data()
+        refresh_banner.empty()
+        st.rerun()
