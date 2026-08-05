@@ -443,7 +443,8 @@ def _section9_dna(yr_df: pd.DataFrame, year: int) -> None:
     st.dataframe(dna_df, use_container_width=True, hide_index=True)
 
     st.markdown(
-        f'<div style="font-size:12px;color:{_T2};margin-top:6px;line-height:1.7;">'
+        f'<div style="font-size:12px;color:{_T2};margin-top:6px;line-height:1.7;'
+        f'width:100%;max-width:100%;">'
         f'<b style="color:{_T1}">Market-based</b> (USA, UK, Canada, Australia): '
         f'companies raise money primarily through equity and bond markets.<br>'
         f'<b style="color:{_T1}">Bank-based</b> (Germany): '
@@ -565,7 +566,7 @@ def capital_markets() -> None:
 
     # Footer note
     st.markdown(
-        f'<div style="font-size:11px;color:{_T3};margin-top:24px;padding:12px;'
+        f'<div style="font-size:11px;color:#ffffff;margin-top:24px;padding:12px;'
         f'background:{_CARD};border-radius:6px;border:1px solid {_EDGE};">'
         f'<b>Data sources:</b> Equity market capitalisation — World Bank (CM.MKT.LCAP.CD). '
         f'Government bond market size — IMF Gross Government Debt (% GDP) × GDP (USD). '

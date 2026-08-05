@@ -1,5 +1,16 @@
 CHANGELOG = [
     {
+        "id": 23,
+        "version": "1.23",
+        "timestamp": "05 Aug 2026, 20:48 IST",
+        "category": "Polish",
+        "title": "Capital Markets — financing model blurb full width, data sources footer white text",
+        "description": [
+            "Market-based / Bank-based / Government debt-heavy classifier text now uses width:100%;max-width:100% so it spans the full page rather than a constrained div",
+            "Data sources footer text colour changed from muted grey (#475569) to white (#ffffff) for clear readability on the dark card background",
+        ],
+    },
+    {
         "id": 22,
         "version": "1.22",
         "timestamp": "05 Aug 2026, 15:07 IST",
