@@ -225,10 +225,12 @@ def _bond_row(b: dict) -> None:
     )
     if checked:
         qty = st.number_input(
-            "Qty", min_value=1, step=1, key=unit_key, label_visibility="collapsed",
+            "Qty", value=st.session_state.get(unit_key, 1), step=1,
+            key=unit_key, label_visibility="collapsed",
         )
         mv = _metrics(b)["price"] * qty
-        st.caption(f"${mv/1e6:.2f}M")
+        pos_label = "short" if qty < 0 else "long"
+        st.caption(f"${abs(mv)/1e6:.2f}M {pos_label}")
 
 
 # ── Scenario builder ──────────────────────────────────────────────────────────
@@ -574,40 +576,70 @@ def bond_portfolio() -> None:
         ))
 
     df = pd.DataFrame(rows)
-    total_mv = df["mv"].sum()
+    gross_mv  = df["mv"].abs().sum()
+    net_mv    = df["mv"].sum()
+    has_shorts = (df["units"] < 0).any()
 
-    if total_mv == 0:
-        st.warning("All quantities are zero — use + to add bonds.")
+    if gross_mv == 0:
+        st.warning("All quantities are zero — enter a non-zero Qty.")
         return
 
-    df["weight"]  = df["mv"] / total_mv
+    df["weight"]  = df["mv"].abs() / gross_mv
     port_ytm      = (df["ytm"]     * df["weight"]).sum()
     port_mac_dur  = (df["mac_dur"] * df["weight"]).sum()
     port_mod_dur  = (df["mod_dur"] * df["weight"]).sum()
     port_conv     = (df["conv"]    * df["weight"]).sum()
     port_dv01     = (df["dv01_u"]  * df["units"]).sum()
-    n_bonds       = int(df["units"].sum())
+    n_bonds       = int(df["units"].abs().sum())
     n_lines       = len(df)
+    n_long        = int((df[df["units"] > 0]["units"]).sum())
+    n_short       = int((df[df["units"] < 0]["units"].abs()).sum())
 
     # ── Portfolio summary ─────────────────────────────────────────────────────
+    if has_shorts:
+        pos_detail = f"{n_long} long · {n_short} short"
+    else:
+        pos_detail = f"{n_bonds} bonds"
     _section(
         "Portfolio Summary",
-        f"{n_lines} ISIN{'s' if n_lines != 1 else ''} · "
-        f"{n_bonds} bonds · Total market value ${total_mv/1e6:.3f}M",
+        f"{n_lines} ISIN{'s' if n_lines != 1 else ''} · {pos_detail} · "
+        f"Gross exposure ${gross_mv/1e6:.3f}M",
     )
+
+    dv01_hedge_ratio = abs(port_dv01) / gross_mv * 10_000 if gross_mv else 999
+    dv01_col = _GRN if dv01_hedge_ratio < 1.0 else _AMB
+
+    net_mv_col = _GRN if abs(net_mv) < 0.05 * gross_mv else (_RED if net_mv < 0 else _BLUE)
+    net_mv_label = f"${net_mv/1e6:+.3f}M"
+
     cards = [
-        ("Total Market Value",  f"${total_mv/1e6:.3f}M",    f"{n_bonds} bonds × avg ${total_mv/n_bonds/1e3:.1f}k", _BLUE),
-        ("Wtd Avg YTM",         f"{port_ytm*100:.3f}%",      "by market value",         _AMB),
-        ("Macaulay Duration",   f"{port_mac_dur:.3f} yrs",   "avg cashflow timing",      _AMB),
-        ("Modified Duration",   f"{port_mod_dur:.3f}",       "% Δpx / 1% Δyield",       _AMB),
-        ("Convexity",           f"{port_conv:.3f}",          "portfolio avg",            _T2),
-        ("Portfolio DV01",      f"${port_dv01:,.0f}",        "$ per 1bp move, total",    _GRN),
+        ("Gross Exposure",    f"${gross_mv/1e6:.3f}M",  f"{n_bonds} bonds · avg ${gross_mv/n_bonds/1e3:.1f}k", _BLUE),
+        ("Net Position",      net_mv_label,              "long − short exposure",  net_mv_col),
+        ("Wtd Avg YTM",       f"{port_ytm*100:.3f}%",   "by gross market value",  _AMB),
+        ("Macaulay Duration", f"{port_mac_dur:.3f} yrs", "avg cashflow timing",    _AMB),
+        ("Modified Duration", f"{port_mod_dur:.3f}",     "% Δpx / 1% Δyield",     _AMB),
+        ("Portfolio DV01",    f"${port_dv01:+,.0f}",     "$ per 1bp · signed",     dv01_col),
     ]
     html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:8px;">'
     for lbl, val, sub, acc in cards:
         html += _val_card(lbl, val, sub, acc)
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
+
+    if dv01_hedge_ratio < 1.0:
+        st.success(
+            f"**DV01 Hedged** — Net DV01 is ${port_dv01:+,.0f} "
+            f"({dv01_hedge_ratio:.2f} bps per $1M gross). "
+            "A parallel shift in yields produces near-zero portfolio P&L.",
+            icon="🛡",
+        )
+    elif has_shorts:
+        st.info(
+            f"**Net DV01: ${port_dv01:+,.0f}** — portfolio has a "
+            f"{'long' if port_dv01 > 0 else 'short'} duration bias. "
+            f"Adjust short positions to bring DV01 closer to zero for a duration-neutral hedge.",
+            icon="⚖",
+        )
 
     # Rate shock table
     st.markdown(
@@ -625,7 +657,7 @@ def bond_portfolio() -> None:
         scen_rows.append({
             "Shock (bps)": f"{bp:+d}",
             "ΔMV ($)":     f"${dmv:+,.0f}",
-            "ΔMV (%)":     f"{dmv / total_mv * 100:+.3f}%",
+            "ΔMV (%)":     f"{dmv / gross_mv * 100:+.3f}%",
         })
 
     def _colour(row):
@@ -643,11 +675,11 @@ def bond_portfolio() -> None:
 
     r1c1, r1c2 = st.columns(2)
 
-    # Country allocation donut
+    # Country allocation donut (gross exposure)
     with r1c1:
-        cmv = df.groupby("country")["mv"].sum().reset_index()
+        cmv = df.assign(abs_mv=df["mv"].abs()).groupby("country")["abs_mv"].sum().reset_index()
         fig = go.Figure(go.Pie(
-            labels=cmv["country"], values=cmv["mv"], hole=0.55,
+            labels=cmv["country"], values=cmv["abs_mv"], hole=0.55,
             marker_colors=[COUNTRY_COLORS.get(c, "#888") for c in cmv["country"]],
             textfont=dict(color=_T1, size=11),
             hovertemplate="%{label}<br>$%{value:,.0f} (%{percent})<extra></extra>",
@@ -663,7 +695,7 @@ def bond_portfolio() -> None:
     with r1c2:
         bucket_colors = [_BLUE, _AMB, _GRN, "#a78bfa"]
         bmv = [
-            df[(df["maturity"] > lo) & (df["maturity"] <= hi)]["mv"].sum()
+            df[(df["maturity"] > lo) & (df["maturity"] <= hi)]["mv"].abs().sum()
             for _, lo, hi in MAT_BUCKETS_CHART
         ]
         fig = go.Figure(go.Bar(
@@ -730,13 +762,13 @@ def bond_portfolio() -> None:
     fig = go.Figure()
     for country in df["country"].unique():
         cdf = df[df["country"] == country]
-        max_mv = df["mv"].max()
+        max_abs_mv = df["mv"].abs().max()
         fig.add_trace(go.Scatter(
             x=cdf["maturity"], y=cdf["ytm"] * 100,
             mode="markers", name=country,
             marker=dict(
                 color=COUNTRY_COLORS.get(country, "#888"),
-                size=cdf["mv"] / max_mv * 30 + 8,
+                size=cdf["mv"].abs() / max_abs_mv * 30 + 8,
                 opacity=0.85,
                 line=dict(width=1.5, color=_BG),
             ),
@@ -759,16 +791,26 @@ def bond_portfolio() -> None:
     _section("Holdings Summary")
     disp = df[["name", "country", "bucket", "coupon", "ytm",
                "price", "units", "mv", "weight", "mod_dur", "dv01_u"]].copy()
-    disp.columns = ["Bond", "Country", "Bucket", "Coupon %", "YTM %",
-                    "Price", "Qty", "Market Value ($)", "Weight", "Mod Dur", "DV01/bond"]
-    disp["Coupon %"]        = (disp["Coupon %"] * 100).round(3)
-    disp["YTM %"]           = (disp["YTM %"] * 100).round(3)
-    disp["Price"]           = disp["Price"].round(2)
+    disp.insert(3, "position", disp["units"].apply(lambda u: "Short" if u < 0 else "Long"))
+    disp.columns = ["Bond", "Country", "Bucket", "Position", "Coupon %", "YTM %",
+                    "Price", "Qty", "Market Value ($)", "Gross Weight", "Mod Dur", "DV01/bond"]
+    disp["Coupon %"]         = (disp["Coupon %"] * 100).round(3)
+    disp["YTM %"]            = (disp["YTM %"] * 100).round(3)
+    disp["Price"]            = disp["Price"].round(2)
     disp["Market Value ($)"] = disp["Market Value ($)"].round(0).astype(int)
-    disp["Weight"]          = (disp["Weight"] * 100).round(2).astype(str) + "%"
-    disp["Mod Dur"]         = disp["Mod Dur"].round(3)
-    disp["DV01/bond"]       = disp["DV01/bond"].round(0).astype(int)
-    st.dataframe(disp, use_container_width=True, hide_index=True)
+    disp["Gross Weight"]     = (disp["Gross Weight"] * 100).round(2).astype(str) + "%"
+    disp["Mod Dur"]          = disp["Mod Dur"].round(3)
+    disp["DV01/bond"]        = disp["DV01/bond"].round(0).astype(int)
+
+    def _holdings_style(row):
+        if row["Position"] == "Short":
+            return [f"background-color:#fef2f2"] * len(row)
+        return [""] * len(row)
+
+    st.dataframe(
+        disp.style.apply(_holdings_style, axis=1),
+        use_container_width=True, hide_index=True,
+    )
 
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button(
@@ -779,4 +821,4 @@ def bond_portfolio() -> None:
     # ── Yield shock scenario + impact analysis ────────────────────────────────
     portfolio_ids = {b["id"] for b in selected}
     _scenario_builder(portfolio_ids)
-    _impact_analysis(df, total_mv)
+    _impact_analysis(df, gross_mv)

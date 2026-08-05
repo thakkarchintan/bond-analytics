@@ -1,5 +1,22 @@
 CHANGELOG = [
     {
+        "id": 22,
+        "version": "1.22",
+        "timestamp": "05 Aug 2026, 15:07 IST",
+        "category": "Feature",
+        "title": "Bond Portfolio — short positions + DV01 hedging scenario",
+        "description": [
+            "Qty input now allows negative values — negative qty = short position (like a futures short)",
+            "Summary cards updated: Gross Exposure (total abs MV), Net Position (long − short), signed Portfolio DV01; DV01 card turns green when near-zero (duration-neutral)",
+            "Automatic hedge callout: green banner when |DV01| < 1bp per $1M gross (DV01 hedged); amber guidance banner when shorts present but DV01 is still biased",
+            "Portfolio Analytics: Country Allocation donut and Maturity Profile bars now use abs(MV) so shorts don't cancel longs visually",
+            "Yield Positioning scatter bubble size uses abs(MV) — short positions show as correctly sized but still overlap longs",
+            "Holdings table: new Position column (Long/Short); short rows highlighted in light red; weight column renamed to Gross Weight",
+            "Rate shock ΔMV% now references gross exposure — makes percentage meaningful when net position is near zero",
+            "DV01 by Bond bar chart already used signed DV01 — negative bars naturally show hedging positions (no change needed)",
+        ],
+    },
+    {
         "id": 21,
         "version": "1.21",
         "timestamp": "05 Aug 2026, 14:13 IST",
