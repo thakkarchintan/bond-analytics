@@ -1,5 +1,16 @@
 CHANGELOG = [
     {
+        "id": 13,
+        "version": "1.13",
+        "timestamp": "05 Aug 2026, 07:37 IST",
+        "category": "Feature",
+        "title": "Persistent login — stay logged in until manual logout",
+        "description": [
+            "Auth cookie / JWT expiry extended from 30 days to 3650 days (10 years) — users remain logged in across browser restarts and sessions without needing to re-authenticate via Google OAuth",
+            "Manual logout via the Logout button in the sidebar continues to work as before and immediately invalidates the session",
+        ],
+    },
+    {
         "id": 12,
         "version": "1.12",
         "timestamp": "05 Aug 2026, 01:10 IST",

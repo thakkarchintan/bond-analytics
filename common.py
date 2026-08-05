@@ -15,4 +15,5 @@ authenticator = Authenticator(
     token_key=os.getenv("TOKEN_KEY"),
     secret_path=client_secret_path,
     redirect_uri=os.getenv("REDIRECT_URI"),
+    token_duration_days=3650,
 )
