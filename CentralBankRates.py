@@ -12,9 +12,9 @@ import streamlit as st
 
 from global_macro_data import (
     COUNTRY_COLORS, CORE_NAMES, ALL_NAMES,
-    ANNUAL_CACHE, POLICY_CACHE,
-    load_annual, load_policy_rates,
-    refresh_policy_rates, refresh_annual,
+    ANNUAL_CACHE, POLICY_CACHE, YIELD_CACHE,
+    load_annual, load_policy_rates, load_teny_yields,
+    refresh_policy_rates, refresh_annual, refresh_teny_yields,
 )
 
 # ── Visual constants ───────────────────────────────────────────────────────────
@@ -152,28 +152,47 @@ def _snapshot(df: pd.DataFrame, ann: pd.DataFrame, countries: list[str]) -> None
 
 # ── History chart ──────────────────────────────────────────────────────────────
 
-def _history(df: pd.DataFrame, countries: list[str], yr_from: int) -> None:
-    _section("Policy Rate History", "Monthly rates since selected start year")
+def _history(df: pd.DataFrame, yld: pd.DataFrame, countries: list[str], yr_from: int) -> None:
+    _section(
+        "Policy Rate & 10Y Yield History",
+        "Solid = policy rate · Dashed = 10Y government bond yield (FRED/OECD, where available)",
+    )
 
     fdf = df[df["Country"].isin(countries) & (df["Date"].dt.year >= yr_from)]
     if fdf.empty:
         _no_data()
         return
+    ydf = (
+        yld[yld["Country"].isin(countries) & (yld["Date"].dt.year >= yr_from)]
+        if not yld.empty else pd.DataFrame()
+    )
 
     fig = go.Figure()
     for country in countries:
+        color = COUNTRY_COLORS.get(country, "#888")
         cdf = fdf[fdf["Country"] == country].sort_values("Date")
         if cdf.empty:
             continue
         fig.add_trace(go.Scatter(
             x=cdf["Date"], y=cdf["Rate_Pct"],
-            name=country, mode="lines",
-            line=dict(color=COUNTRY_COLORS.get(country, "#888"), width=2),
-            hovertemplate=f"<b>{country}</b><br>%{{x|%b %Y}}: %{{y:.2f}}%<extra></extra>",
+            name=f"{country} (Policy)", mode="lines",
+            line=dict(color=color, width=2),
+            hovertemplate=f"<b>{country} Policy</b><br>%{{x|%b %Y}}: %{{y:.2f}}%<extra></extra>",
         ))
+        if not ydf.empty:
+            yc = ydf[ydf["Country"] == country].sort_values("Date")
+            if not yc.empty:
+                fig.add_trace(go.Scatter(
+                    x=yc["Date"], y=yc["Yield_Pct"],
+                    name=f"{country} (10Y)", mode="lines",
+                    line=dict(color=color, width=1.5, dash="dash"),
+                    opacity=0.7,
+                    hovertemplate=f"<b>{country} 10Y</b><br>%{{x|%b %Y}}: %{{y:.2f}}%<extra></extra>",
+                ))
     fig.update_layout(
-        height=420,
-        title=dict(text="Central Bank Policy Rates (%)", font=dict(size=13, color=_T1), x=0),
+        height=450,
+        title=dict(text="Policy Rate vs 10Y Government Yield (%)",
+                   font=dict(size=13, color=_T1), x=0),
         yaxis_title="Rate (%)",
         **_chart_layout(),
     )
@@ -221,6 +240,60 @@ def _rate_cycles(df: pd.DataFrame, countries: list[str]) -> None:
         **_chart_layout(margin=dict(l=160, r=80, t=44, b=44)),
     )
     st.plotly_chart(fig, use_container_width=True)
+
+
+# ── Yield curve slope ─────────────────────────────────────────────────────────
+
+def _yield_curve_slope(df: pd.DataFrame, yld: pd.DataFrame, countries: list[str], yr_from: int) -> None:
+    _section(
+        "Yield Curve Slope (10Y − Policy Rate)",
+        "Positive = normal/upward-sloping · Negative = inverted — historically precedes recessions",
+    )
+
+    if yld.empty:
+        _no_data("10Y yield data not loaded — click Refresh Data.")
+        return
+
+    pol = df[df["Country"].isin(countries)][["Country", "Date", "Rate_Pct"]].copy()
+    pol["YearMonth"] = pol["Date"].dt.to_period("M")
+    yf  = yld[yld["Country"].isin(countries)][["Country", "Date", "Yield_Pct"]].copy()
+    yf["YearMonth"] = yf["Date"].dt.to_period("M")
+
+    merged = pol.merge(yf[["Country", "YearMonth", "Yield_Pct"]], on=["Country", "YearMonth"], how="inner")
+    merged["Slope"] = merged["Yield_Pct"] - merged["Rate_Pct"]
+    merged = merged[merged["Date"].dt.year >= yr_from]
+
+    if merged.empty:
+        _no_data("No overlapping data for slope calculation (10Y yields only available for select DM countries).")
+        return
+
+    fig = go.Figure()
+    for country in countries:
+        cdf = merged[merged["Country"] == country].sort_values("Date")
+        if cdf.empty:
+            continue
+        fig.add_trace(go.Scatter(
+            x=cdf["Date"], y=cdf["Slope"],
+            name=country, mode="lines",
+            line=dict(color=COUNTRY_COLORS.get(country, "#888"), width=2),
+            hovertemplate=f"<b>{country}</b><br>%{{x|%b %Y}}: %{{y:+.2f}}pp<extra></extra>",
+        ))
+
+    fig.add_hline(y=0, line=dict(color=_AMB, dash="dot", width=1.5),
+                  annotation_text="Flat / Inversion threshold", annotation_font_color=_AMB)
+    fig.update_layout(
+        height=400,
+        title=dict(text="Yield Curve Slope = 10Y Yield − Policy Rate (pp)",
+                   font=dict(size=13, color=_T1), x=0),
+        yaxis_title="Slope (pp)",
+        **_chart_layout(),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    st.markdown(
+        "**Positive slope:** long rates above policy rate — normal conditions, markets expect future growth/inflation.  \n"
+        "**Negative slope (inversion):** policy rate above 10Y yield — signals tight monetary conditions; "
+        "a persistent inversion has historically preceded US recessions by 12–24 months."
+    )
 
 
 # ── Real policy rate ───────────────────────────────────────────────────────────
@@ -311,7 +384,11 @@ def central_bank_rates() -> None:
         f'border-bottom:1px solid {_EDGE};">Data</div>',
         unsafe_allow_html=True,
     )
-    for cache, label in [(POLICY_CACHE, "Policy rates"), (ANNUAL_CACHE, "Annual macro")]:
+    for cache, label in [
+        (POLICY_CACHE, "Policy rates"),
+        (YIELD_CACHE,  "10Y yields"),
+        (ANNUAL_CACHE, "Annual macro"),
+    ]:
         if cache.exists():
             from datetime import datetime
             mtime = datetime.fromtimestamp(cache.stat().st_mtime)
@@ -325,10 +402,13 @@ def central_bank_rates() -> None:
     if refresh:
         with st.spinner("Fetching policy rates from BIS…"):
             df = refresh_policy_rates()
+        with st.spinner("Fetching 10Y yields from FRED…"):
+            yld = refresh_teny_yields()
         with st.spinner("Fetching annual macro from IMF…"):
             ann = refresh_annual()
     else:
         df  = load_policy_rates()
+        yld = load_teny_yields()
         ann = load_annual()
 
     if df.empty:
@@ -351,12 +431,14 @@ def central_bank_rates() -> None:
         return
 
     _snapshot(df, ann, countries)
-    _history(df, countries, yr_from)
+    _history(df, yld, countries, yr_from)
+    _yield_curve_slope(df, yld, countries, yr_from)
     _rate_cycles(df, countries)
     _real_rates(df, ann, countries, yr_from)
 
     st.markdown(
-        "**Data source:** BIS Central Bank Policy Rates (WS_CBPOL_M). "
-        "Covers 40+ central banks at monthly frequency. "
-        "Real rate = nominal policy rate − IMF WEO CPI inflation (annual average)."
+        "**Data sources:** BIS WS_CBPOL_M (policy rates, 40+ CBs, monthly). "
+        "FRED/OECD IRLT series (10Y government bond yields, developed markets). "
+        "Real rate = nominal policy rate − IMF WEO CPI inflation (annual average). "
+        "10Y yields not available for all countries — China, India, Brazil, Mexico, South Africa omitted."
     )

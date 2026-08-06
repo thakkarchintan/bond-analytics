@@ -1,5 +1,19 @@
 CHANGELOG = [
     {
+        "id": 26,
+        "version": "1.26",
+        "timestamp": "06 Aug 2026, 08:35 IST",
+        "category": "Feature",
+        "title": "Central Bank Rates — 10Y yield overlay + yield curve slope; FX — BIS REER + real rate differential",
+        "description": [
+            "global_macro_data.py — added YIELD_SERIES (11 FRED/OECD 10Y government bond yield series) and BIS WS_EER_M (broad REER); two new cache files: gmacro_yields_cache.parquet, gmacro_reer_cache.parquet; load_teny_yields() and load_reer() loaders with @st.cache_data",
+            "Central Bank Rates — _history() now overlays 10Y government bond yield as dashed lines alongside solid policy rate lines; new _yield_curve_slope() section shows (10Y − policy rate) spread, highlighting inversion events",
+            "FX & Currencies — new _reer() section displays BIS broad REER (2020=100) for all 16 countries; _carry_scatter() rewritten to use actual BIS policy rate differential vs US (not CPI proxy); header and data source footnotes updated",
+            "Refresh Data on Central Bank Rates now also fetches 10Y yields from FRED; Refresh Data on FX & Currencies now also fetches REER from BIS and policy rates from BIS",
+            "10Y yields available for 11 DM countries (US, UK, Euro Area/Germany, Japan, Canada, Australia, South Korea, Switzerland, Sweden, Norway, New Zealand); China/India/Brazil/Mexico/South Africa omitted",
+        ],
+    },
+    {
         "id": 25,
         "version": "1.25",
         "timestamp": "06 Aug 2026, 08:27 IST",

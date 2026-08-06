@@ -27,6 +27,8 @@ _HERE         = Path(__file__).parent
 ANNUAL_CACHE  = _HERE / "gmacro_annual_cache.parquet"
 POLICY_CACHE  = _HERE / "gmacro_policy_cache.parquet"
 FX_CACHE      = _HERE / "gmacro_fx_cache.parquet"
+YIELD_CACHE   = _HERE / "gmacro_yields_cache.parquet"
+REER_CACHE    = _HERE / "gmacro_reer_cache.parquet"
 
 # ── Country / CB universe ──────────────────────────────────────────────────────
 
@@ -70,6 +72,21 @@ BIS_CB_LABELS: dict[str, str] = {
     "SA": "Saudi Arabia", "SG": "Singapore", "HK": "Hong Kong",
     "TH": "Thailand",  "PH": "Philippines","MY": "Malaysia",
     "RU": "Russia",    "AR": "Argentina",  "PE": "Peru",
+}
+
+# FRED 10Y government bond yield series (OECD via FRED, monthly %)
+YIELD_SERIES: dict[str, str] = {
+    "GS10":            "United States",
+    "IRLTLT01DEM156N": "Euro Area",        # Germany 10Y bund as proxy
+    "IRLTLT01GBM156N": "United Kingdom",
+    "IRLTLT01JPM156N": "Japan",
+    "IRLTLT01CAM156N": "Canada",
+    "IRLTLT01AUM156N": "Australia",
+    "IRLTLT01KRM156N": "South Korea",
+    "IRLTLT01CHM156N": "Switzerland",
+    "IRLTLT01SEM156N": "Sweden",
+    "IRLTLT01NOM156N": "Norway",
+    "IRLTLT01NZM156N": "New Zealand",
 }
 
 # FRED FX series → metadata
@@ -200,6 +217,65 @@ def _build_fx() -> pd.DataFrame:
     )
 
 
+# ── FRED 10Y yield fetcher ────────────────────────────────────────────────────
+
+def _build_teny_yields() -> pd.DataFrame:
+    frames = []
+    for series_id, country in YIELD_SERIES.items():
+        url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
+        try:
+            r = requests.get(url, timeout=30, headers={"User-Agent": "bond-analytics/1.0"})
+            r.raise_for_status()
+            df = pd.read_csv(StringIO(r.text), na_values=".")
+            if df.shape[1] < 2:
+                continue
+            df.columns = ["Date", "Yield_Pct"]
+            df["Date"]      = pd.to_datetime(df["Date"], errors="coerce")
+            df["Yield_Pct"] = pd.to_numeric(df["Yield_Pct"], errors="coerce")
+            df = df.dropna()
+            df = df[df["Date"].dt.year >= 2000]
+            df["Country"] = country
+            frames.append(df[["Date", "Country", "Yield_Pct"]])
+        except Exception as exc:
+            warnings.warn(f"FRED {series_id} failed: {exc}")
+    if not frames:
+        return pd.DataFrame()
+    return pd.concat(frames, ignore_index=True).sort_values(["Country", "Date"])
+
+
+# ── BIS REER fetcher ──────────────────────────────────────────────────────────
+
+def _build_reer() -> pd.DataFrame:
+    url = (
+        "https://data.bis.org/api/v1/data/BIS,WS_EER_M,1.0/all"
+        "?format=csv&startPeriod=2000-01"
+    )
+    try:
+        r = requests.get(url, timeout=120, headers={"Accept": "text/csv"})
+        r.raise_for_status()
+        df = pd.read_csv(StringIO(r.text))
+        need = {"REF_AREA", "TIME_PERIOD", "OBS_VALUE"}
+        if not need.issubset(df.columns):
+            warnings.warn(f"BIS EER missing columns. Got: {df.columns.tolist()}")
+            return pd.DataFrame()
+        if "EER_TYPE" in df.columns:
+            df = df[df["EER_TYPE"].astype(str) == "R"]
+        if "EER_BASKET" in df.columns:
+            df = df[df["EER_BASKET"].astype(str) == "B"]
+        df = df[["REF_AREA", "TIME_PERIOD", "OBS_VALUE"]].copy()
+        df.columns = ["BIS_Code", "Period", "REER"]
+        df["REER"]    = pd.to_numeric(df["REER"], errors="coerce")
+        df            = df.dropna(subset=["REER"])
+        df["Date"]    = pd.to_datetime(df["Period"].astype(str) + "-01", errors="coerce")
+        df            = df.dropna(subset=["Date"])
+        df["Country"] = df["BIS_Code"].map(_BIS_TO_NAME)
+        df            = df.dropna(subset=["Country"])
+        return df[["Country", "Date", "REER"]].sort_values(["Country", "Date"])
+    except Exception as exc:
+        warnings.warn(f"BIS REER failed: {exc}")
+        return pd.DataFrame()
+
+
 # ── Refresh helpers ────────────────────────────────────────────────────────────
 
 def refresh_annual() -> pd.DataFrame:
@@ -223,6 +299,22 @@ def refresh_fx() -> pd.DataFrame:
     if not df.empty:
         df.to_parquet(FX_CACHE, index=False)
         load_fx.clear()
+    return df
+
+
+def refresh_teny_yields() -> pd.DataFrame:
+    df = _build_teny_yields()
+    if not df.empty:
+        df.to_parquet(YIELD_CACHE, index=False)
+        load_teny_yields.clear()
+    return df
+
+
+def refresh_reer() -> pd.DataFrame:
+    df = _build_reer()
+    if not df.empty:
+        df.to_parquet(REER_CACHE, index=False)
+        load_reer.clear()
     return df
 
 
@@ -252,3 +344,17 @@ def load_fx() -> pd.DataFrame:
     if FX_CACHE.exists():
         return pd.read_parquet(FX_CACHE)
     return refresh_fx()
+
+
+@st.cache_data(show_spinner=False)
+def load_teny_yields() -> pd.DataFrame:
+    if YIELD_CACHE.exists():
+        return pd.read_parquet(YIELD_CACHE)
+    return refresh_teny_yields()
+
+
+@st.cache_data(show_spinner=False)
+def load_reer() -> pd.DataFrame:
+    if REER_CACHE.exists():
+        return pd.read_parquet(REER_CACHE)
+    return refresh_reer()

@@ -11,9 +11,9 @@ import streamlit as st
 
 from global_macro_data import (
     COUNTRY_COLORS, CORE_NAMES, ALL_NAMES, FX_SERIES,
-    ANNUAL_CACHE, FX_CACHE,
-    load_annual, load_fx,
-    refresh_annual, refresh_fx,
+    FX_CACHE, POLICY_CACHE, REER_CACHE,
+    load_fx, load_policy_rates, load_reer,
+    refresh_fx, refresh_policy_rates, refresh_reer,
 )
 
 _BG   = "#0f172a"
@@ -226,37 +226,84 @@ def _returns_heatmap(df: pd.DataFrame, countries: list[str]) -> None:
     st.caption("Green = local currency strengthened vs USD. Red = weakened.")
 
 
-# ── Rate differential vs FX ───────────────────────────────────────────────────
+# ── REER ─────────────────────────────────────────────────────────────────────
 
-def _carry_scatter(df: pd.DataFrame, ann: pd.DataFrame, countries: list[str], year: int) -> None:
+def _reer(reer: pd.DataFrame, countries: list[str], yr_from: int) -> None:
     _section(
-        "Carry Trade Indicator",
-        f"Interest rate differential vs FX strength ({year}) — higher rates often attract capital and strengthen currency",
+        "Real Effective Exchange Rate (REER)",
+        "BIS broad REER · 2020=100 · above 100 = real appreciation vs trading partners",
     )
 
-    if ann.empty:
-        _no_data("Annual data unavailable.")
+    if reer.empty:
+        _no_data("REER data not loaded — click Refresh Data.")
         return
 
-    # Annual avg FX rate
-    fdf = df[df["Country"].isin(countries)].copy()
+    fdf = reer[reer["Country"].isin(countries) & (reer["Date"].dt.year >= yr_from)]
+    if fdf.empty:
+        _no_data()
+        return
+
+    fig = go.Figure()
+    for country in countries:
+        cdf = fdf[fdf["Country"] == country].sort_values("Date")
+        if cdf.empty:
+            continue
+        fig.add_trace(go.Scatter(
+            x=cdf["Date"], y=cdf["REER"],
+            name=country, mode="lines",
+            line=dict(color=COUNTRY_COLORS.get(country, "#888"), width=2),
+            hovertemplate=f"<b>{country}</b><br>%{{x|%b %Y}}: %{{y:.1f}}<extra></extra>",
+        ))
+
+    fig.add_hline(y=100, line=dict(color=_T3, dash="dot", width=1.5),
+                  annotation_text="2020=100", annotation_font_color=_T3)
+    fig.update_layout(
+        height=420,
+        title=dict(text="Real Effective Exchange Rate (2020=100)",
+                   font=dict(size=13, color=_T1), x=0),
+        yaxis_title="REER Index (2020=100)",
+        **_chart_layout(),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    st.markdown(
+        "**Above 100:** currency has appreciated in real terms since 2020 vs trading partners "
+        "— potential loss of export competitiveness.  \n"
+        "**Below 100:** real depreciation — exports more competitive. "
+        "Source: BIS Effective Exchange Rates, broad basket, monthly."
+    )
+
+
+# ── Rate differential vs FX ───────────────────────────────────────────────────
+
+def _carry_scatter(fx: pd.DataFrame, pol: pd.DataFrame, countries: list[str], year: int) -> None:
+    _section(
+        "Rate Differential vs FX Performance",
+        f"Policy rate vs US ({year}) · carry: higher-rate currencies tend to attract capital inflows",
+    )
+
+    if pol.empty:
+        _no_data("Policy rate data not loaded — click Refresh Data.")
+        return
+
+    # Annual average FX change
+    fdf = fx[fx["Country"].isin(countries)].copy()
     fdf["Year"] = fdf["Date"].dt.year
     fx_ann = fdf.groupby(["Country", "Year"])["LocalPerUSD"].mean().reset_index()
-
-    # Year-over-year FX change (negative = strengthened)
     fx_chg = fx_ann.copy()
     fx_chg["FX_Chg"] = fx_chg.groupby("Country")["LocalPerUSD"].pct_change() * 100
-
     snap_fx = fx_chg[fx_chg["Year"] == year][["Country", "FX_Chg"]]
 
-    # Policy rate from IMF (use CPI as a proxy since we may not have live BIS merged)
-    snap_ann = ann[(ann["Year"] == year) & (ann["Country"].isin(countries))][
-        ["Country", "CPI_Pct", "RealGDP_Pct"]
-    ].copy()
+    # Annual average policy rate from BIS
+    pol_copy = pol.copy()
+    pol_copy["Year"] = pol_copy["Date"].dt.year
+    pol_ann  = pol_copy.groupby(["Country", "Year"])["Rate_Pct"].mean().reset_index()
+    snap_pol = pol_ann[pol_ann["Year"] == year][["Country", "Rate_Pct"]].copy()
 
-    merged = snap_fx.merge(snap_ann, on="Country", how="inner").dropna(
-        subset=["FX_Chg", "CPI_Pct"]
-    )
+    us = snap_pol[snap_pol["Country"] == "United States"]["Rate_Pct"]
+    us_rate = float(us.values[0]) if len(us) > 0 else 0.0
+    snap_pol["RateDiff"] = snap_pol["Rate_Pct"] - us_rate
+
+    merged = snap_fx.merge(snap_pol, on="Country", how="inner").dropna(subset=["FX_Chg", "RateDiff"])
     if merged.empty:
         _no_data()
         return
@@ -264,7 +311,7 @@ def _carry_scatter(df: pd.DataFrame, ann: pd.DataFrame, countries: list[str], ye
     fig = go.Figure()
     for _, row in merged.iterrows():
         fig.add_trace(go.Scatter(
-            x=[row["CPI_Pct"]], y=[-row["FX_Chg"]],  # flip: positive = strengthened
+            x=[row["RateDiff"]], y=[-row["FX_Chg"]],  # flip: positive = strengthened
             mode="markers+text",
             name=row["Country"],
             text=[row["Country"]],
@@ -278,26 +325,27 @@ def _carry_scatter(df: pd.DataFrame, ann: pd.DataFrame, countries: list[str], ye
             showlegend=False,
             hovertemplate=(
                 f"<b>{row['Country']}</b><br>"
-                f"Inflation: {row['CPI_Pct']:.1f}%<br>"
+                f"Rate vs US: {row['RateDiff']:+.2f}pp  (Policy: {row['Rate_Pct']:.2f}%)<br>"
                 f"FX vs USD: {-row['FX_Chg']:.1f}% ({'strengthened' if row['FX_Chg'] < 0 else 'weakened'})"
                 "<extra></extra>"
             ),
         ))
 
-    fig.add_vline(x=2, line=dict(color=_T3, dash="dot", width=1))
+    fig.add_vline(x=0, line=dict(color=_T3, dash="dot", width=1))
     fig.add_hline(y=0, line=dict(color=_T3, dash="dot", width=1))
     fig.update_layout(
         height=420,
-        title=dict(text=f"Inflation (x) vs FX Strength vs USD (y) — {year}",
+        title=dict(text=f"Policy Rate Differential vs US (x) · FX vs USD (y) — {year}",
                    font=dict(size=13, color=_T1), x=0),
-        xaxis_title="CPI Inflation (%)",
-        yaxis_title="FX strength vs USD (% — positive = strengthened)",
+        xaxis_title="Policy Rate vs US (pp)  ←lower | higher→",
+        yaxis_title="FX vs USD (% — positive = local strengthened)",
         **_chart_layout(margin=dict(l=72, r=20, t=44, b=60)),
     )
     st.plotly_chart(fig, use_container_width=True)
     st.markdown(
-        "Countries with **higher inflation** tend to see currency **depreciation** vs USD over time "
-        "(purchasing power parity). High-yielding EM currencies often weaken despite attractive carry."
+        "**Carry trade logic:** countries with higher policy rates vs the US should theoretically attract "
+        "capital inflows and see currency strength (upper-right). In practice, high-inflation EMs often "
+        "offset carry with depreciation — uncovered interest rate parity."
     )
 
 
@@ -307,8 +355,8 @@ def fx_currencies() -> None:
     st.markdown(
         '<h2 style="color:#0f172a;margin:0 0 2px;">FX &amp; Currencies</h2>'
         '<div style="font-size:12px;color:#475569;">'
-        'Spot rates vs USD · annual performance · carry indicator · '
-        'Source: FRED (St. Louis Fed)</div>'
+        'Spot rates vs USD · REER indices (BIS) · rate differential · '
+        'Source: FRED (spot) · BIS (REER) · BIS (policy rates)</div>'
         '<hr style="border:none;border-top:1px solid #e2e8f0;margin:10px 0 6px;">',
         unsafe_allow_html=True,
     )
@@ -332,7 +380,11 @@ def fx_currencies() -> None:
         f'border-bottom:1px solid {_EDGE};">Data</div>',
         unsafe_allow_html=True,
     )
-    for cache, label in [(FX_CACHE, "FX rates"), (ANNUAL_CACHE, "Annual macro")]:
+    for cache, label in [
+        (FX_CACHE,     "FX spot rates"),
+        (REER_CACHE,   "REER (BIS)"),
+        (POLICY_CACHE, "Policy rates"),
+    ]:
         if cache.exists():
             from datetime import datetime
             mtime = datetime.fromtimestamp(cache.stat().st_mtime)
@@ -344,11 +396,14 @@ def fx_currencies() -> None:
     if refresh:
         with st.spinner("Fetching FX rates from FRED…"):
             df = refresh_fx()
-        with st.spinner("Fetching annual macro from IMF…"):
-            ann = refresh_annual()
+        with st.spinner("Fetching REER from BIS…"):
+            reer = refresh_reer()
+        with st.spinner("Fetching policy rates from BIS…"):
+            pol = refresh_policy_rates()
     else:
-        df  = load_fx()
-        ann = load_annual()
+        df   = load_fx()
+        reer = load_reer()
+        pol  = load_policy_rates()
 
     if df.empty:
         st.warning(
@@ -369,11 +424,12 @@ def fx_currencies() -> None:
 
     _snapshot(df, countries)
     _indexed(df, countries, base_year)
+    _reer(reer, countries, base_year)
     _returns_heatmap(df, countries)
-    _carry_scatter(df, ann, countries, snap_year)
+    _carry_scatter(df, pol, countries, snap_year)
 
     st.markdown(
-        "**Data source:** FRED (Federal Reserve Bank of St. Louis) — daily bilateral spot rates "
-        "converted to local-currency-per-USD convention. Monthly averages shown. "
-        "Carry indicator uses IMF CPI as a proxy for interest rate differential."
+        "**Data sources:** FRED (spot bilateral rates, daily → monthly avg). "
+        "BIS WS_EER_M (broad real effective exchange rates, 2020=100). "
+        "BIS WS_CBPOL_M (policy rates for rate differential calculation)."
     )
