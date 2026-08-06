@@ -24,43 +24,62 @@ _CARDS = [
 # Scoped with :has so styles only apply when home page is active
 _HOME_CSS = """
 <style>
-/* Cards: natural height based on content — no forced min-height */
+/* Card wrapper: consistent border + hover glow */
 body:has(#home-page-root) [data-testid="stVerticalBlockBorderWrapper"] {
     display: flex;
     flex-direction: column;
+    border-radius: 8px !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+body:has(#home-page-root) [data-testid="stVerticalBlockBorderWrapper"]:hover {
+    border-color: #60a5fa !important;
+    box-shadow: 0 0 0 1px #60a5fa22 !important;
+}
+
+/* Inner content div — uniform padding on ALL sides */
 body:has(#home-page-root) [data-testid="stVerticalBlockBorderWrapper"] > div:first-child {
     flex: 1 !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-start !important;
-    padding: 0.55rem 0.75rem 0.45rem !important;
-    gap: 0.2rem !important;
+    padding: 0.6rem 0.8rem 0.6rem !important;
+    gap: 0.15rem !important;
+    box-sizing: border-box !important;
 }
+
 /* Card title */
 body:has(#home-page-root) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMarkdownContainer"] p {
-    font-size: 0.85rem !important;
-    margin: 0 0 0.2rem !important;
+    font-size: 0.84rem !important;
+    margin: 0 0 0.15rem !important;
     line-height: 1.3 !important;
 }
+
 /* Card description */
 body:has(#home-page-root) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stCaptionContainer"] p {
-    font-size: 0.73rem !important;
+    font-size: 0.72rem !important;
     line-height: 1.4 !important;
     margin: 0 !important;
 }
-/* Open button — compact but not tiny */
+
+/* Open button — full width within the padded content area */
+body:has(#home-page-root) [data-testid="stVerticalBlockBorderWrapper"] .stButton {
+    width: 100% !important;
+    margin-top: 0.35rem !important;
+}
 body:has(#home-page-root) [data-testid="stVerticalBlockBorderWrapper"] .stButton > button {
+    width: 100% !important;
     height: 1.8rem !important;
     min-height: unset !important;
     font-size: 0.75rem !important;
     padding: 0 0.5rem !important;
-    margin-top: 0.3rem !important;
+    margin: 0 !important;
 }
+
 /* Tighter column gaps */
 body:has(#home-page-root) [data-testid="stHorizontalBlock"] {
     gap: 0.5rem !important;
 }
+
 /* Reduce vertical gap between card rows */
 body:has(#home-page-root) [data-testid="stHorizontalBlock"] + [data-testid="stHorizontalBlock"] {
     margin-top: -0.6rem !important;
@@ -75,7 +94,7 @@ def _render_card(col, app_name: str, emoji: str, desc: str):
         with st.container(border=True):
             st.markdown(f"**{emoji} &nbsp;{app_name}**")
             st.caption(desc)
-            if st.button("Open →", key=f"card_{app_name}", use_container_width=True):
+            if st.button("Open →", key=f"card_{app_name}"):
                 st.session_state["selected_app"] = app_name
                 st.rerun()
 
