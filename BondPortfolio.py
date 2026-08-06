@@ -296,7 +296,7 @@ def _scenario_builder(portfolio_ids: set[str], prefix: str = "") -> None:
             b["id"] in portfolio_ids
             for b in BOND_UNIVERSE if b["country"] == country_full
         )
-        color  = _T1 if in_portfolio else _T3
+        color  = "#0f172a" if in_portfolio else _T3
         weight = "600" if in_portfolio else "400"
         rcols  = st.columns(widths)
         with rcols[0]:
