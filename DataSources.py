@@ -144,7 +144,9 @@ _CATALOG = [
         "frequency":   "Daily",
         "coverage":    "Euro Area · 8 maturities (3M · 6M · 1Y · 2Y · 5Y · 10Y · 20Y · 30Y)",
         "source_url":  "https://www.ecb.europa.eu/stats/financial_markets_and_interest_rates/euro_area_yield_curves",
-        "notes":       "ECB Svensson model spot rates. Restricted to AAA-rated euro area sovereign bonds. Via DBnomics ECB/YC.",
+        "via":         "DBnomics",
+        "via_url":     "https://db.nomics.world/ECB/YC",
+        "notes":       "ECB Svensson model spot rates. Restricted to AAA-rated euro area sovereign bonds. Dataset: ECB/YC.",
         "lag_type":    "structural",
         "alternatives":"ECB SDW direct API (same data, same day); Refinitiv/Bloomberg (paid, intraday)",
     },
@@ -158,7 +160,9 @@ _CATALOG = [
         "frequency":   "Daily",
         "coverage":    "25 central banks (Fed, ECB, BoE, BoJ, PBoC, RBI, BCB, SARB + 17 others)",
         "source_url":  "https://www.bis.org/statistics/cbpol.htm",
-        "notes":       "BIS WS_CBPOL dataset. History back to 1946 for some CBs. ~1 month lag. Via DBnomics.",
+        "via":         "DBnomics",
+        "via_url":     "https://db.nomics.world/BIS/WS_CBPOL",
+        "notes":       "Dataset: BIS/WS_CBPOL. History back to 1946 for some CBs. ~1 month structural lag.",
         "lag_type":    "structural",
         "alternatives":"FRED (US only, daily); ECB SDW (Euro Area, daily); BoE (UK, daily); individual CB websites",
     },
@@ -171,7 +175,9 @@ _CATALOG = [
         "frequency":   "Monthly",
         "coverage":    "8 central banks (Fed, ECB, BoJ, BoE, PBoC, SNB, BoC, RBA) · USD bn",
         "source_url":  "https://www.bis.org/statistics/",
-        "notes":       "BIS WS_CBTA. ~3–4 month lag (BIS release schedule). Longest history back to 1914 (Fed).",
+        "via":         "DBnomics",
+        "via_url":     "https://db.nomics.world/BIS/WS_CBTA",
+        "notes":       "Dataset: BIS/WS_CBTA. ~3–4 month structural lag (BIS release schedule). History back to 1914 (Fed).",
         "lag_type":    "structural",
         "alternatives":"Individual CB balance sheet releases (same lag); Fed H.4.1 (weekly, US only); ECB weekly",
     },
@@ -184,7 +190,9 @@ _CATALOG = [
         "frequency":   "Monthly",
         "coverage":    "14 currencies (USD/EUR/GBP/JPY/CNY/AUD/CAD/CHF/KRW/INR/BRL/NOK/SEK/MXN) · 2020=100",
         "source_url":  "https://www.bis.org/statistics/eer.htm",
-        "notes":       "BIS WS_EER real broad basket (up to 64 economies, trade-weighted). ~2 month lag. Via DBnomics.",
+        "via":         "DBnomics",
+        "via_url":     "https://db.nomics.world/BIS/WS_EER",
+        "notes":       "Dataset: BIS/WS_EER real broad basket (up to 64 economies, trade-weighted). ~2 month structural lag.",
         "lag_type":    "structural",
         "alternatives":"IMF REER (IFS dataset, similar methodology); Darvas broad REER (academic, broader)",
     },
@@ -198,7 +206,9 @@ _CATALOG = [
         "frequency":   "Monthly",
         "coverage":    "29 countries + OECD aggregates · BCI (29) · CCI (27) · CLI (16)",
         "source_url":  "https://stats.oecd.org/",
-        "notes":       "OECD DP_LIVE via DBnomics. DBnomics mirror is ~3 years stale (Nov 2023). Direct OECD.Stat API returns 403. LTRENDIDX: 100 = long-run trend.",
+        "via":         "DBnomics",
+        "via_url":     "https://db.nomics.world/OECD/DP_LIVE",
+        "notes":       "Dataset: OECD/DP_LIVE. DBnomics mirror is ~3 years stale (Nov 2023); direct OECD.Stat API returns 403. LTRENDIDX: 100 = long-run trend.",
         "lag_type":    "fixable",
         "alternatives":"OECD.Stat direct (same data, current — but API access issues); FRED has some OECD CLI series (USALOLITONOSW etc.) — US/G7 only, but current",
     },
@@ -355,6 +365,14 @@ def data_sources() -> None:
             f'style="color:#3b82f6;text-decoration:none;">{entry["source_url"].split("//")[1].split("/")[0]}</a>'
             if entry.get("source_url") else "Internal"
         )
+        if entry.get("via"):
+            via_link = (
+                f' &nbsp;·&nbsp; <b>via</b> '
+                f'<a href="{entry["via_url"]}" target="_blank" '
+                f'style="color:#8b5cf6;text-decoration:none;font-weight:600;">{entry["via"]}</a>'
+            )
+        else:
+            via_link = ""
         row_count = _rows(entry["cache"])
         end_display = end_str or "N/A (no date col)"
 
@@ -371,7 +389,7 @@ def data_sources() -> None:
                 &nbsp; <b>End:</b> {end_display} &nbsp;·&nbsp; <b>Rows:</b> {row_count}
               </div>
               <div class="ds-meta" style="margin-top:5px;">
-                <b>Pages:</b> {pages_str} &nbsp;·&nbsp; <b>Source:</b> {src_link}
+                <b>Pages:</b> {pages_str} &nbsp;·&nbsp; <b>Source:</b> {src_link}{via_link}
               </div>
               <div class="ds-meta" style="margin-top:4px;color:#64748b;">
                 <b>Coverage:</b> {entry["coverage"]}
@@ -397,6 +415,7 @@ def data_sources() -> None:
         rows.append({
             "Dataset":     entry["name"],
             "Source":      entry["group"].split("—")[0].strip(),
+            "Via":         entry.get("via", "—"),
             "Frequency":   entry["frequency"],
             "Data end":    end_str or "Annual",
             "Lag":         lag_str,
