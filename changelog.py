@@ -1,5 +1,18 @@
 CHANGELOG = [
     {
+        "id": 31,
+        "version": "1.31",
+        "timestamp": "06 Aug 2026, 15:29 IST",
+        "category": "Feature",
+        "title": "Bond Investment Strategies — Ladder · Bullet · Barbell",
+        "description": [
+            "BondInvestmentStrategies.py — new page with 4 tabs: Ladder, Bullet, Barbell, Compare",
+            "Each tab: strategy explainer banner, auto-build button, manual bond override, portfolio metrics (YTM, duration, DV01, convexity), maturity distribution chart, cash flow waterfall, parallel rate shock table",
+            "Compare tab: side-by-side metrics table, rate sensitivity line chart, and cash flow waterfall for all three strategies simultaneously",
+            "Added to home page cards and sidebar dropdown",
+        ],
+    },
+    {
         "id": 30,
         "version": "1.30",
         "timestamp": "06 Aug 2026, 14:12 IST",

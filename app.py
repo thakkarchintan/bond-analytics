@@ -13,6 +13,7 @@ from CapitalMarkets import capital_markets
 from YieldCurves import yield_curves
 from BondCalculator import bond_calculator
 from BondPortfolio import bond_portfolio
+from BondInvestmentStrategies import bond_investment_strategies
 from CentralBankRates import central_bank_rates
 from FiscalScorecard import fiscal_scorecard
 from InflationGrowth import inflation_growth
@@ -25,14 +26,28 @@ import os
 # ── Global styles ────────────────────────────────────────────────────────────
 _CSS = """
 <style>
-/* Hide only branding — never touch header/toolbar so sidebar toggle always works */
+/* Hide branding */
 #MainMenu { visibility: hidden; }
 footer    { visibility: hidden; }
 
+/* Compact sidebar header */
+[data-testid="stSidebarHeader"] {
+    padding: 0.5rem 1rem !important;
+    min-height: unset !important;
+}
+
 /* Tighter content area */
 .block-container {
-    padding-top: 1.5rem;
-    padding-bottom: 2rem;
+    padding-top: 2rem;
+    padding-bottom: 1rem;
+}
+
+/* Auto-dismiss login success banner */
+@keyframes _alertFade {
+    to { opacity: 0; max-height: 0; padding: 0; margin: 0; overflow: hidden; }
+}
+[data-testid="stAlert"] {
+    animation: _alertFade 0.4s ease 2s forwards;
 }
 
 /* Dark sidebar */
@@ -97,6 +112,12 @@ footer    { visibility: hidden; }
     border-color: #334155;
 }
 
+/* Sidebar button height — matches selectbox height */
+[data-testid="stSidebar"] .stButton > button {
+    height: 2.4rem !important;
+    min-height: 2.4rem !important;
+}
+
 /* Sidebar expand button (visible when sidebar is collapsed) */
 [data-testid="collapsedControl"] {
     background-color: #1e293b !important;
@@ -147,6 +168,7 @@ if st.session_state["connected"]:
         "Global Yield Curves": yield_curves,
         "Bond Pricing & Calculator": bond_calculator,
         "Bond Portfolio": bond_portfolio,
+        "Bond Investment Strategies": bond_investment_strategies,
         "Changelog": changelog_tab,
     }
 
@@ -184,10 +206,6 @@ if st.session_state["connected"]:
     else:
         visible_apps[st.session_state["selected_app"]]()
 
-    # Logout pinned to bottom of sidebar
-    st.sidebar.markdown(
-        '<hr style="border:none; border-top:1px solid #475569; margin:1.5rem 0 0.75rem;">',
-        unsafe_allow_html=True,
-    )
-    if st.sidebar.button("Logout", key="button1"):
+    st.sidebar.markdown('<hr style="border:none;border-top:1px solid #475569;margin:1rem 0 0.5rem">', unsafe_allow_html=True)
+    if st.sidebar.button("Logout", key="button1", use_container_width=True):
         authenticator.logout()

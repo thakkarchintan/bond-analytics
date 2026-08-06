@@ -10,32 +10,101 @@ _CARDS = [
     ("Global Yield Curves",      "〰️", "Sovereign yield curves for G10 markets. Compare shapes and spot inversions instantly."),
     ("Bond Pricing & Calculator","🧮", "Price bonds, compute duration, DV01 and yield — all inputs update live."),
     ("Bond Portfolio",           "💼", "Build and stress-test a bond portfolio with P&L, DV01 hedging and short positions."),
+    ("Bond Investment Strategies","📐", "Construct and compare Ladder, Bullet and Barbell strategies with rate shock simulation."),
     ("Correlation Matrix",       "🔥", "Rolling cross-asset correlations. Spot diversification breakdowns and regime shifts."),
     ("Portfolio Rebalance",      "⚖️", "Optimise portfolio weights toward target allocations with rebalancing constraints."),
-    ("News Summarizer",          "📰", "AI-summarised financial news filtered by theme. Stay on top of market narratives."),
     ("Global Capital Markets",   "🏛️", "Capital markets overview — issuance, spreads and financing conditions."),
 ]
 
+# Scoped with :has so styles only apply when home page is active
+_HOME_CSS = """
+<style>
+/* Cards fill available viewport height equally */
+body:has(#home-page-root) [data-testid="stVerticalBlockBorderWrapper"] {
+    min-height: calc((100vh - 130px) / 4) !important;
+    display: flex;
+    flex-direction: column;
+}
+body:has(#home-page-root) [data-testid="stVerticalBlockBorderWrapper"] > div:first-child {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    padding: 0.6rem 0.75rem 0.5rem !important;
+    gap: 0.25rem !important;
+}
+/* Card title */
+body:has(#home-page-root) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMarkdownContainer"] p {
+    font-size: 0.85rem !important;
+    margin: 0 0 0.2rem !important;
+    line-height: 1.3 !important;
+}
+/* Card description */
+body:has(#home-page-root) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stCaptionContainer"] p {
+    font-size: 0.73rem !important;
+    line-height: 1.4 !important;
+    margin: 0 !important;
+}
+/* Open button — compact but not tiny */
+body:has(#home-page-root) [data-testid="stVerticalBlockBorderWrapper"] .stButton > button {
+    height: 1.8rem !important;
+    min-height: unset !important;
+    font-size: 0.75rem !important;
+    padding: 0 0.5rem !important;
+    margin-top: 0.3rem !important;
+}
+/* Tighter column gaps */
+body:has(#home-page-root) [data-testid="stHorizontalBlock"] {
+    gap: 0.5rem !important;
+}
+/* Reduce vertical gap between card rows */
+body:has(#home-page-root) [data-testid="stHorizontalBlock"] + [data-testid="stHorizontalBlock"] {
+    margin-top: -0.6rem !important;
+}
+</style>
+<div id="home-page-root"></div>
+"""
+
+
+def _render_card(col, app_name: str, emoji: str, desc: str):
+    with col:
+        with st.container(border=True):
+            st.markdown(f"**{emoji} &nbsp;{app_name}**")
+            st.caption(desc)
+            if st.button("Open →", key=f"card_{app_name}", use_container_width=True):
+                st.session_state["selected_app"] = app_name
+                st.rerun()
+
 
 def home_page_cards(visible_apps: dict):
+    st.markdown(_HOME_CSS, unsafe_allow_html=True)
+
     user_info = st.session_state.get("user_info", {})
-    first_name = (user_info.get("name", "") or "").split()[0]
-    greeting = f"Welcome back, {first_name}!" if first_name else "Welcome!"
+    parts = (user_info.get("name", "") or "").split()
+    first_name = parts[0] if parts else ""
+    greeting = f"👋 Welcome back, **{first_name}**" if first_name else "👋 Welcome"
 
-    st.markdown(f"## {greeting}")
-    st.caption("Select a module below or use the sidebar to navigate.")
-    st.divider()
+    st.markdown(
+        f"<p style='font-size:0.95rem;margin:0 0 0.5rem'>{greeting}"
+        f" &nbsp;·&nbsp; <span style='color:#94a3b8;font-weight:400'>"
+        f"select a module to get started</span></p>",
+        unsafe_allow_html=True,
+    )
 
-    cols = st.columns(3, gap="medium")
-    col_idx = 0
-    for app_name, emoji, desc in _CARDS:
-        if app_name not in visible_apps:
-            continue
-        with cols[col_idx % 3]:
-            with st.container(border=True):
-                st.markdown(f"**{emoji} &nbsp; {app_name}**")
-                st.caption(desc)
-                if st.button("Open →", key=f"card_{app_name}", use_container_width=True):
-                    st.session_state["selected_app"] = app_name
-                    st.rerun()
-        col_idx += 1
+    # Build list of visible cards in defined order
+    visible = [(n, e, d) for n, e, d in _CARDS if n in visible_apps]
+
+    for i in range(0, len(visible), 4):
+        row = visible[i:i + 4]
+        n = len(row)
+        if n == 4:
+            cols = st.columns(4, gap="small")
+            for j, (name, emoji, desc) in enumerate(row):
+                _render_card(cols[j], name, emoji, desc)
+        else:
+            # Partial last row: center the cards
+            pad = (4 - n) / 2
+            col_widths = [pad] + [1.0] * n + [pad]
+            cols = st.columns(col_widths, gap="small")
+            for j, (name, emoji, desc) in enumerate(row):
+                _render_card(cols[j + 1], name, emoji, desc)
