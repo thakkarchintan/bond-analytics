@@ -19,6 +19,7 @@ _CARDS = [
     ("Correlation Matrix",       "🔥", "Rolling cross-asset correlations. Spot diversification breakdowns and regime shifts."),
     ("Portfolio Rebalance",      "⚖️", "Optimise portfolio weights toward target allocations with rebalancing constraints."),
     ("Global Capital Markets",   "🏛️", "Capital markets overview — issuance, spreads and financing conditions."),
+    ("Data Sources",             "🗄️", "Admin: catalog of all 16 datasets — coverage, freshness, source APIs and alternatives."),
 ]
 
 # Scoped with :has so styles only apply when home page is active

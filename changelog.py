@@ -1,5 +1,18 @@
 CHANGELOG = [
     {
+        "id": 36,
+        "version": "1.36",
+        "timestamp": "07 Aug 2026, 00:10 IST",
+        "category": "Feature",
+        "title": "Data Sources catalog — admin microapp with live freshness, coverage and alternative sources for all 16 datasets",
+        "description": [
+            "DataSources.py — new admin-only page: catalog of all 16 parquet-backed datasets with live freshness computed from each cache file, date range, row count, frequency, source API, and alternative data providers",
+            "Freshness classification: 🟢 Current (<30d), 🟡 Lagged (1–6mo), 🔴 Stale (>6mo); OECD BCI/CCI/CLI flagged stale (~3yr lag via DBnomics mirror) and tagged 'fixable lag'",
+            "Filterable by source group (FRED/BIS/ECB/OECD/IMF/Internal) and freshness tier; summary reference table at the bottom",
+            "Registered as admin-only in app.py restricted_apps; card added to HomePage.py _CARDS list",
+        ],
+    },
+    {
         "id": 35,
         "version": "1.35",
         "timestamp": "06 Aug 2026, 23:58 IST",

@@ -23,6 +23,7 @@ from GlobalBusinessCycle import global_business_cycle
 from FiscalScorecard import fiscal_scorecard
 from InflationGrowth import inflation_growth
 from FXCurrencies import fx_currencies
+from DataSources import data_sources
 from HomePage import home_page_cards
 from data import load_data
 from dotenv import load_dotenv
@@ -180,6 +181,7 @@ if st.session_state["connected"]:
         "Bond Simulator": bond_simulator,
         "Global Business Cycle": global_business_cycle,
         "Changelog": changelog_tab,
+        "Data Sources": data_sources,
     }
 
     user_email = st.session_state["user_info"].get("email", "None")
@@ -188,7 +190,7 @@ if st.session_state["connected"]:
     if "admins" not in st.session_state:
         st.session_state["admins"] = admins
 
-    restricted_apps = ["Changelog"]
+    restricted_apps = ["Changelog", "Data Sources"]
     visible_apps = {
         app_name: app_func
         for app_name, app_func in APP_MAP.items()
