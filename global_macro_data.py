@@ -628,3 +628,91 @@ def load_cb_rates_direct() -> pd.DataFrame:
     if CB_RATES_CACHE.exists():
         return pd.read_parquet(CB_RATES_CACHE)
     return refresh_cb_rates_direct()
+
+
+# ── Cross-Asset Dashboard data ─────────────────────────────────────────────────
+
+CROSS_ASSET_CACHE = _HERE / "gmacro_cross_asset_cache.parquet"
+LEADING_CACHE     = _HERE / "gmacro_leading_cache.parquet"
+
+CROSS_ASSET_SERIES: dict[str, str] = {
+    "VIXCLS":     "VIX",
+    "DCOILWTICO": "WTI Crude",
+    "SP500":      "S&P 500",
+}
+
+LEADING_SERIES: dict[str, str] = {
+    "ICSA":    "Initial Claims",
+    "UMCSENT": "Consumer Sentiment",
+    "HOUST":   "Housing Starts",
+    "INDPRO":  "Industrial Production",
+    "UNRATE":  "Unemployment",
+    "T10Y2Y":  "2Y10Y Spread",
+    "USREC":   "Recession",
+}
+
+
+def _build_cross_asset() -> pd.DataFrame:
+    rows = []
+    for sid, name in CROSS_ASSET_SERIES.items():
+        try:
+            df = _fred_daily(sid)
+            if df.empty:
+                continue
+            df["Series"] = name
+            rows.append(df.rename(columns={"Value": "Value"}))
+        except Exception:
+            pass
+    if not rows:
+        return pd.DataFrame()
+    out = pd.concat(rows, ignore_index=True)
+    out["Date"] = pd.to_datetime(out["Date"])
+    return out.sort_values(["Series", "Date"]).reset_index(drop=True)
+
+
+def _build_leading_indicators() -> pd.DataFrame:
+    rows = []
+    for sid, name in LEADING_SERIES.items():
+        try:
+            df = _fred_daily(sid)
+            if df.empty:
+                continue
+            df["Series"] = name
+            rows.append(df)
+        except Exception:
+            pass
+    if not rows:
+        return pd.DataFrame()
+    out = pd.concat(rows, ignore_index=True)
+    out["Date"] = pd.to_datetime(out["Date"])
+    return out.sort_values(["Series", "Date"]).reset_index(drop=True)
+
+
+def refresh_cross_asset() -> pd.DataFrame:
+    df = _build_cross_asset()
+    if not df.empty:
+        df.to_parquet(CROSS_ASSET_CACHE, index=False)
+        load_cross_asset.clear()
+    return df
+
+
+def refresh_leading_indicators() -> pd.DataFrame:
+    df = _build_leading_indicators()
+    if not df.empty:
+        df.to_parquet(LEADING_CACHE, index=False)
+        load_leading_indicators.clear()
+    return df
+
+
+@st.cache_data(show_spinner=False)
+def load_cross_asset() -> pd.DataFrame:
+    if CROSS_ASSET_CACHE.exists():
+        return pd.read_parquet(CROSS_ASSET_CACHE)
+    return refresh_cross_asset()
+
+
+@st.cache_data(show_spinner=False)
+def load_leading_indicators() -> pd.DataFrame:
+    if LEADING_CACHE.exists():
+        return pd.read_parquet(LEADING_CACHE)
+    return refresh_leading_indicators()

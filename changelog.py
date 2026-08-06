@@ -1,5 +1,20 @@
 CHANGELOG = [
     {
+        "id": 34,
+        "version": "1.34",
+        "timestamp": "06 Aug 2026, 21:32 IST",
+        "category": "Feature",
+        "title": "3 new pages: Cross-Asset Dashboard · Leading Indicators · Bond Simulator · home page compacted",
+        "description": [
+            "CrossAsset.py — new page: VIX, WTI Crude, S&P 500 from FRED alongside US 10Y yield and IG/HY spreads from existing caches; normalized performance (indexed to 100), raw charts, and monthly return correlation matrix",
+            "LeadingIndicators.py — new page: Initial Jobless Claims, Consumer Sentiment, Housing Starts, Industrial Production, Unemployment, 2Y10Y Spread with NBER recession shading; latest-reading signal dashboard with warning indicators",
+            "BondSimulator.py — new page: pure self-build, no API; interactive price-yield curve with duration tangent and convexity-adjusted overlay, cash flow timeline with PV breakdown, rate shock analysis table −300bp to +300bp",
+            "global_macro_data.py — 2 new FRED datasets: cross-asset (VIX/Oil/S&P 500) and leading indicators (claims/sentiment/housing/INDPRO/UNRATE/T10Y2Y/USREC) with parquet caching",
+            "HomePage.py — removed min-height forcing from card CSS; cards now size to content so all 17 apps fit without wasted whitespace; 3 new app cards added",
+            "app.py — 3 new pages registered in APP_MAP",
+        ],
+    },
+    {
         "id": 33,
         "version": "1.33",
         "timestamp": "06 Aug 2026, 19:26 IST",

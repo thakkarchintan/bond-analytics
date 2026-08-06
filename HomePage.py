@@ -12,6 +12,9 @@ _CARDS = [
     ("Bond Portfolio",           "💼", "Build and stress-test a bond portfolio with P&L, DV01 hedging and short positions."),
     ("Bond Investment Strategies","📐", "Construct and compare Ladder, Bullet and Barbell strategies with rate shock simulation."),
     ("Credit Spreads",           "📉", "IG to CCC OAS spreads over time — credit risk spectrum, IG vs HY dynamics, recession context."),
+    ("Cross-Asset Dashboard",    "📡", "VIX, Gold, Oil, S&P 500 and bond yields — normalized performance and correlation matrix."),
+    ("Leading Indicators",       "🔭", "ISM PMI, jobless claims, housing starts, consumer sentiment — recession tracker with NBER shading."),
+    ("Bond Simulator",           "🎯", "Interactive price-yield curve, duration vs convexity approximation, and rate shock analysis."),
     ("Correlation Matrix",       "🔥", "Rolling cross-asset correlations. Spot diversification breakdowns and regime shifts."),
     ("Portfolio Rebalance",      "⚖️", "Optimise portfolio weights toward target allocations with rebalancing constraints."),
     ("Global Capital Markets",   "🏛️", "Capital markets overview — issuance, spreads and financing conditions."),
@@ -20,9 +23,8 @@ _CARDS = [
 # Scoped with :has so styles only apply when home page is active
 _HOME_CSS = """
 <style>
-/* Cards fill available viewport height equally */
+/* Cards: natural height based on content — no forced min-height */
 body:has(#home-page-root) [data-testid="stVerticalBlockBorderWrapper"] {
-    min-height: calc((100vh - 130px) / 4) !important;
     display: flex;
     flex-direction: column;
 }
@@ -30,9 +32,9 @@ body:has(#home-page-root) [data-testid="stVerticalBlockBorderWrapper"] > div:fir
     flex: 1 !important;
     display: flex !important;
     flex-direction: column !important;
-    justify-content: space-between !important;
-    padding: 0.6rem 0.75rem 0.5rem !important;
-    gap: 0.25rem !important;
+    justify-content: flex-start !important;
+    padding: 0.55rem 0.75rem 0.45rem !important;
+    gap: 0.2rem !important;
 }
 /* Card title */
 body:has(#home-page-root) [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMarkdownContainer"] p {

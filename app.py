@@ -16,6 +16,9 @@ from BondPortfolio import bond_portfolio
 from BondInvestmentStrategies import bond_investment_strategies
 from CreditSpreads import credit_spreads
 from CentralBankRates import central_bank_rates
+from CrossAsset import cross_asset
+from LeadingIndicators import leading_indicators
+from BondSimulator import bond_simulator
 from FiscalScorecard import fiscal_scorecard
 from InflationGrowth import inflation_growth
 from FXCurrencies import fx_currencies
@@ -171,6 +174,9 @@ if st.session_state["connected"]:
         "Bond Portfolio": bond_portfolio,
         "Bond Investment Strategies": bond_investment_strategies,
         "Credit Spreads": credit_spreads,
+        "Cross-Asset Dashboard": cross_asset,
+        "Leading Indicators": leading_indicators,
+        "Bond Simulator": bond_simulator,
         "Changelog": changelog_tab,
     }
 
