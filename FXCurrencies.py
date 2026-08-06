@@ -112,11 +112,12 @@ def _snapshot(df: pd.DataFrame, countries: list[str]) -> None:
 
     def _style(row):
         v = row["YoY Change (%)"]
+        base = "color:#f1f5f9;"
         if isinstance(v, float) and v > 3:
-            return ["background-color:#1e1010"] * len(row)  # weakened vs USD
+            return [base + "background-color:#3b1010"] * len(row)
         if isinstance(v, float) and v < -3:
-            return ["background-color:#0e1e14"] * len(row)  # strengthened vs USD
-        return [""] * len(row)
+            return [base + "background-color:#0e2e1a"] * len(row)
+        return [base] * len(row)
 
     st.dataframe(
         snap_disp[["Country", "Currency", "Rate (local/USD)", "YoY Change (%)", "As of"]]
@@ -218,9 +219,13 @@ def _returns_heatmap(df: pd.DataFrame, countries: list[str]) -> None:
         height=max(280, len(pct) * 32 + 80),
         title=dict(text="Annual FX Return vs USD (% change in local/USD rate)",
                    font=dict(size=13, color=_T1), x=0),
-        xaxis=dict(tickfont=dict(color=_T2), side="bottom"),
-        yaxis=dict(tickfont=dict(color=_T1)),
-        **_chart_layout(margin=dict(l=150, r=80, t=44, b=44)),
+        **_chart_layout(
+            margin=dict(l=150, r=80, t=44, b=44),
+            xaxis=dict(tickfont=dict(color=_T2), side="bottom",
+                       gridcolor=_EDGE, showline=True, linecolor=_EDGE),
+            yaxis=dict(tickfont=dict(color=_T1),
+                       gridcolor=_EDGE, showline=True, linecolor=_EDGE),
+        ),
     )
     st.plotly_chart(fig, use_container_width=True)
     st.caption("Green = local currency strengthened vs USD. Red = weakened.")
