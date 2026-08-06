@@ -1,5 +1,15 @@
 CHANGELOG = [
     {
+        "id": 29,
+        "version": "1.29",
+        "timestamp": "06 Aug 2026, 13:45 IST",
+        "category": "Fix",
+        "title": "Fix set_page_config crash on local run",
+        "description": [
+            "app.py — moved st.set_page_config() to line 3, before all other imports; fixes StreamlitAPIException crash caused by Authenticator.__init__() touching session_state before set_page_config was called",
+        ],
+    },
+    {
         "id": 28,
         "version": "1.28",
         "timestamp": "06 Aug 2026, 09:15 IST",

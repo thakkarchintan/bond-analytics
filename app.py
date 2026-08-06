@@ -1,4 +1,7 @@
 import streamlit as st
+
+st.set_page_config(page_title="Bond Analytics", layout="wide")
+
 from common import authenticator
 from stream import home_page
 from HeatmapTab import heatmap_tab
@@ -105,7 +108,6 @@ footer    { visibility: hidden; }
 </style>
 """
 
-st.set_page_config(page_title="Bond Analytics", layout="wide")
 st.markdown(_CSS, unsafe_allow_html=True)
 
 load_dotenv()
