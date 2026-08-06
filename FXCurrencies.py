@@ -1,0 +1,379 @@
+"""
+FX & Currencies Dashboard
+Sources: FRED (spot rates vs USD) · IMF (policy rate differentials).
+Shows currency performance, USD index, carry trade indicators.
+"""
+from __future__ import annotations
+
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
+
+from global_macro_data import (
+    COUNTRY_COLORS, CORE_NAMES, ALL_NAMES, FX_SERIES,
+    ANNUAL_CACHE, FX_CACHE,
+    load_annual, load_fx,
+    refresh_annual, refresh_fx,
+)
+
+_BG   = "#0f172a"
+_CARD = "#1e293b"
+_EDGE = "#334155"
+_T1   = "#f1f5f9"
+_T2   = "#94a3b8"
+_T3   = "#475569"
+_BLUE = "#3b82f6"
+_GRN  = "#10b981"
+_RED  = "#ef4444"
+_AMB  = "#f59e0b"
+
+# Default countries with FX data
+_FX_COUNTRIES = [meta["country"] for meta in FX_SERIES.values()]
+_CORE_FX      = [c for c in [
+    "Japan", "Euro Area", "United Kingdom", "China",
+    "India", "Canada", "Australia", "Brazil", "South Korea",
+] if c in _FX_COUNTRIES]
+
+
+def _section(title: str, subtitle: str = "") -> None:
+    sub = (
+        f'<div style="font-size:12px;color:{_T2};margin-top:4px;">{subtitle}</div>'
+        if subtitle else ""
+    )
+    st.markdown(
+        f'<div style="background:{_CARD};border-left:4px solid {_BLUE};'
+        f'padding:10px 16px;margin:28px 0 10px;border-radius:0 8px 8px 0;">'
+        f'<span style="font-size:13px;font-weight:700;color:{_T1};'
+        f'text-transform:uppercase;letter-spacing:.08em;">{title}</span>{sub}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _chart_layout(**kw) -> dict:
+    base = dict(
+        template="plotly_dark",
+        paper_bgcolor=_CARD, plot_bgcolor=_BG,
+        margin=dict(l=62, r=20, t=44, b=44),
+        font=dict(color=_T1, size=12),
+        xaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2),
+                   showline=True, linecolor=_EDGE),
+        yaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2),
+                   showline=True, linecolor=_EDGE),
+        hoverlabel=dict(bgcolor=_CARD, font_color=_T1, bordercolor=_EDGE),
+        legend=dict(font=dict(color=_T1, size=11), bgcolor="rgba(0,0,0,0)",
+                    orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+    base.update(kw)
+    return base
+
+
+def _no_data(msg: str = "No data — click Refresh Data.") -> None:
+    st.info(msg, icon="ℹ️")
+
+
+# ── Snapshot ──────────────────────────────────────────────────────────────────
+
+def _snapshot(df: pd.DataFrame, countries: list[str]) -> None:
+    _section("FX Snapshot", "Latest available rates — local currency units per 1 USD")
+
+    # Build ccy map
+    ccy_map = {meta["country"]: meta["ccy"] for meta in FX_SERIES.values()}
+
+    latest = (
+        df[df["Country"].isin(countries)]
+        .sort_values("Date")
+        .groupby("Country")
+        .last()
+        .reset_index()
+    )
+    if latest.empty:
+        _no_data()
+        return
+
+    # 1-year change
+    one_yr_ago = latest["Date"].max() - pd.DateOffset(years=1)
+    prev = (
+        df[df["Country"].isin(countries) & (df["Date"] <= one_yr_ago)]
+        .sort_values("Date")
+        .groupby("Country")
+        .last()
+        .reset_index()
+        .rename(columns={"LocalPerUSD": "Prev"})
+        [["Country", "Prev"]]
+    )
+    snap = latest.merge(prev, on="Country", how="left")
+    snap["Chg1Y_Pct"] = (snap["LocalPerUSD"] / snap["Prev"] - 1) * 100
+    snap["Currency"]  = snap["Country"].map(ccy_map)
+    snap["As of"]     = snap["Date"].dt.strftime("%b %Y")
+
+    snap_disp = snap[["Country", "Currency", "LocalPerUSD", "Chg1Y_Pct", "As of"]].copy()
+    snap_disp["Rate (local/USD)"]  = snap_disp["LocalPerUSD"].round(4)
+    snap_disp["YoY Change (%)"]    = snap_disp["Chg1Y_Pct"].round(2)
+
+    def _style(row):
+        v = row["YoY Change (%)"]
+        if isinstance(v, float) and v > 3:
+            return ["background-color:#1e1010"] * len(row)  # weakened vs USD
+        if isinstance(v, float) and v < -3:
+            return ["background-color:#0e1e14"] * len(row)  # strengthened vs USD
+        return [""] * len(row)
+
+    st.dataframe(
+        snap_disp[["Country", "Currency", "Rate (local/USD)", "YoY Change (%)", "As of"]]
+        .sort_values("Country")
+        .style.apply(_style, axis=1),
+        use_container_width=True, hide_index=True,
+    )
+    st.caption(
+        "Rate = local currency units per 1 USD. "
+        "YoY Change > 0 = local currency weakened vs USD (took more units to buy 1 USD)."
+    )
+
+
+# ── Indexed performance chart ─────────────────────────────────────────────────
+
+def _indexed(df: pd.DataFrame, countries: list[str], base_year: int) -> None:
+    _section(
+        "Currency Performance vs USD",
+        f"Indexed to 100 at Jan {base_year} · above 100 = local currency weakened vs USD",
+    )
+
+    fdf = df[df["Country"].isin(countries) & (df["Date"].dt.year >= base_year)].copy()
+    if fdf.empty:
+        _no_data()
+        return
+
+    fig = go.Figure()
+    for country in countries:
+        cdf = fdf[fdf["Country"] == country].sort_values("Date")
+        if cdf.empty:
+            continue
+        base_rows = cdf[cdf["Date"].dt.year == base_year]
+        if base_rows.empty:
+            continue
+        base_val = base_rows["LocalPerUSD"].mean()
+        if base_val == 0 or pd.isna(base_val):
+            continue
+        cdf = cdf.copy()
+        cdf["Indexed"] = cdf["LocalPerUSD"] / base_val * 100
+        ccy = next((m["ccy"] for m in FX_SERIES.values() if m["country"] == country), "")
+        fig.add_trace(go.Scatter(
+            x=cdf["Date"], y=cdf["Indexed"],
+            name=f"{country} ({ccy})", mode="lines",
+            line=dict(color=COUNTRY_COLORS.get(country, "#888"), width=2),
+            hovertemplate=f"<b>{country}</b><br>%{{x|%b %Y}}: %{{y:.1f}}<extra></extra>",
+        ))
+    fig.add_hline(y=100, line=dict(color=_T3, dash="dot", width=1.5),
+                  annotation_text=f"Base ({base_year}=100)", annotation_font_color=_T3)
+    fig.update_layout(
+        height=420,
+        title=dict(text=f"FX Performance vs USD — indexed to Jan {base_year} (100 = base)",
+                   font=dict(size=13, color=_T1), x=0),
+        yaxis_title="Index (100 = base year)",
+        **_chart_layout(),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    st.markdown(
+        f"**Above 100:** local currency has weakened vs USD since {base_year} (more units per dollar).  \n"
+        f"**Below 100:** local currency has strengthened vs USD."
+    )
+
+
+# ── YoY returns heatmap ───────────────────────────────────────────────────────
+
+def _returns_heatmap(df: pd.DataFrame, countries: list[str]) -> None:
+    _section("Annual FX Returns vs USD", "% change in local/USD rate per year · green = local strengthened")
+
+    fdf = df[df["Country"].isin(countries)].copy()
+    fdf["Year"] = fdf["Date"].dt.year
+    annual = fdf.groupby(["Country", "Year"])["LocalPerUSD"].mean().reset_index()
+
+    pivot = annual.pivot(index="Country", columns="Year", values="LocalPerUSD")
+    # YoY % change (positive = local weakened = bad for local holders)
+    pct = pivot.pct_change(axis=1) * 100
+    pct = pct.dropna(how="all", axis=1)
+    if pct.empty:
+        _no_data()
+        return
+
+    years = sorted(pct.columns)
+
+    fig = go.Figure(go.Heatmap(
+        z=pct.values,
+        x=[str(y) for y in years],
+        y=pct.index.tolist(),
+        colorscale=[
+            [0.0, "#10b981"],   # green = strengthened (rate fell)
+            [0.5, "#1e293b"],   # neutral
+            [1.0, "#ef4444"],   # red = weakened (rate rose)
+        ],
+        zmid=0,
+        hovertemplate="%{y}<br>%{x}: %{z:.1f}%<extra></extra>",
+        colorbar=dict(
+            title="% chg",
+            tickfont=dict(color=_T1), titlefont=dict(color=_T1),
+        ),
+    ))
+    fig.update_layout(
+        height=max(280, len(pct) * 32 + 80),
+        title=dict(text="Annual FX Return vs USD (% change in local/USD rate)",
+                   font=dict(size=13, color=_T1), x=0),
+        xaxis=dict(tickfont=dict(color=_T2), side="bottom"),
+        yaxis=dict(tickfont=dict(color=_T1)),
+        **_chart_layout(margin=dict(l=150, r=80, t=44, b=44)),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    st.caption("Green = local currency strengthened vs USD. Red = weakened.")
+
+
+# ── Rate differential vs FX ───────────────────────────────────────────────────
+
+def _carry_scatter(df: pd.DataFrame, ann: pd.DataFrame, countries: list[str], year: int) -> None:
+    _section(
+        "Carry Trade Indicator",
+        f"Interest rate differential vs FX strength ({year}) — higher rates often attract capital and strengthen currency",
+    )
+
+    if ann.empty:
+        _no_data("Annual data unavailable.")
+        return
+
+    # Annual avg FX rate
+    fdf = df[df["Country"].isin(countries)].copy()
+    fdf["Year"] = fdf["Date"].dt.year
+    fx_ann = fdf.groupby(["Country", "Year"])["LocalPerUSD"].mean().reset_index()
+
+    # Year-over-year FX change (negative = strengthened)
+    fx_chg = fx_ann.copy()
+    fx_chg["FX_Chg"] = fx_chg.groupby("Country")["LocalPerUSD"].pct_change() * 100
+
+    snap_fx = fx_chg[fx_chg["Year"] == year][["Country", "FX_Chg"]]
+
+    # Policy rate from IMF (use CPI as a proxy since we may not have live BIS merged)
+    snap_ann = ann[(ann["Year"] == year) & (ann["Country"].isin(countries))][
+        ["Country", "CPI_Pct", "RealGDP_Pct"]
+    ].copy()
+
+    merged = snap_fx.merge(snap_ann, on="Country", how="inner").dropna(
+        subset=["FX_Chg", "CPI_Pct"]
+    )
+    if merged.empty:
+        _no_data()
+        return
+
+    fig = go.Figure()
+    for _, row in merged.iterrows():
+        fig.add_trace(go.Scatter(
+            x=[row["CPI_Pct"]], y=[-row["FX_Chg"]],  # flip: positive = strengthened
+            mode="markers+text",
+            name=row["Country"],
+            text=[row["Country"]],
+            textposition="top center",
+            textfont=dict(size=9, color=_T1),
+            marker=dict(
+                color=COUNTRY_COLORS.get(row["Country"], "#888"),
+                size=14, opacity=0.9,
+                line=dict(width=1.5, color=_BG),
+            ),
+            showlegend=False,
+            hovertemplate=(
+                f"<b>{row['Country']}</b><br>"
+                f"Inflation: {row['CPI_Pct']:.1f}%<br>"
+                f"FX vs USD: {-row['FX_Chg']:.1f}% ({'strengthened' if row['FX_Chg'] < 0 else 'weakened'})"
+                "<extra></extra>"
+            ),
+        ))
+
+    fig.add_vline(x=2, line=dict(color=_T3, dash="dot", width=1))
+    fig.add_hline(y=0, line=dict(color=_T3, dash="dot", width=1))
+    fig.update_layout(
+        height=420,
+        title=dict(text=f"Inflation (x) vs FX Strength vs USD (y) — {year}",
+                   font=dict(size=13, color=_T1), x=0),
+        xaxis_title="CPI Inflation (%)",
+        yaxis_title="FX strength vs USD (% — positive = strengthened)",
+        **_chart_layout(margin=dict(l=72, r=20, t=44, b=60)),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    st.markdown(
+        "Countries with **higher inflation** tend to see currency **depreciation** vs USD over time "
+        "(purchasing power parity). High-yielding EM currencies often weaken despite attractive carry."
+    )
+
+
+# ── Main entry ────────────────────────────────────────────────────────────────
+
+def fx_currencies() -> None:
+    st.markdown(
+        '<h2 style="color:#0f172a;margin:0 0 2px;">FX &amp; Currencies</h2>'
+        '<div style="font-size:12px;color:#475569;">'
+        'Spot rates vs USD · annual performance · carry indicator · '
+        'Source: FRED (St. Louis Fed)</div>'
+        '<hr style="border:none;border-top:1px solid #e2e8f0;margin:10px 0 6px;">',
+        unsafe_allow_html=True,
+    )
+
+    st.sidebar.markdown(
+        f'<div style="font-size:10px;color:{_T2};text-transform:uppercase;'
+        f'letter-spacing:.1em;margin:16px 0 6px;padding-bottom:4px;'
+        f'border-bottom:1px solid {_EDGE};">Currencies</div>',
+        unsafe_allow_html=True,
+    )
+    countries = st.sidebar.multiselect(
+        "Countries", _FX_COUNTRIES, default=_CORE_FX,
+        key="fx_countries", label_visibility="collapsed",
+    )
+    base_year = st.sidebar.slider("Index base year", 2005, 2020, 2015, key="fx_base_year")
+    snap_year = st.sidebar.slider("Snapshot year",   2005, 2025, 2023, key="fx_snap_year")
+
+    st.sidebar.markdown(
+        f'<div style="font-size:10px;color:{_T2};text-transform:uppercase;'
+        f'letter-spacing:.1em;margin:14px 0 6px;padding-bottom:4px;'
+        f'border-bottom:1px solid {_EDGE};">Data</div>',
+        unsafe_allow_html=True,
+    )
+    for cache, label in [(FX_CACHE, "FX rates"), (ANNUAL_CACHE, "Annual macro")]:
+        if cache.exists():
+            from datetime import datetime
+            mtime = datetime.fromtimestamp(cache.stat().st_mtime)
+            st.sidebar.caption(f"{label}: {mtime.strftime('%d %b %Y')}")
+        else:
+            st.sidebar.caption(f"{label}: not cached")
+    refresh = st.sidebar.button("Refresh Data", key="fx_refresh")
+
+    if refresh:
+        with st.spinner("Fetching FX rates from FRED…"):
+            df = refresh_fx()
+        with st.spinner("Fetching annual macro from IMF…"):
+            ann = refresh_annual()
+    else:
+        df  = load_fx()
+        ann = load_annual()
+
+    if df.empty:
+        st.warning(
+            "No FX data loaded. Click **Refresh Data** to fetch from FRED (takes ~15 seconds).",
+            icon="⚠️",
+        )
+        return
+
+    if not countries:
+        st.info("Select at least one currency in the sidebar.")
+        return
+
+    available = df["Country"].unique().tolist()
+    countries  = [c for c in countries if c in available]
+    if not countries:
+        st.info("Selected currencies have no data yet. Try Refresh Data.")
+        return
+
+    _snapshot(df, countries)
+    _indexed(df, countries, base_year)
+    _returns_heatmap(df, countries)
+    _carry_scatter(df, ann, countries, snap_year)
+
+    st.markdown(
+        "**Data source:** FRED (Federal Reserve Bank of St. Louis) — daily bilateral spot rates "
+        "converted to local-currency-per-USD convention. Monthly averages shown. "
+        "Carry indicator uses IMF CPI as a proxy for interest rate differential."
+    )

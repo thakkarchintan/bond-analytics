@@ -10,6 +10,10 @@ from CapitalMarkets import capital_markets
 from YieldCurves import yield_curves
 from BondCalculator import bond_calculator
 from BondPortfolio import bond_portfolio
+from CentralBankRates import central_bank_rates
+from FiscalScorecard import fiscal_scorecard
+from InflationGrowth import inflation_growth
+from FXCurrencies import fx_currencies
 from data import load_data
 from dotenv import load_dotenv
 import os
@@ -133,6 +137,10 @@ if st.session_state["connected"]:
         "News Summarizer": news_app,
         "Global Macro Dashboard": macro_dashboard,
         "Global Capital Markets": capital_markets,
+        "Central Bank Rates": central_bank_rates,
+        "Fiscal Scorecard": fiscal_scorecard,
+        "Inflation & Growth": inflation_growth,
+        "FX & Currencies": fx_currencies,
         "Global Yield Curves": yield_curves,
         "Bond Pricing & Calculator": bond_calculator,
         "Bond Portfolio": bond_portfolio,

@@ -1,5 +1,20 @@
 CHANGELOG = [
     {
+        "id": 25,
+        "version": "1.25",
+        "timestamp": "06 Aug 2026, 08:27 IST",
+        "category": "Feature",
+        "title": "4 new Global Macro pages — Central Bank Rates, Fiscal Scorecard, Inflation & Growth, FX & Currencies",
+        "description": [
+            "global_macro_data.py — shared data layer: IMF Datamapper (8 indicators × 16 countries), BIS WS_CBPOL_M policy rates (40+ CBs), FRED spot FX (15 currency pairs); each dataset cached as parquet, refreshable via sidebar button",
+            "Central Bank Rates — policy rate snapshot table with hiking/cutting/hold status, rate history multi-line chart, rate cycle heatmap, real policy rate (nominal − CPI) overlay",
+            "Fiscal Scorecard — debt/GDP time series + ranking, fiscal balance chart with EU −3% threshold, primary balance, debt sustainability scatter quadrant",
+            "Inflation & Growth — stagflation quadrant (CPI vs GDP growth), CPI + GDP time series with rankings, Phillips curve scatter (unemployment vs inflation)",
+            "FX & Currencies — latest rates snapshot, indexed performance chart (base year selectable), annual returns heatmap (green=strengthened, red=weakened), carry trade indicator (inflation vs FX strength)",
+            "All 4 pages wired into app.py APP_MAP; data loads from parquet cache on cold start — click Refresh Data on first use to pull live data from BIS/IMF/FRED",
+        ],
+    },
+    {
         "id": 24,
         "version": "1.24",
         "timestamp": "05 Aug 2026, 21:05 IST",
