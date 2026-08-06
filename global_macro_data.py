@@ -189,12 +189,18 @@ def _build_policy_rates() -> pd.DataFrame:
 
 # ── FRED FX fetcher ───────────────────────────────────────────────────────────
 
+_FRED_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Accept": "text/html,application/xhtml+xml,*/*",
+}
+
+
 def _build_fx() -> pd.DataFrame:
     frames = []
     for series_id, meta in FX_SERIES.items():
         url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
         try:
-            r = requests.get(url, timeout=30, headers={"User-Agent": "bond-analytics/1.0"})
+            r = requests.get(url, timeout=45, headers=_FRED_HEADERS)
             r.raise_for_status()
             df = pd.read_csv(StringIO(r.text), na_values=".")
             if df.shape[1] < 2:
@@ -224,7 +230,7 @@ def _build_teny_yields() -> pd.DataFrame:
     for series_id, country in YIELD_SERIES.items():
         url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
         try:
-            r = requests.get(url, timeout=30, headers={"User-Agent": "bond-analytics/1.0"})
+            r = requests.get(url, timeout=45, headers=_FRED_HEADERS)
             r.raise_for_status()
             df = pd.read_csv(StringIO(r.text), na_values=".")
             if df.shape[1] < 2:

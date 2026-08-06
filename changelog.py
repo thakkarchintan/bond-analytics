@@ -1,5 +1,17 @@
 CHANGELOG = [
     {
+        "id": 28,
+        "version": "1.28",
+        "timestamp": "06 Aug 2026, 09:15 IST",
+        "category": "Fix",
+        "title": "FRED User-Agent fix + commit IMF annual parquet cache",
+        "description": [
+            "global_macro_data.py — FRED requests now use browser User-Agent/Accept headers; fixes connection drops on bulk FRED fetches (FX rates, 10Y yields)",
+            "gmacro_annual_cache.parquet committed — IMF annual data (GDP, CPI, fiscal, debt, unemployment, current account for 16 countries 2000–2026) loads instantly on cold deploy without hitting IMF API",
+            "BIS API URL changed since deployment — policy rates (Central Bank Rates) and REER (FX & Currencies) show no-data banner until BIS URL is resolved; all other pages unaffected",
+        ],
+    },
+    {
         "id": 26,
         "version": "1.26",
         "timestamp": "06 Aug 2026, 08:35 IST",
