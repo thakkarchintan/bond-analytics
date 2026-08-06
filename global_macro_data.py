@@ -364,3 +364,267 @@ def load_reer() -> pd.DataFrame:
     if REER_CACHE.exists():
         return pd.read_parquet(REER_CACHE)
     return refresh_reer()
+
+
+# ── Additional datasets: US curve · breakeven · credit spreads · money mkts · direct CB rates ──
+
+US_CURVE_CACHE  = _HERE / "gmacro_us_curve_cache.parquet"
+BREAKEVEN_CACHE = _HERE / "gmacro_breakeven_cache.parquet"
+SPREADS_CACHE   = _HERE / "gmacro_spreads_cache.parquet"
+MMKT_CACHE      = _HERE / "gmacro_mmkt_cache.parquet"
+CB_RATES_CACHE  = _HERE / "gmacro_cb_rates_cache.parquet"
+
+# US Treasury constant-maturity yields (FRED, daily)
+US_CURVE_SERIES: dict[str, str] = {
+    "DGS1MO": "1M",  "DGS3MO": "3M",  "DGS6MO": "6M",
+    "DGS1":   "1Y",  "DGS2":   "2Y",  "DGS3":   "3Y",
+    "DGS5":   "5Y",  "DGS7":   "7Y",  "DGS10":  "10Y",
+    "DGS20":  "20Y", "DGS30":  "30Y",
+}
+US_CURVE_MAT_YRS: dict[str, float] = {
+    "1M": 1/12, "3M": 3/12, "6M": 6/12,
+    "1Y": 1,    "2Y": 2,    "3Y": 3,
+    "5Y": 5,    "7Y": 7,    "10Y": 10,
+    "20Y": 20,  "30Y": 30,
+}
+
+# TIPS breakeven inflation & real yields (FRED, daily)
+BREAKEVEN_SERIES: dict[str, str] = {
+    "T5YIE":  "5Y Breakeven",
+    "T10YIE": "10Y Breakeven",
+    "T5YIFR": "5-10Y Fwd Breakeven",
+    "DFII5":  "5Y Real Yield",
+    "DFII10": "10Y Real Yield",
+}
+
+# ICE BofA OAS indices (FRED, daily, %)
+SPREADS_SERIES: dict[str, str] = {
+    "BAMLC0A0CM":   "IG",
+    "BAMLC0A1CAAA": "AAA",
+    "BAMLC0A2CAA":  "AA",
+    "BAMLC0A3CA":   "A",
+    "BAMLC0A4CBBB": "BBB",
+    "BAMLH0A0HYM2": "HY",
+    "BAMLH0A1HYBB": "BB",
+    "BAMLH0A2HYB":  "B",
+    "BAMLH0A3HYC":  "CCC",
+}
+
+# Money-market rates (FRED, daily)
+MMKT_SERIES: dict[str, str] = {
+    "SOFR": "SOFR",
+    "DFF":  "Fed Funds (Eff.)",
+}
+
+
+def _fred_daily(series_id: str, col: str = "Value") -> pd.DataFrame:
+    """Fetch one FRED daily/monthly series; return {Date, <col>} from 2000 onward."""
+    url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
+    try:
+        r = requests.get(url, timeout=45, headers=_FRED_HEADERS)
+        r.raise_for_status()
+        df = pd.read_csv(StringIO(r.text), na_values=".")
+        if df.shape[1] < 2:
+            return pd.DataFrame()
+        df.columns = ["Date", col]
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+        df[col]    = pd.to_numeric(df[col], errors="coerce")
+        return df.dropna().loc[lambda d: d["Date"].dt.year >= 2000]
+    except Exception as exc:
+        warnings.warn(f"FRED {series_id} failed: {exc}")
+        return pd.DataFrame()
+
+
+def _build_us_curve() -> pd.DataFrame:
+    frames = []
+    for sid, mat in US_CURVE_SERIES.items():
+        df = _fred_daily(sid, "Yield_Pct")
+        if df.empty:
+            continue
+        df["Maturity"] = mat
+        frames.append(df[["Date", "Maturity", "Yield_Pct"]])
+    return (
+        pd.concat(frames, ignore_index=True).sort_values(["Date", "Maturity"])
+        if frames else pd.DataFrame()
+    )
+
+
+def _build_breakeven() -> pd.DataFrame:
+    frames = []
+    for sid, name in BREAKEVEN_SERIES.items():
+        df = _fred_daily(sid, "Value")
+        if df.empty:
+            continue
+        df["Series"] = name
+        frames.append(df[["Date", "Series", "Value"]])
+    return (
+        pd.concat(frames, ignore_index=True).sort_values(["Series", "Date"])
+        if frames else pd.DataFrame()
+    )
+
+
+def _build_spreads() -> pd.DataFrame:
+    frames = []
+    for sid, name in SPREADS_SERIES.items():
+        df = _fred_daily(sid, "OAS_Pct")
+        if df.empty:
+            continue
+        df["Series"] = name
+        frames.append(df[["Date", "Series", "OAS_Pct"]])
+    return (
+        pd.concat(frames, ignore_index=True).sort_values(["Series", "Date"])
+        if frames else pd.DataFrame()
+    )
+
+
+def _build_mmkt_rates() -> pd.DataFrame:
+    frames = []
+    for sid, name in MMKT_SERIES.items():
+        df = _fred_daily(sid, "Rate_Pct")
+        if df.empty:
+            continue
+        df["Series"] = name
+        frames.append(df[["Date", "Series", "Rate_Pct"]])
+    return (
+        pd.concat(frames, ignore_index=True).sort_values(["Series", "Date"])
+        if frames else pd.DataFrame()
+    )
+
+
+def _build_cb_rates_direct() -> pd.DataFrame:
+    """Multi-source CB policy rates: FRED (US), ECB SDW, Bank of England."""
+    frames = []
+
+    # US — FRED FEDFUNDS (monthly avg of effective rate)
+    df_us = _fred_daily("FEDFUNDS", "Rate_Pct")
+    if not df_us.empty:
+        df_us["Country"] = "United States"
+        frames.append(df_us[["Country", "Date", "Rate_Pct"]])
+
+    # ECB — deposit facility rate via ECB Statistical Data Warehouse
+    try:
+        ecb_url = (
+            "https://data-api.ecb.europa.eu/service/data/FM/"
+            "B.U2.EUR.4F.KR.DFR.LEV?format=csvdata&startPeriod=2000-01-01"
+        )
+        r = requests.get(ecb_url, timeout=30)
+        r.raise_for_status()
+        ecb = pd.read_csv(StringIO(r.text))
+        if {"TIME_PERIOD", "OBS_VALUE"}.issubset(ecb.columns):
+            ecb = ecb[["TIME_PERIOD", "OBS_VALUE"]].copy()
+            ecb.columns = ["Date", "Rate_Pct"]
+            ecb["Date"]     = pd.to_datetime(ecb["Date"], errors="coerce")
+            ecb["Rate_Pct"] = pd.to_numeric(ecb["Rate_Pct"], errors="coerce")
+            ecb = ecb.dropna()
+            ecb["Country"] = "Euro Area"
+            frames.append(ecb[["Country", "Date", "Rate_Pct"]])
+    except Exception as exc:
+        warnings.warn(f"ECB SDW failed: {exc}")
+
+    # UK — Bank of England Bank Rate
+    try:
+        boe_url = (
+            "https://www.bankofengland.co.uk/boeapps/database/fromshowcolumns.asp"
+            "?CSVF=TT&UsingCodes=Y&VFD=N&SeriesCodes=IUDBEDR"
+        )
+        r = requests.get(boe_url, timeout=30, headers={
+            "User-Agent": _FRED_HEADERS["User-Agent"],
+            "Accept": "text/html,application/xhtml+xml,*/*",
+        })
+        r.raise_for_status()
+        boe = pd.read_csv(StringIO(r.text))
+        if boe.shape[1] >= 2:
+            boe = boe.iloc[:, :2].copy()
+            boe.columns = ["Date", "Rate_Pct"]
+            boe["Date"]     = pd.to_datetime(boe["Date"], dayfirst=True, errors="coerce")
+            boe["Rate_Pct"] = pd.to_numeric(boe["Rate_Pct"], errors="coerce")
+            boe = boe.dropna()
+            boe = boe[boe["Date"].dt.year >= 2000]
+            boe["Country"] = "United Kingdom"
+            frames.append(boe[["Country", "Date", "Rate_Pct"]])
+    except Exception as exc:
+        warnings.warn(f"BoE API failed: {exc}")
+
+    return (
+        pd.concat(frames, ignore_index=True).sort_values(["Country", "Date"])
+        if frames else pd.DataFrame()
+    )
+
+
+# ── Refresh helpers ────────────────────────────────────────────────────────────
+
+def refresh_us_curve() -> pd.DataFrame:
+    df = _build_us_curve()
+    if not df.empty:
+        df.to_parquet(US_CURVE_CACHE, index=False)
+        load_us_curve.clear()
+    return df
+
+
+def refresh_breakeven() -> pd.DataFrame:
+    df = _build_breakeven()
+    if not df.empty:
+        df.to_parquet(BREAKEVEN_CACHE, index=False)
+        load_breakeven.clear()
+    return df
+
+
+def refresh_spreads() -> pd.DataFrame:
+    df = _build_spreads()
+    if not df.empty:
+        df.to_parquet(SPREADS_CACHE, index=False)
+        load_spreads.clear()
+    return df
+
+
+def refresh_mmkt_rates() -> pd.DataFrame:
+    df = _build_mmkt_rates()
+    if not df.empty:
+        df.to_parquet(MMKT_CACHE, index=False)
+        load_mmkt_rates.clear()
+    return df
+
+
+def refresh_cb_rates_direct() -> pd.DataFrame:
+    df = _build_cb_rates_direct()
+    if not df.empty:
+        df.to_parquet(CB_RATES_CACHE, index=False)
+        load_cb_rates_direct.clear()
+    return df
+
+
+# ── Loaders (cache-first, fall back to API) ───────────────────────────────────
+
+@st.cache_data(show_spinner=False)
+def load_us_curve() -> pd.DataFrame:
+    if US_CURVE_CACHE.exists():
+        return pd.read_parquet(US_CURVE_CACHE)
+    return refresh_us_curve()
+
+
+@st.cache_data(show_spinner=False)
+def load_breakeven() -> pd.DataFrame:
+    if BREAKEVEN_CACHE.exists():
+        return pd.read_parquet(BREAKEVEN_CACHE)
+    return refresh_breakeven()
+
+
+@st.cache_data(show_spinner=False)
+def load_spreads() -> pd.DataFrame:
+    if SPREADS_CACHE.exists():
+        return pd.read_parquet(SPREADS_CACHE)
+    return refresh_spreads()
+
+
+@st.cache_data(show_spinner=False)
+def load_mmkt_rates() -> pd.DataFrame:
+    if MMKT_CACHE.exists():
+        return pd.read_parquet(MMKT_CACHE)
+    return refresh_mmkt_rates()
+
+
+@st.cache_data(show_spinner=False)
+def load_cb_rates_direct() -> pd.DataFrame:
+    if CB_RATES_CACHE.exists():
+        return pd.read_parquet(CB_RATES_CACHE)
+    return refresh_cb_rates_direct()

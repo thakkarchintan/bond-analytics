@@ -14,6 +14,7 @@ from YieldCurves import yield_curves
 from BondCalculator import bond_calculator
 from BondPortfolio import bond_portfolio
 from BondInvestmentStrategies import bond_investment_strategies
+from CreditSpreads import credit_spreads
 from CentralBankRates import central_bank_rates
 from FiscalScorecard import fiscal_scorecard
 from InflationGrowth import inflation_growth
@@ -169,6 +170,7 @@ if st.session_state["connected"]:
         "Bond Pricing & Calculator": bond_calculator,
         "Bond Portfolio": bond_portfolio,
         "Bond Investment Strategies": bond_investment_strategies,
+        "Credit Spreads": credit_spreads,
         "Changelog": changelog_tab,
     }
 

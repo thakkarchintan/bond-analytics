@@ -12,9 +12,11 @@ import streamlit as st
 
 from global_macro_data import (
     COUNTRY_COLORS, CORE_NAMES, ALL_NAMES,
-    ANNUAL_CACHE, POLICY_CACHE, YIELD_CACHE,
+    ANNUAL_CACHE, POLICY_CACHE, YIELD_CACHE, CB_RATES_CACHE, MMKT_CACHE,
     load_annual, load_policy_rates, load_teny_yields,
+    load_cb_rates_direct, load_mmkt_rates,
     refresh_policy_rates, refresh_annual, refresh_teny_yields,
+    refresh_cb_rates_direct, refresh_mmkt_rates,
 )
 
 # ── Visual constants ───────────────────────────────────────────────────────────
@@ -356,11 +358,55 @@ def _real_rates(df: pd.DataFrame, ann: pd.DataFrame, countries: list[str], yr_fr
 
 # ── Main entry point ───────────────────────────────────────────────────────────
 
+def _money_markets(mmkt: pd.DataFrame, yr_from: int) -> None:
+    _section(
+        "Money Market Rates",
+        "SOFR · Fed Funds Effective Rate · daily from FRED",
+    )
+
+    if mmkt.empty:
+        _no_data("No money market data — click Refresh Data.")
+        return
+
+    fdf = mmkt[mmkt["Date"].dt.year >= yr_from]
+    if fdf.empty:
+        _no_data()
+        return
+
+    MMKT_COLORS = {"SOFR": _BLUE, "Fed Funds (Eff.)": _GRN}
+
+    fig = go.Figure()
+    for series in [s for s in ["SOFR", "Fed Funds (Eff.)"] if s in fdf["Series"].unique()]:
+        cdf = fdf[fdf["Series"] == series].sort_values("Date")
+        fig.add_trace(go.Scatter(
+            x=cdf["Date"], y=cdf["Rate_Pct"],
+            name=series, mode="lines",
+            line=dict(color=MMKT_COLORS.get(series, "#888"), width=2),
+            hovertemplate=f"<b>{series}</b><br>%{{x|%d %b %Y}}: %{{y:.4f}}%<extra></extra>",
+        ))
+
+    fig.update_layout(
+        height=380,
+        title=dict(text="Money Market Rates (%)",
+                   font=dict(size=13, color=_T1), x=0),
+        yaxis_title="Rate (%)",
+        **_chart_layout(),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    st.markdown(
+        "**SOFR** (Secured Overnight Financing Rate) is collateralised (tri-party repo) and replaced LIBOR "
+        "as the benchmark US overnight rate from June 2023. "
+        "**Fed Funds Effective** is the volume-weighted median of uncollateralised overnight interbank lending. "
+        "SOFR typically trades a few basis points below Fed Funds. "
+        "Source: FRED (SOFR, DFF)."
+    )
+
+
 def central_bank_rates() -> None:
     st.markdown(
         '<h2 style="color:#0f172a;margin:0 0 2px;">Central Bank Policy Rates</h2>'
         '<div style="font-size:12px;color:#475569;">'
-        'Source: BIS WS_CBPOL_M · 40+ central banks · monthly data · back to 2000</div>'
+        'Policy rates · SOFR · Fed Funds · Yield curve slope · Real rates</div>'
         '<hr style="border:none;border-top:1px solid #e2e8f0;margin:10px 0 6px;">',
         unsafe_allow_html=True,
     )
@@ -384,13 +430,15 @@ def central_bank_rates() -> None:
         f'border-bottom:1px solid {_EDGE};">Data</div>',
         unsafe_allow_html=True,
     )
+    from datetime import datetime
     for cache, label in [
-        (POLICY_CACHE, "Policy rates"),
-        (YIELD_CACHE,  "10Y yields"),
-        (ANNUAL_CACHE, "Annual macro"),
+        (POLICY_CACHE,   "Policy rates (BIS)"),
+        (CB_RATES_CACHE, "Policy rates (direct)"),
+        (MMKT_CACHE,     "Money market"),
+        (YIELD_CACHE,    "10Y yields"),
+        (ANNUAL_CACHE,   "Annual macro"),
     ]:
         if cache.exists():
-            from datetime import datetime
             mtime = datetime.fromtimestamp(cache.stat().st_mtime)
             st.sidebar.caption(f"{label}: {mtime.strftime('%d %b %Y')}")
         else:
@@ -401,44 +449,62 @@ def central_bank_rates() -> None:
     # ── Load ──────────────────────────────────────────────────────────────────
     if refresh:
         with st.spinner("Fetching policy rates from BIS…"):
-            df = refresh_policy_rates()
+            df_bis = refresh_policy_rates()
+        if df_bis.empty:
+            with st.spinner("BIS unavailable — fetching from ECB/BoE/FRED…"):
+                df = refresh_cb_rates_direct()
+        else:
+            df = df_bis
+        with st.spinner("Fetching money market rates from FRED…"):
+            mmkt = refresh_mmkt_rates()
         with st.spinner("Fetching 10Y yields from FRED…"):
             yld = refresh_teny_yields()
         with st.spinner("Fetching annual macro from IMF…"):
             ann = refresh_annual()
     else:
-        df  = load_policy_rates()
-        yld = load_teny_yields()
-        ann = load_annual()
+        df_bis = load_policy_rates()
+        df     = df_bis if not df_bis.empty else load_cb_rates_direct()
+        mmkt   = load_mmkt_rates()
+        yld    = load_teny_yields()
+        ann    = load_annual()
 
-    if df.empty:
+    # Source label for transparency
+    if df_bis.empty and not df.empty:
+        st.info(
+            "ℹ️ BIS API unavailable — policy rates shown for **US, Euro Area, UK** "
+            "via FRED / ECB SDW / Bank of England. Click **Refresh Data** to retry.",
+            icon=None,
+        )
+    elif df.empty:
         st.warning(
-            "No policy rate data loaded yet. Click **Refresh Data** in the sidebar "
-            "to fetch from BIS (first load takes ~30 seconds).",
+            "No policy rate data loaded. Click **Refresh Data** in the sidebar.",
             icon="⚠️",
         )
-        return
 
     if not countries:
         st.info("Select at least one central bank in the sidebar.")
         return
 
-    # Filter to countries that actually exist in the data
-    available = df["Country"].unique().tolist()
-    countries = [c for c in countries if c in available]
-    if not countries:
-        st.info("Selected central banks have no data yet. Try Refresh Data.")
-        return
+    # Policy rate sections (show if any data available)
+    if not df.empty:
+        available = df["Country"].unique().tolist()
+        sel = [c for c in countries if c in available]
+        if sel:
+            _snapshot(df, ann, sel)
+            _history(df, yld, sel, yr_from)
+            _yield_curve_slope(df, yld, sel, yr_from)
+            _rate_cycles(df, sel)
+            _real_rates(df, ann, sel, yr_from)
+        else:
+            st.info("Selected central banks have no data. Try Refresh Data.")
 
-    _snapshot(df, ann, countries)
-    _history(df, yld, countries, yr_from)
-    _yield_curve_slope(df, yld, countries, yr_from)
-    _rate_cycles(df, countries)
-    _real_rates(df, ann, countries, yr_from)
+    # Money market rates always shown (FRED, independent of BIS)
+    _money_markets(mmkt, yr_from)
 
+    src = "BIS WS_CBPOL_M" if not df_bis.empty else "FRED (US Fed Funds), ECB SDW, Bank of England"
     st.markdown(
-        "**Data sources:** BIS WS_CBPOL_M (policy rates, 40+ CBs, monthly). "
-        "FRED/OECD IRLT series (10Y government bond yields, developed markets). "
-        "Real rate = nominal policy rate − IMF WEO CPI inflation (annual average). "
-        "10Y yields not available for all countries — China, India, Brazil, Mexico, South Africa omitted."
+        f"**Policy rate source:** {src}. "
+        "**10Y yields:** FRED/OECD IRLT series (developed markets). "
+        "**Money market:** FRED SOFR, DFF. "
+        "Real rate = nominal policy rate − IMF WEO CPI inflation (annual average)."
     )

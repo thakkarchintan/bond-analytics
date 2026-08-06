@@ -1,5 +1,20 @@
 CHANGELOG = [
     {
+        "id": 33,
+        "version": "1.33",
+        "timestamp": "06 Aug 2026, 19:26 IST",
+        "category": "Feature",
+        "title": "5 new data streams: US yield curve · breakeven/real yields · credit spreads · money market rates · CB rates fix",
+        "description": [
+            "global_macro_data.py — 5 new FRED/ECB/BoE datasets with parquet caching: US curve (11 maturities, daily), TIPS breakeven+real yields, ICE BofA OAS spreads (IG/HY/AAA–CCC), SOFR+Fed Funds, CB rates direct (US/ECB/BoE)",
+            "YieldCurves.py — new '🇺🇸 US Treasury Curve' tab: compare full 1M–30Y curve across up to 5 dates, live 2Y10Y and 3M10Y spread metrics; sovereign curves tab unchanged",
+            "InflationGrowth.py — new 'Breakeven Inflation & Real Yields' section: 5Y/10Y breakeven, 5-10Y forward, 5Y/10Y TIPS real yields; side-by-side charts with 2% target line",
+            "CreditSpreads.py — new standalone page: snapshot cards, Spread History tab with recession shading, Credit Spectrum bar chart, IG vs HY comparison + ratio",
+            "CentralBankRates.py — policy rates now fall back to direct ECB SDW + BoE + FRED when BIS is unavailable; new Money Market Rates section (SOFR, Fed Funds)",
+            "app.py + HomePage.py — Credit Spreads registered in sidebar and home screen cards",
+        ],
+    },
+    {
         "id": 32,
         "version": "1.32",
         "timestamp": "06 Aug 2026, 15:55 IST",

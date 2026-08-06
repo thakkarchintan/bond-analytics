@@ -11,6 +11,7 @@ _CARDS = [
     ("Bond Pricing & Calculator","🧮", "Price bonds, compute duration, DV01 and yield — all inputs update live."),
     ("Bond Portfolio",           "💼", "Build and stress-test a bond portfolio with P&L, DV01 hedging and short positions."),
     ("Bond Investment Strategies","📐", "Construct and compare Ladder, Bullet and Barbell strategies with rate shock simulation."),
+    ("Credit Spreads",           "📉", "IG to CCC OAS spreads over time — credit risk spectrum, IG vs HY dynamics, recession context."),
     ("Correlation Matrix",       "🔥", "Rolling cross-asset correlations. Spot diversification breakdowns and regime shifts."),
     ("Portfolio Rebalance",      "⚖️", "Optimise portfolio weights toward target allocations with rebalancing constraints."),
     ("Global Capital Markets",   "🏛️", "Capital markets overview — issuance, spreads and financing conditions."),

@@ -11,7 +11,9 @@ import streamlit as st
 
 from global_macro_data import (
     COUNTRY_COLORS, CORE_NAMES, ALL_NAMES,
-    ANNUAL_CACHE, load_annual, refresh_annual,
+    ANNUAL_CACHE, BREAKEVEN_CACHE,
+    load_annual, refresh_annual,
+    load_breakeven, refresh_breakeven,
 )
 
 _BG   = "#0f172a"
@@ -365,13 +367,19 @@ def inflation_growth() -> None:
         f'border-bottom:1px solid {_EDGE};">Data</div>',
         unsafe_allow_html=True,
     )
+    from datetime import datetime
     if ANNUAL_CACHE.exists():
-        from datetime import datetime
         mtime = datetime.fromtimestamp(ANNUAL_CACHE.stat().st_mtime)
-        st.sidebar.caption(f"Cached: {mtime.strftime('%d %b %Y')}")
+        st.sidebar.caption(f"IMF macro: {mtime.strftime('%d %b %Y')}")
     else:
-        st.sidebar.caption("Not cached yet")
-    refresh = st.sidebar.button("Refresh Data", key="ig_refresh")
+        st.sidebar.caption("IMF macro: not cached")
+    if BREAKEVEN_CACHE.exists():
+        mtime = datetime.fromtimestamp(BREAKEVEN_CACHE.stat().st_mtime)
+        st.sidebar.caption(f"Breakeven/TIPS: {mtime.strftime('%d %b %Y')}")
+    else:
+        st.sidebar.caption("Breakeven/TIPS: not cached")
+    refresh    = st.sidebar.button("Refresh IMF Data",   key="ig_refresh")
+    refresh_be = st.sidebar.button("Refresh Breakeven",  key="ig_refresh_be")
 
     if refresh:
         with st.spinner("Fetching from IMF…"):
@@ -399,4 +407,130 @@ def inflation_growth() -> None:
         "**Data source:** IMF World Economic Outlook Datamapper API. "
         "CPI = PCPIPCH (consumer prices, % change). "
         "Real GDP growth = NGDP_RPCH. Unemployment = LUR."
+    )
+
+    # ── Breakeven inflation & real yields ─────────────────────────────────────
+    _breakeven_section(refresh_be, yr_from)
+
+
+def _breakeven_section(refresh: bool, yr_from: int) -> None:
+    """TIPS breakeven inflation and real yields from FRED."""
+    _section(
+        "Breakeven Inflation & Real Yields",
+        "Market-implied inflation expectations and real yields from TIPS · Source: FRED",
+    )
+
+    if refresh:
+        with st.spinner("Fetching TIPS data from FRED…"):
+            df = refresh_breakeven()
+    else:
+        df = load_breakeven()
+
+    if df.empty:
+        st.info("No breakeven data — click **Refresh Data** in the sidebar.", icon="ℹ️")
+        return
+
+    # Filter to selected date range
+    df = df[df["Date"].dt.year >= yr_from].copy()
+    if df.empty:
+        st.info("No data in selected date range.")
+        return
+
+    COLORS = {
+        "5Y Breakeven":       "#60a5fa",
+        "10Y Breakeven":      "#f87171",
+        "5-10Y Fwd Breakeven":"#fbbf24",
+        "5Y Real Yield":      "#34d399",
+        "10Y Real Yield":     "#a78bfa",
+    }
+
+    # Two charts side by side: breakevenss | real yields
+    c1, c2 = st.columns(2)
+
+    with c1:
+        fig = go.Figure()
+        for s in ["5Y Breakeven", "10Y Breakeven", "5-10Y Fwd Breakeven"]:
+            sdf = df[df["Series"] == s].sort_values("Date")
+            if sdf.empty:
+                continue
+            fig.add_trace(go.Scatter(
+                x=sdf["Date"], y=sdf["Value"], name=s,
+                mode="lines",
+                line=dict(color=COLORS[s], width=2),
+                hovertemplate=f"<b>{s}</b><br>%{{x|%d %b %Y}}: %{{y:.2f}}%<extra></extra>",
+            ))
+        fig.add_hline(y=2, line=dict(color="#475569", dash="dot", width=1),
+                      annotation_text="2% target", annotation_font_color="#475569")
+        fig.update_layout(
+            height=360,
+            title=dict(text="Breakeven Inflation (%)", font=dict(size=13, color=_T1), x=0),
+            yaxis_title="Breakeven (%)",
+            template="plotly_dark",
+            paper_bgcolor=_CARD, plot_bgcolor=_BG,
+            margin=dict(l=54, r=12, t=44, b=36),
+            font=dict(color=_T1, size=11),
+            xaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2)),
+            yaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2)),
+            hoverlabel=dict(bgcolor=_CARD, font_color=_T1, bordercolor=_EDGE),
+            legend=dict(font=dict(size=10, color=_T1), bgcolor="rgba(0,0,0,0)",
+                        orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    with c2:
+        fig = go.Figure()
+        for s in ["5Y Real Yield", "10Y Real Yield"]:
+            sdf = df[df["Series"] == s].sort_values("Date")
+            if sdf.empty:
+                continue
+            fig.add_trace(go.Scatter(
+                x=sdf["Date"], y=sdf["Value"], name=s,
+                mode="lines",
+                line=dict(color=COLORS[s], width=2),
+                hovertemplate=f"<b>{s}</b><br>%{{x|%d %b %Y}}: %{{y:.2f}}%<extra></extra>",
+            ))
+        fig.add_hline(y=0, line=dict(color="#475569", dash="dot", width=1),
+                      annotation_text="Zero real yield", annotation_font_color="#475569")
+        fig.update_layout(
+            height=360,
+            title=dict(text="TIPS Real Yields (%)", font=dict(size=13, color=_T1), x=0),
+            yaxis_title="Real Yield (%)",
+            template="plotly_dark",
+            paper_bgcolor=_CARD, plot_bgcolor=_BG,
+            margin=dict(l=54, r=12, t=44, b=36),
+            font=dict(color=_T1, size=11),
+            xaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2)),
+            yaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2)),
+            hoverlabel=dict(bgcolor=_CARD, font_color=_T1, bordercolor=_EDGE),
+            legend=dict(font=dict(size=10, color=_T1), bgcolor="rgba(0,0,0,0)",
+                        orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Latest values
+    latest = df.groupby("Series").last().reset_index()
+    vals = {r["Series"]: r["Value"] for _, r in latest.iterrows()}
+    cards = [
+        ("5Y Breakeven",        vals.get("5Y Breakeven"),        _BLUE),
+        ("10Y Breakeven",       vals.get("10Y Breakeven"),        _RED),
+        ("5-10Y Fwd Breakeven", vals.get("5-10Y Fwd Breakeven"), _AMB),
+        ("5Y Real Yield",       vals.get("5Y Real Yield"),       _GRN),
+        ("10Y Real Yield",      vals.get("10Y Real Yield"),      "#a78bfa"),
+    ]
+    html = '<div style="display:flex;gap:10px;margin-bottom:8px;">'
+    for lbl, v, c in cards:
+        if v is None:
+            continue
+        html += (
+            f'<div style="background:{_CARD};border:1px solid {_EDGE};border-radius:8px;'
+            f'padding:8px 12px;text-align:center;flex:1;">'
+            f'<div style="font-size:9px;color:{_T2};text-transform:uppercase;letter-spacing:.08em;">{lbl}</div>'
+            f'<div style="font-size:18px;font-weight:700;color:{c};">{v:.2f}%</div></div>'
+        )
+    html += "</div>"
+    st.markdown(html, unsafe_allow_html=True)
+    st.markdown(
+        "**Breakeven inflation** = nominal Treasury yield − TIPS yield — the market's implied inflation expectation. "
+        "**Real yield** (TIPS) = the inflation-adjusted return; negative real yields indicate financial repression. "
+        "Data: FRED T5YIE, T10YIE, T5YIFR, DFII5, DFII10."
     )
