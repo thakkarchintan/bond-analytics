@@ -1,11 +1,20 @@
 from auth import Authenticator
 from dotenv import load_dotenv
 import os
+import tempfile
 import streamlit as st
 
 load_dotenv()
 
-client_secret_path = os.getenv("GOOGLE_CLIENT_SECRET") 
+_secret_env = os.getenv("GOOGLE_CLIENT_SECRET", "")
+# Render sets this to a file path; HF Spaces sets it to raw JSON content.
+if _secret_env and not os.path.isfile(_secret_env):
+    _tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+    _tmp.write(_secret_env)
+    _tmp.close()
+    client_secret_path = _tmp.name
+else:
+    client_secret_path = _secret_env
 
 
 allowed_users = os.getenv("ALLOWED_USERS").split(",")
