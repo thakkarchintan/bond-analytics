@@ -1,5 +1,18 @@
 CHANGELOG = [
     {
+        "id": 32,
+        "version": "1.32",
+        "timestamp": "06 Aug 2026, 15:55 IST",
+        "category": "Feature",
+        "title": "Bond Investment Strategies — full yield shock scenario per strategy tab",
+        "description": [
+            "Each strategy tab (Ladder, Bullet, Barbell) now includes the full per-economy, per-maturity yield shock scenario builder from Bond Portfolio",
+            "Preset buttons: +25/+50/+100, -25/-50/-100bp parallel shifts, Bear Steepen, Bull Flatten, Reset",
+            "Impact analysis: P&L by country chart, P&L by maturity bucket chart, waterfall attribution per bond, detail table",
+            "Quick parallel shock table retained above as a fast reference",
+        ],
+    },
+    {
         "id": 31,
         "version": "1.31",
         "timestamp": "06 Aug 2026, 15:29 IST",

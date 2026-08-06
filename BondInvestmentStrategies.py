@@ -12,7 +12,10 @@ from BondCalculator import (
     approx_price_change, bond_price,
     convexity, macaulay_duration, modified_duration,
 )
-from BondPortfolio import BOND_UNIVERSE
+from BondPortfolio import (
+    BOND_UNIVERSE, BUCKETS,
+    _scenario_builder, _impact_analysis,
+)
 
 # ── Palette ───────────────────────────────────────────────────────────────────
 _CARD = "#1e293b"
@@ -410,10 +413,22 @@ def _render_strategy(name: str, state_key: str, investment: float, countries: li
     with ch2:
         st.plotly_chart(_cashflow_chart(positions, color), use_container_width=True)
 
-    # Rate shock
-    _section("Rate Shock Simulation",
-             "Parallel yield curve shift · price change estimated via duration + convexity")
+    # Quick parallel shock table
+    _section("Quick Rate Shock",
+             "Parallel yield curve shift · duration + convexity approximation")
     _shock_table(df, port["total_mv"])
+
+    # Full scenario builder — per-economy, per-maturity shocks + impact analysis
+    df_scen = df.copy()
+    df_scen["units"] = df_scen["qty"]
+    def _bucket(mat: float) -> str:
+        for lbl, _, lo, hi in BUCKETS:
+            if lo < mat <= hi:
+                return lbl
+        return "30Y"
+    df_scen["bucket"] = df_scen["maturity"].apply(_bucket)
+    _scenario_builder(set(bond_ids.keys()))
+    _impact_analysis(df_scen, port["total_mv"])
 
     # Holdings detail
     with st.expander("Holdings Detail"):
