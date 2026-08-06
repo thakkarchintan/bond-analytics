@@ -35,11 +35,11 @@ _FREQ_MAP = {"Annual": 1, "Semi-annual": 2, "Quarterly": 4}
 def _chart_layout(**kw) -> dict:
     base = dict(
         paper_bgcolor=_CARD, plot_bgcolor=_BG,
-        font=dict(family="Inter, sans-serif", color=_T2, size=12),
+        font=dict(family="Inter, sans-serif", color=_T1, size=12),
         margin=dict(l=55, r=20, t=40, b=40),
         legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color=_T1, size=11)),
-        xaxis=dict(gridcolor=_EDGE, zerolinecolor=_EDGE),
-        yaxis=dict(gridcolor=_EDGE, zerolinecolor=_EDGE),
+        xaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
+        yaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
     )
     base.update(kw)
     return base
@@ -152,10 +152,11 @@ def bond_simulator() -> None:
             )
 
         fig.update_layout(
-            title="Price-Yield Relationship",
+            title=dict(text="Price-Yield Relationship", font=dict(size=13, color=_T1), x=0),
+            height=440,
             **_chart_layout(
-                xaxis=dict(title="YTM (%)", gridcolor=_EDGE, zerolinecolor=_EDGE),
-                yaxis=dict(title="Price ($)", gridcolor=_EDGE, zerolinecolor=_EDGE),
+                xaxis=dict(title="YTM (%)", gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
+                yaxis=dict(title="Price ($)", gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
             ),
         )
         st.plotly_chart(fig, use_container_width=True)
@@ -193,11 +194,12 @@ def bond_simulator() -> None:
             marker=dict(size=6),
         ))
         fig2.update_layout(
-            title="Cash Flows & Present Values",
+            title=dict(text="Cash Flows & Present Values", font=dict(size=13, color=_T1), x=0),
             barmode="stack",
+            height=400,
             **_chart_layout(
-                xaxis=dict(title="Time (years)", gridcolor=_EDGE, zerolinecolor=_EDGE),
-                yaxis=dict(title="Amount ($)", gridcolor=_EDGE, zerolinecolor=_EDGE),
+                xaxis=dict(title="Time (years)", gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
+                yaxis=dict(title="Amount ($)", gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
             ),
         )
         st.plotly_chart(fig2, use_container_width=True)
@@ -260,10 +262,11 @@ def bond_simulator() -> None:
         ))
         fig3.add_vline(x=0, line=dict(color=_EDGE, dash="dot", width=1))
         fig3.update_layout(
-            title="Price Impact: Actual vs Approximations",
+            title=dict(text="Price Impact: Actual vs Approximations", font=dict(size=13, color=_T1), x=0),
+            height=420,
             **_chart_layout(
-                xaxis=dict(title="Yield Shock (bp)", gridcolor=_EDGE, zerolinecolor=_EDGE),
-                yaxis=dict(title="Price ($)", gridcolor=_EDGE, zerolinecolor=_EDGE),
+                xaxis=dict(title="Yield Shock (bp)", gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
+                yaxis=dict(title="Price ($)", gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
             ),
         )
         st.plotly_chart(fig3, use_container_width=True)

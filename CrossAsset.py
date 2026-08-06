@@ -47,11 +47,11 @@ _RECESSIONS = [
 def _chart_layout(**kw) -> dict:
     base = dict(
         paper_bgcolor=_CARD, plot_bgcolor=_BG,
-        font=dict(family="Inter, sans-serif", color=_T2, size=12),
+        font=dict(family="Inter, sans-serif", color=_T1, size=12),
         margin=dict(l=55, r=20, t=40, b=40),
         legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color=_T1, size=11)),
-        xaxis=dict(gridcolor=_EDGE, zerolinecolor=_EDGE),
-        yaxis=dict(gridcolor=_EDGE, zerolinecolor=_EDGE),
+        xaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
+        yaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
     )
     base.update(kw)
     return base
@@ -166,10 +166,11 @@ def cross_asset() -> None:
             ))
         fig.add_hline(y=100, line=dict(color=_EDGE, dash="dot", width=1))
         fig.update_layout(
-            title="Cross-Asset Performance (indexed to 100)",
+            title=dict(text="Cross-Asset Performance (indexed to 100)", font=dict(size=13, color=_T1), x=0),
+            height=480,
             **_chart_layout(
-                xaxis=dict(gridcolor=_EDGE, zerolinecolor=_EDGE),
-                yaxis=dict(gridcolor=_EDGE, zerolinecolor=_EDGE),
+                xaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
+                yaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
             ),
         )
         st.plotly_chart(fig, use_container_width=True)
@@ -190,11 +191,12 @@ def cross_asset() -> None:
                 hovertemplate=f"<b>{s}</b><br>%{{x|%Y-%m-%d}}<br>%{{y:.2f}}<extra></extra>",
             ))
             fig_r.update_layout(
-                title=s, height=230,
+                title=dict(text=s, font=dict(size=13, color=_T1), x=0),
+                height=280,
                 **_chart_layout(
-                    margin=dict(l=55, r=20, t=35, b=20),
-                    xaxis=dict(gridcolor=_EDGE, zerolinecolor=_EDGE),
-                    yaxis=dict(gridcolor=_EDGE, zerolinecolor=_EDGE),
+                    margin=dict(l=55, r=20, t=40, b=25),
+                    xaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
+                    yaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
                 ),
             )
             st.plotly_chart(fig_r, use_container_width=True)
@@ -223,10 +225,10 @@ def cross_asset() -> None:
                 color_continuous_midpoint=0,
             )
             fig_c.update_layout(
-                title="Monthly Return Correlation Matrix",
+                title=dict(text="Monthly Return Correlation Matrix", font=dict(size=13, color=_T1), x=0),
                 paper_bgcolor=_CARD, plot_bgcolor=_BG,
                 font=dict(color=_T1, size=11),
-                margin=dict(l=80, r=20, t=40, b=40),
+                margin=dict(l=80, r=20, t=50, b=40),
                 coloraxis_colorbar=dict(tickfont=dict(color=_T2)),
             )
             st.plotly_chart(fig_c, use_container_width=True)

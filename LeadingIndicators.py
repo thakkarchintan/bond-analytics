@@ -81,11 +81,11 @@ _INDICATORS = {
 def _chart_layout(**kw) -> dict:
     base = dict(
         paper_bgcolor=_CARD, plot_bgcolor=_BG,
-        font=dict(family="Inter, sans-serif", color=_T2, size=12),
+        font=dict(family="Inter, sans-serif", color=_T1, size=12),
         margin=dict(l=55, r=20, t=40, b=40),
         legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color=_T1, size=11)),
-        xaxis=dict(gridcolor=_EDGE, zerolinecolor=_EDGE),
-        yaxis=dict(gridcolor=_EDGE, zerolinecolor=_EDGE),
+        xaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
+        yaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
     )
     base.update(kw)
     return base
@@ -270,12 +270,15 @@ def leading_indicators() -> None:
             ))
 
         fig.update_layout(
-            title=f"{name}  <span style='font-size:12px;color:{_T2}'>{meta['unit']}</span>",
-            height=260,
+            title=dict(
+                text=f"{name}  ({meta['unit']})",
+                font=dict(size=13, color=_T1), x=0,
+            ),
+            height=310,
             **_chart_layout(
-                margin=dict(l=55, r=20, t=40, b=20),
-                xaxis=dict(gridcolor=_EDGE, zerolinecolor=_EDGE),
-                yaxis=dict(gridcolor=_EDGE, zerolinecolor=_EDGE),
+                margin=dict(l=55, r=20, t=45, b=20),
+                xaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
+                yaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
             ),
         )
         st.plotly_chart(fig, use_container_width=True)
