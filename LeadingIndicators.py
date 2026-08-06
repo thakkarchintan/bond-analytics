@@ -17,6 +17,7 @@ from global_macro_data import (
     load_leading_indicators,
     refresh_leading_indicators,
 )
+from dbnomics_data import OECD_BC_CACHE, load_oecd_bc, refresh_oecd_bc
 
 _CARD = "#1e293b"
 _BG   = "#0f172a"
@@ -149,138 +150,234 @@ def _signal_card(name: str, value: float, meta: dict) -> str:
     )
 
 
+def _g20_cli_tab(yr_from: int) -> None:
+    df_oecd = load_oecd_bc()
+    if df_oecd.empty:
+        st.warning("No OECD data. Click **Refresh OECD** in the sidebar.")
+        return
+
+    df_oecd["Date"] = pd.to_datetime(df_oecd["Date"])
+    cli = df_oecd[
+        (df_oecd["Indicator"] == "CLI") &
+        (df_oecd["Date"].dt.year >= yr_from)
+    ].copy()
+
+    if cli.empty:
+        st.info("No CLI data for selected date range.")
+        return
+
+    countries = sorted(cli["Country"].unique())
+    default = [c for c in [
+        "United States", "Euro Area", "China", "Japan",
+        "United Kingdom", "South Korea", "OECD Total",
+    ] if c in countries]
+
+    selected = st.multiselect("Countries", countries, default=default, key="li_g20_sel")
+    if not selected:
+        st.info("Select at least one country.")
+        return
+
+    _COLORS = [
+        "#60a5fa","#f87171","#34d399","#fbbf24","#a78bfa",
+        "#fb923c","#22d3ee","#f472b6","#818cf8","#a3e635",
+    ]
+
+    fig = go.Figure()
+    for i, country in enumerate(selected):
+        cdf = cli[cli["Country"] == country].sort_values("Date")
+        fig.add_trace(go.Scatter(
+            x=cdf["Date"], y=cdf["Value"],
+            name=country,
+            line=dict(color=_COLORS[i % len(_COLORS)], width=1.8),
+            hovertemplate=f"<b>{country}</b><br>%{{x|%b %Y}}: %{{y:.2f}}<extra></extra>",
+        ))
+
+    fig.add_hline(y=100, line=dict(color=_EDGE, dash="dot", width=1.5),
+                  annotation_text="100 = neutral", annotation_font=dict(color=_T2, size=9),
+                  annotation_position="top right")
+    fig.update_layout(
+        title=dict(text="OECD Composite Leading Indicator (CLI) — country comparison",
+                   font=dict(size=13, color=_T1), x=0),
+        height=460,
+        yaxis_title="LTRENDIDX (100 = neutral)",
+        paper_bgcolor=_CARD, plot_bgcolor=_BG,
+        font=dict(family="Inter, sans-serif", color=_T1, size=12),
+        margin=dict(l=55, r=20, t=44, b=36),
+        legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color=_T1, size=11)),
+        xaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
+        yaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Latest snapshot table
+    latest = (
+        cli[cli["Country"].isin(selected)]
+        .sort_values("Date")
+        .groupby("Country")
+        .last()
+        .reset_index()[["Country", "Value", "Date"]]
+        .sort_values("Value", ascending=False)
+    )
+    latest["As of"] = latest["Date"].dt.strftime("%b %Y")
+    latest["Signal"] = latest["Value"].apply(
+        lambda v: "🟢 Above trend" if v > 100 else "🔴 Below trend"
+    )
+    latest["Value"] = latest["Value"].round(2)
+    st.dataframe(latest[["Country", "Value", "As of", "Signal"]].rename(columns={"Value": "CLI (LTRENDIDX)"}),
+                 use_container_width=True, hide_index=True)
+    st.caption(
+        "OECD CLI: Composite Leading Indicator, Long-Term Trend Index (LTRENDIDX). "
+        "Above 100 = activity above long-run trend (expanding). "
+        "Below 100 = below trend (contracting). "
+        "Source: OECD via DBnomics (DP_LIVE). Data through Nov 2023."
+    )
+
+
 def leading_indicators() -> None:
     st.markdown("### 🔭 Leading Indicators & Recession Tracker")
     st.caption(
-        "ISM PMI · Jobless Claims · Consumer Sentiment · Housing Starts · "
-        "Unemployment · 2Y10Y Spread — with NBER recession shading"
+        "US: Jobless Claims · Consumer Sentiment · Housing Starts · Industrial Production · "
+        "Unemployment · 2Y10Y Spread — with NBER recession shading · "
+        "G20: OECD Composite Leading Indicator"
     )
 
     # ── Sidebar ───────────────────────────────────────────────────────────────
-    if st.sidebar.button("Refresh Data", key="li_refresh"):
+    if st.sidebar.button("Refresh US Data", key="li_refresh"):
         with st.spinner("Fetching from FRED..."):
             refresh_leading_indicators()
-        st.success("Leading indicator data refreshed.")
+        st.success("US leading indicator data refreshed.")
 
-    if LEADING_CACHE.exists():
-        mtime = os.path.getmtime(LEADING_CACHE)
-        ts = dt.datetime.fromtimestamp(mtime).strftime("%d %b %Y %H:%M")
-        st.sidebar.caption(f"Cache: {ts}")
-    else:
-        st.sidebar.caption("No cache — click Refresh Data")
+    if st.sidebar.button("Refresh OECD", key="li_oecd_refresh"):
+        with st.spinner("Fetching OECD CLI from DBnomics (may take 60s)..."):
+            refresh_oecd_bc()
+        st.success("OECD data refreshed.")
+
+    for cache, label in [
+        (LEADING_CACHE, "US indicators"),
+        (OECD_BC_CACHE, "OECD CLI"),
+    ]:
+        if cache.exists():
+            mtime = os.path.getmtime(cache)
+            ts = dt.datetime.fromtimestamp(mtime).strftime("%d %b %Y %H:%M")
+            st.sidebar.caption(f"{label}: {ts}")
+        else:
+            st.sidebar.caption(f"{label}: no cache")
 
     yr_from = st.sidebar.slider("From Year", 1970, 2024, 2000, key="li_yr_from")
 
-    df_all = load_leading_indicators()
-    if df_all.empty:
-        st.warning("No data available. Click **Refresh Data** in the sidebar.")
-        return
+    # ── Tabs ──────────────────────────────────────────────────────────────────
+    tab_us, tab_g20 = st.tabs(["🇺🇸 US Indicators", "🌐 G20 CLI (OECD)"])
 
-    df_all["Date"] = pd.to_datetime(df_all["Date"])
-    cutoff = pd.Timestamp(yr_from, 1, 1)
-    df_plot = df_all[df_all["Date"] >= cutoff].copy()
+    with tab_g20:
+        _g20_cli_tab(yr_from)
 
-    # Extract recession data
-    rec_df = df_all[df_all["Series"] == "Recession"].copy()
-    rec_periods = _recession_periods(rec_df)
+    with tab_us:
+        df_all = load_leading_indicators()
+        if df_all.empty:
+            st.warning("No data available. Click **Refresh US Data** in the sidebar.")
+            return
 
-    # ── Latest signal dashboard ───────────────────────────────────────────────
-    latest: dict[str, float] = {}
-    for name in _INDICATORS:
-        sub = df_all[df_all["Series"] == name].dropna(subset=["Value"])
-        if not sub.empty:
-            latest[name] = sub.sort_values("Date")["Value"].iloc[-1]
+        df_all["Date"] = pd.to_datetime(df_all["Date"])
+        cutoff = pd.Timestamp(yr_from, 1, 1)
+        df_plot = df_all[df_all["Date"] >= cutoff].copy()
 
-    if latest:
-        st.markdown("**Latest Readings**")
-        n = len(latest)
-        cols = st.columns(n)
-        for col, (name, val) in zip(cols, latest.items()):
-            col.markdown(_signal_card(name, val, _INDICATORS[name]), unsafe_allow_html=True)
+        rec_df = df_all[df_all["Series"] == "Recession"].copy()
+        rec_periods = _recession_periods(rec_df)
 
-        # Recession signal count
-        warnings = 0
-        for name, val in latest.items():
-            meta = _INDICATORS[name]
-            thresh = meta.get("threshold")
-            if thresh is not None:
-                if (not meta["inverted"] and val < thresh) or (meta["inverted"] and val > thresh):
-                    warnings += 1
+        # ── Latest signal dashboard ───────────────────────────────────────────
+        latest: dict[str, float] = {}
+        for name in _INDICATORS:
+            sub = df_all[df_all["Series"] == name].dropna(subset=["Value"])
+            if not sub.empty:
+                latest[name] = sub.sort_values("Date")["Value"].iloc[-1]
 
-        signal_color = _GRN if warnings <= 1 else (_AMB if warnings == 2 else _RED)
-        signal_text  = (
-            "Low recession risk" if warnings <= 1
-            else "Elevated recession risk" if warnings == 2
-            else "High recession risk"
-        )
-        st.markdown(
-            f'<div style="margin:0.6rem 0 0.2rem;padding:8px 16px;background:{_CARD};'
-            f'border:1px solid {signal_color};border-radius:8px;display:inline-block">'
-            f'<span style="color:{signal_color};font-weight:600">{signal_text}</span>'
-            f' &nbsp;<span style="color:{_T2};font-size:12px">— {warnings} of {len(latest)} signals in warning territory</span>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        if latest:
+            st.markdown("**Latest Readings**")
+            n = len(latest)
+            cols = st.columns(n)
+            for col, (name, val) in zip(cols, latest.items()):
+                col.markdown(_signal_card(name, val, _INDICATORS[name]), unsafe_allow_html=True)
 
-    # ── Individual charts ─────────────────────────────────────────────────────
-    available = [n for n in _INDICATORS if n in df_plot["Series"].unique()]
-    selected = st.multiselect(
-        "Indicators to display", available, default=available, key="li_sel"
-    )
-    if not selected:
-        st.info("Select at least one indicator above.")
-        return
+            warnings_count = 0
+            for name, val in latest.items():
+                meta = _INDICATORS[name]
+                thresh = meta.get("threshold")
+                if thresh is not None:
+                    if (not meta["inverted"] and val < thresh) or (meta["inverted"] and val > thresh):
+                        warnings_count += 1
 
-    for name in selected:
-        meta = _INDICATORS[name]
-        sub  = df_plot[df_plot["Series"] == name].sort_values("Date").dropna(subset=["Value"])
-        if sub.empty:
-            continue
-
-        fig = go.Figure()
-        _add_rec_shading(fig, rec_periods, yr_from)
-
-        fig.add_trace(go.Scatter(
-            x=sub["Date"], y=sub["Value"],
-            name=name,
-            line=dict(color=meta["color"], width=1.8),
-            hovertemplate=f"<b>{name}</b><br>%{{x|%Y-%m-%d}}<br>%{{y:.2f}} {meta['unit']}<extra></extra>",
-        ))
-
-        thresh = meta.get("threshold")
-        if thresh is not None:
-            fig.add_hline(
-                y=thresh,
-                line=dict(color=_RED, dash="dash", width=1),
-                annotation_text=meta.get("thresh_lbl", f"{thresh}"),
-                annotation_font=dict(color=_RED, size=10),
-                annotation_position="top right",
+            signal_color = _GRN if warnings_count <= 1 else (_AMB if warnings_count == 2 else _RED)
+            signal_text  = (
+                "Low recession risk" if warnings_count <= 1
+                else "Elevated recession risk" if warnings_count == 2
+                else "High recession risk"
             )
+            st.markdown(
+                f'<div style="margin:0.6rem 0 0.2rem;padding:8px 16px;background:{_CARD};'
+                f'border:1px solid {signal_color};border-radius:8px;display:inline-block">'
+                f'<span style="color:{signal_color};font-weight:600">{signal_text}</span>'
+                f' &nbsp;<span style="color:{_T2};font-size:12px">— {warnings_count} of {len(latest)} signals in warning territory</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-        # 12-month rolling average
-        if len(sub) > 12:
-            sub = sub.copy()
-            sub["MA12"] = sub["Value"].rolling(12, min_periods=6).mean()
-            fig.add_trace(go.Scatter(
-                x=sub["Date"], y=sub["MA12"],
-                name="12M avg",
-                line=dict(color=_T2, width=1.2, dash="dot"),
-                hoverinfo="skip",
-            ))
-
-        fig.update_layout(
-            title=dict(
-                text=f"{name}  ({meta['unit']})",
-                font=dict(size=13, color=_T1), x=0,
-            ),
-            height=310,
-            **_chart_layout(
-                margin=dict(l=55, r=20, t=45, b=20),
-                xaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
-                yaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
-            ),
+        # ── Individual charts ─────────────────────────────────────────────────
+        available = [n for n in _INDICATORS if n in df_plot["Series"].unique()]
+        selected = st.multiselect(
+            "Indicators to display", available, default=available, key="li_sel"
         )
-        st.plotly_chart(fig, use_container_width=True)
-        st.caption(meta["desc"])
-        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+        if not selected:
+            st.info("Select at least one indicator above.")
+        else:
+            for name in selected:
+                meta = _INDICATORS[name]
+                sub  = df_plot[df_plot["Series"] == name].sort_values("Date").dropna(subset=["Value"])
+                if sub.empty:
+                    continue
+
+                fig = go.Figure()
+                _add_rec_shading(fig, rec_periods, yr_from)
+
+                fig.add_trace(go.Scatter(
+                    x=sub["Date"], y=sub["Value"],
+                    name=name,
+                    line=dict(color=meta["color"], width=1.8),
+                    hovertemplate=f"<b>{name}</b><br>%{{x|%Y-%m-%d}}<br>%{{y:.2f}} {meta['unit']}<extra></extra>",
+                ))
+
+                thresh = meta.get("threshold")
+                if thresh is not None:
+                    fig.add_hline(
+                        y=thresh,
+                        line=dict(color=_RED, dash="dash", width=1),
+                        annotation_text=meta.get("thresh_lbl", f"{thresh}"),
+                        annotation_font=dict(color=_RED, size=10),
+                        annotation_position="top right",
+                    )
+
+                if len(sub) > 12:
+                    sub = sub.copy()
+                    sub["MA12"] = sub["Value"].rolling(12, min_periods=6).mean()
+                    fig.add_trace(go.Scatter(
+                        x=sub["Date"], y=sub["MA12"],
+                        name="12M avg",
+                        line=dict(color=_T2, width=1.2, dash="dot"),
+                        hoverinfo="skip",
+                    ))
+
+                fig.update_layout(
+                    title=dict(
+                        text=f"{name}  ({meta['unit']})",
+                        font=dict(size=13, color=_T1), x=0,
+                    ),
+                    height=310,
+                    **_chart_layout(
+                        margin=dict(l=55, r=20, t=45, b=20),
+                        xaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
+                        yaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2), zerolinecolor=_EDGE),
+                    ),
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                st.caption(meta["desc"])
+                st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)

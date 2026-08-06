@@ -15,6 +15,7 @@ from global_macro_data import (
     load_fx, load_policy_rates, load_reer,
     refresh_fx, refresh_policy_rates, refresh_reer,
 )
+from dbnomics_data import EER_CACHE, load_eer, refresh_eer
 
 _BG   = "#0f172a"
 _CARD = "#1e293b"
@@ -354,6 +355,94 @@ def _carry_scatter(fx: pd.DataFrame, pol: pd.DataFrame, countries: list[str], ye
     )
 
 
+# ── BIS Real Effective Exchange Rate (DBnomics) ───────────────────────────────
+
+_CCY_NAMES: dict[str, str] = {
+    "USD": "United States", "EUR": "Euro Area",    "GBP": "United Kingdom",
+    "JPY": "Japan",         "CNY": "China",         "AUD": "Australia",
+    "CAD": "Canada",        "CHF": "Switzerland",   "KRW": "South Korea",
+    "INR": "India",         "BRL": "Brazil",        "NOK": "Norway",
+    "SEK": "Sweden",        "MXN": "Mexico",
+}
+
+_CCY_COLORS: dict[str, str] = {
+    "USD": "#60a5fa", "EUR": "#a78bfa", "GBP": "#f87171",
+    "JPY": "#f59e0b", "CNY": "#f472b6", "AUD": "#34d399",
+    "CAD": "#fb923c", "CHF": "#22d3ee", "KRW": "#818cf8",
+    "INR": "#fbbf24", "BRL": "#4ade80", "NOK": "#e879f9",
+    "SEK": "#38bdf8", "MXN": "#facc15",
+}
+
+
+def _bis_eer(eer: pd.DataFrame, currencies: list[str], yr_from: int) -> None:
+    _section(
+        "BIS Real Effective Exchange Rate (REER) — Broad Basket",
+        "BIS broad basket (up to 64 economies) · 2020=100 · monthly · Source: DBnomics BIS/WS_EER",
+    )
+
+    if eer.empty:
+        _no_data("BIS EER data not cached — click Refresh Data.")
+        return
+
+    fdf = eer[
+        eer["Currency"].isin(currencies) & (eer["Date"].dt.year >= yr_from)
+    ].copy()
+    if fdf.empty:
+        _no_data()
+        return
+
+    # Rebase to 2020=100 (data is already indexed, but ensure consistent base)
+    fig = go.Figure()
+    for ccy in currencies:
+        cdf = fdf[fdf["Currency"] == ccy].sort_values("Date")
+        if cdf.empty:
+            continue
+        fig.add_trace(go.Scatter(
+            x=cdf["Date"], y=cdf["EER"],
+            name=f"{ccy} ({_CCY_NAMES.get(ccy, ccy)})",
+            mode="lines",
+            line=dict(color=_CCY_COLORS.get(ccy, "#888"), width=2),
+            hovertemplate=f"<b>{ccy}</b><br>%{{x|%b %Y}}: %{{y:.1f}}<extra></extra>",
+        ))
+
+    fig.add_hline(y=100, line=dict(color=_T3, dash="dot", width=1.5),
+                  annotation_text="2020=100", annotation_font_color=_T3)
+    fig.update_layout(
+        height=440,
+        title=dict(text="BIS Real Effective Exchange Rate — Broad Basket (2020=100)",
+                   font=dict(size=13, color=_T1), x=0),
+        yaxis_title="REER Index (2020=100)",
+        **_chart_layout(),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Latest table
+    latest = (
+        fdf.sort_values("Date")
+        .groupby("Currency")
+        .last()
+        .reset_index()[["Currency", "EER", "Date"]]
+        .sort_values("EER", ascending=False)
+    )
+    latest["Country"] = latest["Currency"].map(_CCY_NAMES)
+    latest["As of"] = latest["Date"].dt.strftime("%b %Y")
+    latest["EER (2020=100)"] = latest["EER"].round(1)
+    latest["Signal"] = latest["EER"].apply(
+        lambda v: "🔴 Overvalued vs 2020" if v > 100 else "🟢 Undervalued vs 2020"
+    )
+    st.dataframe(
+        latest[["Country", "Currency", "EER (2020=100)", "As of", "Signal"]],
+        use_container_width=True, hide_index=True,
+    )
+    st.markdown(
+        "**Above 100:** currency has appreciated in real terms since 2020 vs all trading partners "
+        "— potential export competitiveness loss.  \n"
+        "**Below 100:** real depreciation since 2020.  \n"
+        "Broad basket covers up to 64 economies weighted by trade shares. "
+        "Source: BIS Effective Exchange Rates (WS_EER), real, broad basket, monthly."
+    )
+
+
 # ── Main entry ────────────────────────────────────────────────────────────────
 
 def fx_currencies() -> None:
@@ -378,6 +467,13 @@ def fx_currencies() -> None:
     )
     base_year = st.sidebar.slider("Index base year", 2005, 2020, 2015, key="fx_base_year")
     snap_year = st.sidebar.slider("Snapshot year",   2005, 2025, 2023, key="fx_snap_year")
+    eer_yr_from = st.sidebar.slider("BIS EER from year", 2000, 2020, 2010, key="fx_eer_yr")
+
+    _all_ccy = list(_CCY_NAMES.keys())
+    _default_ccy = ["USD", "EUR", "GBP", "JPY", "CNY", "KRW", "INR", "BRL"]
+    eer_currencies = st.sidebar.multiselect(
+        "BIS EER currencies", _all_ccy, default=_default_ccy, key="fx_eer_ccy",
+    )
 
     st.sidebar.markdown(
         f'<div style="font-size:10px;color:{_T2};text-transform:uppercase;'
@@ -386,8 +482,9 @@ def fx_currencies() -> None:
         unsafe_allow_html=True,
     )
     for cache, label in [
-        (FX_CACHE,     "FX spot rates"),
-        (REER_CACHE,   "REER (BIS)"),
+        (FX_CACHE,   "FX spot rates"),
+        (REER_CACHE, "REER (BIS legacy)"),
+        (EER_CACHE,  "BIS EER (DBnomics)"),
         (POLICY_CACHE, "Policy rates"),
     ]:
         if cache.exists():
@@ -405,10 +502,13 @@ def fx_currencies() -> None:
             reer = refresh_reer()
         with st.spinner("Fetching policy rates from BIS…"):
             pol = refresh_policy_rates()
+        with st.spinner("Fetching BIS EER from DBnomics…"):
+            eer = refresh_eer()
     else:
         df   = load_fx()
         reer = load_reer()
         pol  = load_policy_rates()
+        eer  = load_eer()
 
     if df.empty:
         st.warning(
@@ -430,6 +530,7 @@ def fx_currencies() -> None:
     _snapshot(df, countries)
     _indexed(df, countries, base_year)
     _reer(reer, countries, base_year)
+    _bis_eer(eer, eer_currencies, eer_yr_from)
     _returns_heatmap(df, countries)
     _carry_scatter(df, pol, countries, snap_year)
 

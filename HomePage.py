@@ -15,6 +15,7 @@ _CARDS = [
     ("Cross-Asset Dashboard",    "📡", "VIX, Gold, Oil, S&P 500 and bond yields — normalized performance and correlation matrix."),
     ("Leading Indicators",       "🔭", "ISM PMI, jobless claims, housing starts, consumer sentiment — recession tracker with NBER shading."),
     ("Bond Simulator",           "🎯", "Interactive price-yield curve, duration vs convexity approximation, and rate shock analysis."),
+    ("Global Business Cycle",    "🌐", "OECD BCI, CCI and CLI across 30 countries — latest snapshot, trend heatmap, country deep-dive."),
     ("Correlation Matrix",       "🔥", "Rolling cross-asset correlations. Spot diversification breakdowns and regime shifts."),
     ("Portfolio Rebalance",      "⚖️", "Optimise portfolio weights toward target allocations with rebalancing constraints."),
     ("Global Capital Markets",   "🏛️", "Capital markets overview — issuance, spreads and financing conditions."),

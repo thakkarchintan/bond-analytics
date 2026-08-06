@@ -1,5 +1,21 @@
 CHANGELOG = [
     {
+        "id": 35,
+        "version": "1.35",
+        "timestamp": "06 Aug 2026, 23:58 IST",
+        "category": "Feature",
+        "title": "DBnomics integration: BIS CB balance sheets · ECB yield curve · OECD CLI · BIS EER · Global Business Cycle page",
+        "description": [
+            "dbnomics_data.py — new data layer: BIS WS_CBPOL (25 CBs), BIS WS_CBTA (8 CB balance sheets), BIS WS_EER (14-currency REER), ECB YC (8-maturity AAA govt bond curve daily through Jul 2026), OECD DP_LIVE (BCI/CCI/CLI for 29 countries); all with parquet caching via DBnomics API",
+            "GlobalBusinessCycle.py — new page: OECD BCI/CCI/CLI latest snapshot cards, country comparison line chart, 36-month deviation heatmap, country deep-dive with all 3 indicators; sidebar indicator + country selectors",
+            "YieldCurves.py — new 🇪🇺 Euro Area Curve tab: ECB Svensson model spot rates, 8 maturities (3M–30Y), compare up to 5 dates, live 2Y10Y and 3M10Y spread metrics; source: ECB via DBnomics",
+            "CentralBankRates.py — new CB Balance Sheets section: Fed/ECB/BoJ/BoE/PBoC/SNB/BoC/RBA total assets in USD bn, line chart + latest readings table; source: BIS WS_CBTA via DBnomics",
+            "FXCurrencies.py — new BIS EER section: real broad effective exchange rates (up to 64-economy basket), 2020=100, 14 currencies, line chart + latest readings; separate from existing REER section",
+            "LeadingIndicators.py — new 🌐 G20 CLI (OECD) tab alongside existing US Indicators tab; OECD Composite Leading Indicator for 16 countries with country comparison chart and latest signal table",
+            "app.py + HomePage.py — Global Business Cycle registered in APP_MAP and home screen cards; total 18 cards",
+        ],
+    },
+    {
         "id": 34,
         "version": "1.34",
         "timestamp": "06 Aug 2026, 21:32 IST",

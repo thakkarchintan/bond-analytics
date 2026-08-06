@@ -19,6 +19,7 @@ from CentralBankRates import central_bank_rates
 from CrossAsset import cross_asset
 from LeadingIndicators import leading_indicators
 from BondSimulator import bond_simulator
+from GlobalBusinessCycle import global_business_cycle
 from FiscalScorecard import fiscal_scorecard
 from InflationGrowth import inflation_growth
 from FXCurrencies import fx_currencies
@@ -177,6 +178,7 @@ if st.session_state["connected"]:
         "Cross-Asset Dashboard": cross_asset,
         "Leading Indicators": leading_indicators,
         "Bond Simulator": bond_simulator,
+        "Global Business Cycle": global_business_cycle,
         "Changelog": changelog_tab,
     }
 

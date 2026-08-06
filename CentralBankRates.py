@@ -18,6 +18,7 @@ from global_macro_data import (
     refresh_policy_rates, refresh_annual, refresh_teny_yields,
     refresh_cb_rates_direct, refresh_mmkt_rates,
 )
+from dbnomics_data import CBTA_CACHE, load_cbta, refresh_cbta
 
 # ── Visual constants ───────────────────────────────────────────────────────────
 
@@ -361,6 +362,72 @@ def _real_rates(df: pd.DataFrame, ann: pd.DataFrame, countries: list[str], yr_fr
     )
 
 
+# ── CB Balance Sheets ─────────────────────────────────────────────────────────
+
+def _balance_sheets(cbta: pd.DataFrame, yr_from: int) -> None:
+    _section(
+        "Central Bank Balance Sheets",
+        "Total assets in USD bn — Fed · ECB · BoJ · BoE · PBoC · SNB · BoC · RBA",
+    )
+
+    if cbta.empty:
+        _no_data("Balance sheet data not cached — click Refresh Data.")
+        return
+
+    fdf = cbta[cbta["Date"].dt.year >= yr_from].copy()
+    if fdf.empty:
+        _no_data()
+        return
+
+    CB_COLORS = {
+        "Federal Reserve": _BLUE,
+        "ECB":             "#a78bfa",
+        "Bank of Japan":   "#ef4444",
+        "Bank of England": "#f59e0b",
+        "PBoC":            "#f472b6",
+        "SNB":             "#22d3ee",
+        "Bank of Canada":  "#34d399",
+        "RBA":             "#fb923c",
+    }
+
+    fig = go.Figure()
+    for cb in fdf["CB"].unique():
+        cdf = fdf[fdf["CB"] == cb].sort_values("Date")
+        fig.add_trace(go.Scatter(
+            x=cdf["Date"], y=cdf["Assets_USD_bn"],
+            name=cb,
+            line=dict(color=CB_COLORS.get(cb, "#888"), width=2),
+            hovertemplate=f"<b>{cb}</b><br>%{{x|%b %Y}}: $%{{y:,.0f}}bn<extra></extra>",
+        ))
+
+    fig.update_layout(
+        height=420,
+        title=dict(text="Central Bank Total Assets (USD bn)",
+                   font=dict(size=13, color=_T1), x=0),
+        yaxis_title="Total Assets (USD bn)",
+        **_chart_layout(),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Latest readings table
+    latest = (
+        fdf.sort_values("Date")
+        .groupby("CB")
+        .last()
+        .reset_index()[["CB", "Assets_USD_bn", "Date"]]
+        .sort_values("Assets_USD_bn", ascending=False)
+    )
+    latest["Assets_USD_bn"] = latest["Assets_USD_bn"].round(0).astype(int)
+    latest["As of"] = latest["Date"].dt.strftime("%b %Y")
+    latest = latest.rename(columns={"CB": "Central Bank", "Assets_USD_bn": "Total Assets (USD bn)"})
+    st.dataframe(latest[["Central Bank", "Total Assets (USD bn)", "As of"]],
+                 use_container_width=True, hide_index=True)
+    st.markdown(
+        "Balance sheets expanded sharply through QE programmes (2009–2014, 2020–2022) and "
+        "are contracting through QT. Source: BIS WS_CBTA via DBnomics. Monthly, USD bn."
+    )
+
+
 # ── Main entry point ───────────────────────────────────────────────────────────
 
 def _money_markets(mmkt: pd.DataFrame, yr_from: int) -> None:
@@ -442,6 +509,7 @@ def central_bank_rates() -> None:
         (MMKT_CACHE,     "Money market"),
         (YIELD_CACHE,    "10Y yields"),
         (ANNUAL_CACHE,   "Annual macro"),
+        (CBTA_CACHE,     "Balance sheets (BIS)"),
     ]:
         if cache.exists():
             mtime = datetime.fromtimestamp(cache.stat().st_mtime)
@@ -466,12 +534,15 @@ def central_bank_rates() -> None:
             yld = refresh_teny_yields()
         with st.spinner("Fetching annual macro from IMF…"):
             ann = refresh_annual()
+        with st.spinner("Fetching CB balance sheets from DBnomics (BIS)…"):
+            cbta = refresh_cbta()
     else:
         df_bis = load_policy_rates()
         df     = df_bis if not df_bis.empty else load_cb_rates_direct()
         mmkt   = load_mmkt_rates()
         yld    = load_teny_yields()
         ann    = load_annual()
+        cbta   = load_cbta()
 
     # Source label for transparency
     if df_bis.empty and not df.empty:
@@ -506,10 +577,14 @@ def central_bank_rates() -> None:
     # Money market rates always shown (FRED, independent of BIS)
     _money_markets(mmkt, yr_from)
 
+    # Balance sheets from DBnomics/BIS
+    _balance_sheets(cbta, yr_from)
+
     src = "BIS WS_CBPOL_M" if not df_bis.empty else "FRED (US Fed Funds), ECB SDW, Bank of England"
     st.markdown(
         f"**Policy rate source:** {src}. "
         "**10Y yields:** FRED/OECD IRLT series (developed markets). "
         "**Money market:** FRED SOFR, DFF. "
+        "**Balance sheets:** BIS WS_CBTA via DBnomics. "
         "Real rate = nominal policy rate − IMF WEO CPI inflation (annual average)."
     )

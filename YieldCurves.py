@@ -13,6 +13,7 @@ from global_macro_data import (
     US_CURVE_CACHE, US_CURVE_MAT_YRS,
     load_us_curve, refresh_us_curve,
 )
+from dbnomics_data import ECB_YC_CACHE, load_ecb_yc, refresh_ecb_yc
 
 # Maturity label → decimal years (sovereign curves)
 MATURITY_YEARS: dict[str, float] = {
@@ -210,6 +211,144 @@ def _us_curve_tab(refresh: bool) -> None:
     )
 
 
+# ── Euro Area yield curve tab ─────────────────────────────────────────────────
+
+_EA_MAT_ORDER = ["3M", "6M", "1Y", "2Y", "5Y", "10Y", "20Y", "30Y"]
+_EA_MAT_XS    = [0.25, 0.5, 1, 2, 5, 10, 20, 30]
+
+
+def _euro_area_tab(refresh: bool) -> None:
+    if refresh:
+        with st.spinner("Fetching ECB yield curve from DBnomics (8 maturities)…"):
+            df = refresh_ecb_yc()
+    else:
+        df = load_ecb_yc()
+
+    from datetime import datetime as _dt
+    if ECB_YC_CACHE.exists():
+        mtime = _dt.fromtimestamp(ECB_YC_CACHE.stat().st_mtime)
+        st.caption(
+            f"Cached: {mtime.strftime('%d %b %Y %H:%M')} · "
+            "Source: ECB Svensson model spot rates via DBnomics · AAA-rated euro area govt bonds"
+        )
+    else:
+        st.caption("Not yet cached — click Refresh Euro Area Curve in the sidebar")
+
+    if df.empty:
+        st.warning("No ECB yield curve data. Click **Refresh Euro Area Curve** in the sidebar.", icon="⚠️")
+        return
+
+    df["DateOnly"] = df["Date"].dt.date
+    all_dates = sorted(df["DateOnly"].unique())
+    date_min, date_max = all_dates[0], all_dates[-1]
+
+    if "yc_ea_dates" not in st.session_state:
+        st.session_state.yc_ea_dates = [date_max]
+
+    st.markdown(
+        f'<div style="font-size:12px;color:{_T2};margin:4px 0 6px;">'
+        'Select up to 5 dates to compare curve shapes:</div>',
+        unsafe_allow_html=True,
+    )
+
+    to_remove: list[int] = []
+    n = len(st.session_state.yc_ea_dates)
+    cols = st.columns(min(n, 5) + 1)
+    for i, d in enumerate(st.session_state.yc_ea_dates):
+        with cols[i]:
+            picked = st.date_input(
+                f"Date {i+1}", value=d,
+                min_value=date_min, max_value=date_max,
+                key=f"yc_ea_date_{i}", label_visibility="visible",
+            )
+            st.session_state.yc_ea_dates[i] = picked
+            if n > 1 and st.button("✕", key=f"yc_ea_rm_{i}", help="Remove"):
+                to_remove.append(i)
+    with cols[min(n, 5)]:
+        st.markdown("<div style='margin-top:24px'></div>", unsafe_allow_html=True)
+        if n < 5 and st.button("＋ Add Date", key="yc_ea_add"):
+            st.session_state.yc_ea_dates.append(date_max)
+            st.rerun()
+
+    for i in reversed(to_remove):
+        st.session_state.yc_ea_dates.pop(i)
+        st.rerun()
+
+    selected_dates = list(dict.fromkeys(st.session_state.yc_ea_dates))
+
+    fig = go.Figure()
+    for i, target in enumerate(selected_dates):
+        available = sorted(df["DateOnly"].unique())
+        actual = min(available, key=lambda d: abs((d - target).days))
+        day_df = df[df["DateOnly"] == actual].sort_values("MatYrs")
+
+        xs = day_df["MatYrs"].tolist()
+        ys = day_df["Rate"].tolist()
+        mat_labels = day_df["Maturity"].tolist()
+        if not xs:
+            continue
+
+        clr = _DATE_COLORS[i % len(_DATE_COLORS)]
+        label = str(actual) if actual == target else f"{target} → {actual}"
+        fig.add_trace(go.Scatter(
+            x=xs, y=ys, name=label,
+            mode="lines+markers",
+            line=dict(color=clr, width=2.5),
+            marker=dict(size=8, color=clr, line=dict(width=1.5, color=_BG)),
+            customdata=mat_labels,
+            hovertemplate=(
+                "<b>%{customdata}</b><br>"
+                "Yield: <b>%{y:.3f}%</b><br>"
+                f"<i>{label}</i><extra></extra>"
+            ),
+        ))
+
+    fig.update_xaxes(
+        tickvals=_EA_MAT_XS,
+        ticktext=_EA_MAT_ORDER,
+        title_text="Maturity",
+        gridcolor=_EDGE, tickfont=dict(color=_T2),
+        showline=True, linecolor=_EDGE,
+    )
+    fig.update_yaxes(
+        title_text="Yield (%)",
+        gridcolor=_EDGE, tickfont=dict(color=_T2),
+        showline=True, linecolor=_EDGE,
+    )
+    fig.update_layout(
+        title=dict(text="Euro Area AAA Govt Bond Yield Curve — ECB Svensson model spot rates",
+                   font=dict(size=15, color=_T1), x=0),
+        **_chart_base(),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Spread metrics: 2Y10Y, 3M10Y
+    last_date = sorted(df["DateOnly"].unique())[-1]
+    last_df = df[df["DateOnly"] == last_date]
+    row = {r["Maturity"]: r["Rate"] for _, r in last_df.iterrows()}
+    spreads_html = '<div style="display:flex;gap:16px;margin-top:8px;">'
+    for ms, ml, lbl in [("2Y", "10Y", "2Y10Y Spread"), ("3M", "10Y", "3M10Y Spread")]:
+        s = row.get(ml)
+        l = row.get(ms)
+        if s is not None and l is not None:
+            bp = (s - l) * 100
+            txt_color = "#34d399" if bp >= 0 else "#f87171"
+            spreads_html += (
+                f'<div style="background:{_CARD};border:1px solid {_EDGE};border-radius:8px;'
+                f'padding:10px 16px;text-align:center;">'
+                f'<div style="font-size:10px;color:{_T2};text-transform:uppercase;letter-spacing:.1em;">{lbl}</div>'
+                f'<div style="font-size:20px;font-weight:700;color:{txt_color};">{bp:+.0f} bp</div>'
+                f'<div style="font-size:11px;color:{_T2};">as of {last_date}</div></div>'
+            )
+    spreads_html += "</div>"
+    st.markdown(spreads_html, unsafe_allow_html=True)
+    st.markdown(
+        "<br>ECB-estimated Svensson model spot rates from AAA-rated euro area government bonds. "
+        "Data updated daily by the ECB. Source: DBnomics `ECB/YC`.",
+        unsafe_allow_html=True,
+    )
+
+
 # ── Sovereign curves tab (original content) ───────────────────────────────────
 
 def _sovereign_tab(df: pd.DataFrame, bond_insts: dict, selected_countries: list[str],
@@ -320,6 +459,14 @@ def yield_curves() -> None:
     st.sidebar.markdown(
         '<div style="font-size:10px;color:#94a3b8;text-transform:uppercase;'
         'letter-spacing:.1em;margin:16px 0 6px;padding-bottom:4px;'
+        'border-bottom:1px solid #334155;">Euro Area Curve (ECB)</div>',
+        unsafe_allow_html=True,
+    )
+    refresh_ea = st.sidebar.button("Refresh Euro Area Curve", key="yc_ea_refresh")
+
+    st.sidebar.markdown(
+        '<div style="font-size:10px;color:#94a3b8;text-transform:uppercase;'
+        'letter-spacing:.1em;margin:16px 0 6px;padding-bottom:4px;'
         'border-bottom:1px solid #334155;">Sovereign Curves</div>',
         unsafe_allow_html=True,
     )
@@ -382,10 +529,13 @@ def yield_curves() -> None:
     selected_dates = list(dict.fromkeys(st.session_state.yc_dates))
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
-    tab_us, tab_sov = st.tabs(["🇺🇸 US Treasury Curve", "🌍 Sovereign Curves"])
+    tab_us, tab_ea, tab_sov = st.tabs(["🇺🇸 US Treasury Curve", "🇪🇺 Euro Area Curve", "🌍 Sovereign Curves"])
 
     with tab_us:
         _us_curve_tab(refresh_us)
+
+    with tab_ea:
+        _euro_area_tab(refresh_ea)
 
     with tab_sov:
         if not bond_insts:
