@@ -66,7 +66,7 @@ def _add_recessions(fig: go.Figure, yr_from: int) -> None:
             fillcolor="rgba(255,100,100,0.08)",
             line_width=0,
             annotation_text="Rec.", annotation_position="top left",
-            annotation_font=dict(color="#ef444477", size=9),
+            annotation_font=dict(color="rgba(239,68,68,0.45)", size=9),
         )
 
 
