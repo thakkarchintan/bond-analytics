@@ -17,6 +17,7 @@ from CentralBankRates import central_bank_rates
 from FiscalScorecard import fiscal_scorecard
 from InflationGrowth import inflation_growth
 from FXCurrencies import fx_currencies
+from HomePage import home_page_cards
 from data import load_data
 from dotenv import load_dotenv
 import os
@@ -162,7 +163,14 @@ if st.session_state["connected"]:
         if (app_name not in restricted_apps) or (user_email in admins)
     }
 
-    selected_app = st.sidebar.selectbox("Select an application", list(visible_apps.keys()))
+    if "selected_app" not in st.session_state:
+        st.session_state["selected_app"] = "Home"
+
+    nav_options = ["Home"] + list(visible_apps.keys())
+    current_idx = nav_options.index(st.session_state["selected_app"]) if st.session_state["selected_app"] in nav_options else 0
+    st.session_state["selected_app"] = st.sidebar.selectbox(
+        "Navigate to", nav_options, index=current_idx
+    )
 
     # Pre-warm data cache once per session — pays the Excel load cost here with
     # a spinner so sidebar controls are never frozen inside a tab function.
@@ -171,7 +179,10 @@ if st.session_state["connected"]:
             load_data()
         st.session_state["data_warmed"] = True
 
-    visible_apps[selected_app]()
+    if st.session_state["selected_app"] == "Home":
+        home_page_cards(visible_apps)
+    else:
+        visible_apps[st.session_state["selected_app"]]()
 
     # Logout pinned to bottom of sidebar
     st.sidebar.markdown(

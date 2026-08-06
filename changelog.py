@@ -1,5 +1,17 @@
 CHANGELOG = [
     {
+        "id": 30,
+        "version": "1.30",
+        "timestamp": "06 Aug 2026, 14:12 IST",
+        "category": "Feature",
+        "title": "Home screen with clickable app cards",
+        "description": [
+            "HomePage.py — new landing page shows a 3-column card grid; each card has the app emoji, name, and a 1-2 line description",
+            "Clicking any card navigates directly to that app; sidebar dropdown also updated to include Home at top",
+            "Greeting personalised with the logged-in user's first name",
+        ],
+    },
+    {
         "id": 29,
         "version": "1.29",
         "timestamp": "06 Aug 2026, 13:45 IST",
