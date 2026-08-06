@@ -138,11 +138,12 @@ def _snapshot(df: pd.DataFrame, ann: pd.DataFrame, countries: list[str]) -> None
     )
 
     def _style_row(row):
+        base = "color:#0f172a;"
         if "Hiking" in row["Trend"]:
-            return [f"background-color:#1e1010"] * len(row)
+            return [base + "background-color:#fecaca"] * len(row)
         if "Cutting" in row["Trend"]:
-            return [f"background-color:#0e1e14"] * len(row)
-        return [""] * len(row)
+            return [base + "background-color:#bbf7d0"] * len(row)
+        return [base] * len(row)
 
     st.dataframe(
         snap_disp[["Country", "Rate (%)", "Change 1Y (bp)", "Trend", "As of"]]
@@ -237,9 +238,13 @@ def _rate_cycles(df: pd.DataFrame, countries: list[str]) -> None:
         height=max(300, len(pivot) * 34 + 80),
         title=dict(text="Annual Average Policy Rate (%) by Country & Year",
                    font=dict(size=13, color=_T1), x=0),
-        xaxis=dict(tickfont=dict(color=_T2), side="bottom"),
-        yaxis=dict(tickfont=dict(color=_T1)),
-        **_chart_layout(margin=dict(l=160, r=80, t=44, b=44)),
+        **_chart_layout(
+            margin=dict(l=160, r=80, t=44, b=44),
+            xaxis=dict(tickfont=dict(color=_T2), side="bottom",
+                       gridcolor=_EDGE, showline=True, linecolor=_EDGE),
+            yaxis=dict(tickfont=dict(color=_T1),
+                       gridcolor=_EDGE, showline=True, linecolor=_EDGE),
+        ),
     )
     st.plotly_chart(fig, use_container_width=True)
 
