@@ -235,17 +235,20 @@ def _bond_row(b: dict) -> None:
 
 # ── Scenario builder ──────────────────────────────────────────────────────────
 
-def _apply_preset(name: str) -> None:
+def _apply_preset(name: str, prefix: str = "") -> None:
     col_shocks = _PRESET_SHOCKS[name]
+    pfx = f"{prefix}_" if prefix else ""
     for b in BOND_UNIVERSE:
-        st.session_state[f"shock_{b['id']}"] = col_shocks[_tenor_col(b["maturity"])]
+        st.session_state[f"shock_{pfx}{b['id']}"] = col_shocks[_tenor_col(b["maturity"])]
 
 
-def _scenario_builder(portfolio_ids: set[str]) -> None:
+def _scenario_builder(portfolio_ids: set[str], prefix: str = "") -> None:
     _section(
         "Yield Shock Scenario",
         "Set basis-point changes per economy and maturity — impact analysis updates below",
     )
+
+    pfx = f"{prefix}_" if prefix else ""
 
     # Preset buttons — row 1: parallel, row 2: curve + reset
     row1 = ["+25bp", "+50bp", "+100bp", "-25bp", "-50bp", "-100bp"]
@@ -254,23 +257,23 @@ def _scenario_builder(portfolio_ids: set[str]) -> None:
     c1s = st.columns(len(row1))
     for col, name in zip(c1s, row1):
         with col:
-            if st.button(name, key=f"pbtn_{name}", use_container_width=True):
-                _apply_preset(name)
+            if st.button(name, key=f"pbtn_{pfx}{name}", use_container_width=True):
+                _apply_preset(name, prefix)
                 st.rerun()
 
     c2s = st.columns(len(row2))
     for col, name in zip(c2s, row2):
         with col:
-            if st.button(name, key=f"pbtn_{name}", use_container_width=True):
-                _apply_preset(name)
+            if st.button(name, key=f"pbtn_{pfx}{name}", use_container_width=True):
+                _apply_preset(name, prefix)
                 st.rerun()
 
     st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
 
     # Initialise all shock keys to 0 on first render
     for b in BOND_UNIVERSE:
-        if f"shock_{b['id']}" not in st.session_state:
-            st.session_state[f"shock_{b['id']}"] = 0
+        if f"shock_{pfx}{b['id']}" not in st.session_state:
+            st.session_state[f"shock_{pfx}{b['id']}"] = 0
 
     # Header row
     widths = [1.8] + [0.85] * 5
@@ -308,7 +311,7 @@ def _scenario_builder(portfolio_ids: set[str]) -> None:
                 if bond:
                     st.number_input(
                         "bps",
-                        key=f"shock_{bond['id']}",
+                        key=f"shock_{pfx}{bond['id']}",
                         min_value=-1000,
                         max_value=1000,
                         step=1,
@@ -331,12 +334,13 @@ def _scenario_builder(portfolio_ids: set[str]) -> None:
 
 # ── Impact analysis ────────────────────────────────────────────────────────────
 
-def _impact_analysis(df: pd.DataFrame, total_mv: float) -> None:
+def _impact_analysis(df: pd.DataFrame, total_mv: float, prefix: str = "") -> None:
+    pfx = f"{prefix}_" if prefix else ""
     # Collect per-bond shocks and compute new prices
     shock_rows = []
     for _, row in df.iterrows():
         bid       = row["id"]
-        shock_bps = int(st.session_state.get(f"shock_{bid}", 0))
+        shock_bps = int(st.session_state.get(f"shock_{pfx}{bid}", 0))
         b         = _BOND_BY_ID[bid]
         new_ytm   = max(b["ytm"] / 100 + shock_bps / 10_000, 0.0001)
         new_px    = bond_price(b["face"], b["coupon"] / 100, b["maturity"], new_ytm, b["freq"])

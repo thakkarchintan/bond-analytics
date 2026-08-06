@@ -427,8 +427,8 @@ def _render_strategy(name: str, state_key: str, investment: float, countries: li
                 return lbl
         return "30Y"
     df_scen["bucket"] = df_scen["maturity"].apply(_bucket)
-    _scenario_builder(set(bond_ids.keys()))
-    _impact_analysis(df_scen, port["total_mv"])
+    _scenario_builder(set(bond_ids.keys()), prefix=state_key)
+    _impact_analysis(df_scen, port["total_mv"], prefix=state_key)
 
     # Holdings detail
     with st.expander("Holdings Detail"):
