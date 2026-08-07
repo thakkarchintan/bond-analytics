@@ -233,7 +233,7 @@ def _rate_cycles(df: pd.DataFrame, countries: list[str]) -> None:
             [1.0,  "#ef4444"],
         ],
         hovertemplate="%{y}<br>%{x}: %{z:.2f}%<extra></extra>",
-        colorbar=dict(title="Rate %", tickfont=dict(color=_T1), titlefont=dict(color=_T1)),
+        colorbar=dict(title=dict(text="Rate %", font=dict(color=_T1)), tickfont=dict(color=_T1)),
     ))
     fig.update_layout(
         height=max(300, len(pivot) * 34 + 80),

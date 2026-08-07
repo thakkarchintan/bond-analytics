@@ -1,5 +1,18 @@
 CHANGELOG = [
     {
+        "id": 38,
+        "version": "1.38",
+        "timestamp": "07 Aug 2026, 13:50 IST",
+        "category": "Enhancement",
+        "title": "Historical Shocks — economist write-ups + chart captions; fix CentralBankRates heatmap colorbar error",
+        "description": [
+            "HistoricalShocks.py — each of the 12 events now has a detailed economist-level write-up (2–3 paragraphs) covering macro context, how the displayed charts behaved, and the economic mechanism; rendered inline below the event metadata card",
+            "Every chart now has a 1–2 sentence caption below it explaining what the data shows and why it moved during the event",
+            "Legend font size increased to 11pt and legend text colour set to near-white (#f1f5f9) for improved readability",
+            "CentralBankRates.py — fixed ValueError: 'titlefont' is not a valid colorbar property in the installed Plotly version; replaced with title=dict(text=..., font=...) pattern",
+        ],
+    },
+    {
         "id": 37,
         "version": "1.37",
         "timestamp": "07 Aug 2026, 13:19 IST",
