@@ -231,16 +231,22 @@ def _decorate(fig: go.Figure, ev: dict) -> go.Figure:
     """Add shade rectangle and vertical event markers."""
     if ev.get("shade"):
         fig.add_vrect(
-            x0=pd.Timestamp(ev["shade"][0]),
-            x1=pd.Timestamp(ev["shade"][1]),
+            x0=ev["shade"][0], x1=ev["shade"][1],
             fillcolor="rgba(100,110,130,0.13)", line_width=0,
         )
     for date, label in (ev.get("keys") or []):
-        fig.add_vline(
-            x=pd.Timestamp(date),
-            line_dash="dot", line_color="#f59e0b", line_width=1.5,
-            annotation_text=label, annotation_position="top right",
-            annotation_font=dict(size=9, color="#f59e0b"),
+        fig.add_shape(
+            type="line",
+            x0=date, x1=date, y0=0, y1=1,
+            xref="x", yref="paper",
+            line=dict(color="#f59e0b", width=1.5, dash="dot"),
+        )
+        fig.add_annotation(
+            x=date, y=0.98, xref="x", yref="paper",
+            text=label, showarrow=False,
+            xanchor="left", yanchor="top",
+            font=dict(size=9, color="#f59e0b"),
+            bgcolor="rgba(0,0,0,0)",
         )
     return fig
 
