@@ -16,6 +16,7 @@ _CARDS = [
     ("Leading Indicators",       "🔭", "ISM PMI, jobless claims, housing starts, consumer sentiment — recession tracker with NBER shading."),
     ("Bond Simulator",           "🎯", "Interactive price-yield curve, duration vs convexity approximation, and rate shock analysis."),
     ("Global Business Cycle",    "🌐", "OECD BCI, CCI and CLI across 30 countries — latest snapshot, trend heatmap, country deep-dive."),
+    ("Historical Shocks",        "⚡", "Yield and rates dynamics across 12 key market shocks — Dot-com to COVID to LDI crisis."),
     ("Correlation Matrix",       "🔥", "Rolling cross-asset correlations. Spot diversification breakdowns and regime shifts."),
     ("Portfolio Rebalance",      "⚖️", "Optimise portfolio weights toward target allocations with rebalancing constraints."),
     ("Global Capital Markets",   "🏛️", "Capital markets overview — issuance, spreads and financing conditions."),

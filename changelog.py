@@ -1,5 +1,21 @@
 CHANGELOG = [
     {
+        "id": 37,
+        "version": "1.37",
+        "timestamp": "07 Aug 2026, 13:19 IST",
+        "category": "Feature",
+        "title": "Historical Global Shocks — 12 market events with event-specific yield, spread and cross-asset charts",
+        "description": [
+            "HistoricalShocks.py — new page: 12 key market events (Dot-com, GFC, European Debt Crisis, ECB Whatever It Takes, Taper Tantrum, Oil/Deflation, Brexit, COVID, Inflation Shock, UK LDI Crisis + 2 bonus) with event-specific chart layouts",
+            "Each event shows 3–4 contextually relevant charts: yield curves, CB policy rates (step chart via BIS CBPOL), credit spreads, VIX, oil, breakeven inflation — chosen per event to illustrate the specific mechanism",
+            "Event metadata card: period, driver category badge (Growth Shock / Inflation Shock / CB Communication / Sovereign Credit Risk / Fiscal), core lesson text",
+            "Shaded event period + orange dotted vertical markers for key dates (Lehman, Draghi speech, Fed cut dates, etc.)",
+            "Data: Final.xlsx (daily from Apr 1994, German/Italian/French/UK/US/AUS/CAD yields + equity indices), BIS CBPOL (25 CBs from 1946), FRED cross-asset (VIX/WTI/SPX from 2000), FRED TIPS breakeven (from 2003)",
+            "global_macro_data.py — added historical OAS fetch: BAMLH0A0HYM2OAS (HY) + BAMLC0A4CBBBOAS (BBB) back to 1996–97; sidebar Refresh button in the page; gmacro_spreads_long_cache.parquet",
+            "app.py + HomePage.py — Historical Shocks registered in APP_MAP and home screen cards",
+        ],
+    },
+    {
         "id": 36,
         "version": "1.36",
         "timestamp": "07 Aug 2026, 00:10 IST",

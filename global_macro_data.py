@@ -716,3 +716,61 @@ def load_leading_indicators() -> pd.DataFrame:
     if LEADING_CACHE.exists():
         return pd.read_parquet(LEADING_CACHE)
     return refresh_leading_indicators()
+
+
+# ── Historical credit spreads (full history, OAS suffix series) ───────────────
+
+SPREADS_LONG_CACHE = _HERE / "gmacro_spreads_long_cache.parquet"
+
+SPREADS_LONG_SERIES: dict[str, str] = {
+    "BAMLH0A0HYM2OAS": "HY",   # US HY OAS, daily from Dec 1996
+    "BAMLC0A4CBBBOAS": "BBB",  # US BBB OAS, daily from ~1997
+    "BAMLH0A1HYBBOAS": "BB",   # US BB OAS, daily from ~1997
+}
+
+
+def _fred_all(series_id: str, col: str = "Value") -> pd.DataFrame:
+    """Fetch one FRED series with full history (no year cutoff)."""
+    url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
+    try:
+        r = requests.get(url, timeout=45, headers=_FRED_HEADERS)
+        r.raise_for_status()
+        df = pd.read_csv(StringIO(r.text), na_values=".")
+        if df.shape[1] < 2:
+            return pd.DataFrame()
+        df.columns = ["Date", col]
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+        df[col]    = pd.to_numeric(df[col], errors="coerce")
+        return df.dropna()
+    except Exception as exc:
+        warnings.warn(f"FRED {series_id} failed: {exc}")
+        return pd.DataFrame()
+
+
+def _build_spreads_long() -> pd.DataFrame:
+    frames = []
+    for sid, name in SPREADS_LONG_SERIES.items():
+        df = _fred_all(sid, "OAS_Pct")
+        if df.empty:
+            continue
+        df["Series"] = name
+        frames.append(df[["Date", "Series", "OAS_Pct"]])
+    return (
+        pd.concat(frames, ignore_index=True).sort_values(["Series", "Date"])
+        if frames else pd.DataFrame()
+    )
+
+
+def refresh_spreads_long() -> pd.DataFrame:
+    df = _build_spreads_long()
+    if not df.empty:
+        df.to_parquet(SPREADS_LONG_CACHE, index=False)
+        load_spreads_long.clear()
+    return df
+
+
+@st.cache_data(show_spinner=False)
+def load_spreads_long() -> pd.DataFrame:
+    if SPREADS_LONG_CACHE.exists():
+        return pd.read_parquet(SPREADS_LONG_CACHE)
+    return refresh_spreads_long()
