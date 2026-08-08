@@ -1,5 +1,20 @@
 CHANGELOG = [
     {
+        "id": 41,
+        "version": "1.41",
+        "timestamp": "08 Aug 2026, 21:22 IST",
+        "category": "Enhancement",
+        "title": "Curve Trade Builder — Simulation Mode toggle for pedagogical DV01-neutral P&L demo",
+        "description": [
+            "CurveTradeBuilder.py — Simulation Mode toggle at top of page",
+            "When ON: P&L computed as DV01 × bp shift (linear approximation using overridden DV01 values)",
+            "Net DV01 = $0 → Total P&L = $0 exactly, regardless of notional sizes — ideal for classroom demos",
+            "Blue info banner appears when sim mode is active; orange DV01-override warning hidden in sim mode",
+            "Total P&L card labelled 'Simulated (DV01 × bp)' to distinguish from real bond pricing",
+            "Toggle OFF restores full bond-pricing P&L (exact convexity-adjusted mark-to-market)",
+        ],
+    },
+    {
         "id": 40,
         "version": "1.40",
         "timestamp": "08 Aug 2026, 19:08 IST",

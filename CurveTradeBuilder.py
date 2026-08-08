@@ -139,6 +139,25 @@ def curve_trade_builder() -> None:
         unsafe_allow_html=True,
     )
 
+    # ── Simulation mode toggle ────────────────────────────────────────────────
+    sim_col, _ = st.columns([3, 5])
+    with sim_col:
+        sim_mode = st.toggle(
+            "Simulation Mode",
+            value=False,
+            key="ctb_sim_mode",
+            help="ON: P&L = DV01 × bp shift (uses overridden DV01 values). Balanced DV01s → P&L = $0 exactly.",
+        )
+    if sim_mode:
+        st.markdown(
+            f'<div style="background:#1e3a5f;border:1px solid {_BLUE};border-left:4px solid {_BLUE};'
+            f'border-radius:8px;padding:10px 16px;margin-bottom:10px;font-size:13px;color:#bfdbfe;">'
+            f'<b style="color:{_BLUE};">Simulation Mode ON</b> — '
+            f'P&amp;L uses the DV01 × bp approximation. When Net DV01 = $0, Total P&amp;L = $0 exactly. '
+            f'Toggle off to see real bond-pricing P&amp;L.</div>',
+            unsafe_allow_html=True,
+        )
+
     # ═══════════════════════════════════════════════════════════════════════════
     # STEP 1 — Yield curve setup
     # ═══════════════════════════════════════════════════════════════════════════
@@ -309,6 +328,9 @@ def curve_trade_builder() -> None:
             # Use user-overridden DV01 per $1M if available
             dv01_per_m  = dv01_override.get(tenor_sel, metrics["dv01"] / face_m)
             dv01_abs    = dv01_per_m * face_m
+            if sim_mode:
+                pl_usd = -(dv01_abs * dir_sign) * shift
+            # else: pl_usd already set from real bond pricing above
 
             legs.append({
                 "label":    f"Leg {i+1}: {direction} {face_m:.0f}M {tenor_sel}",
@@ -345,7 +367,7 @@ def curve_trade_builder() -> None:
         if abs(user_dv01 - model_dv01) > 0.5:
             overridden.append((leg["tenor"], model_dv01, user_dv01))
 
-    if overridden:
+    if overridden and not sim_mode:
         detail = " · ".join(
             f"{t}: model <b>${m:,.0f}</b> → override <b>${u:,.0f}</b>"
             for t, m, u in overridden
@@ -420,7 +442,8 @@ def curve_trade_builder() -> None:
     dv_color   = _GRN if total_dv01 >= 0 else _RED
 
     html_top = f'<div style="display:grid;grid-template-columns:repeat({2 + n_legs},1fr);gap:10px;margin-bottom:14px;">'
-    html_top += _metric_card("Total P&L", f"${total_pl:+,.0f}", f"Scenario: {scenario}", pl_color)
+    pl_sub = f"Scenario: {scenario}" + (" · Simulated (DV01 × bp)" if sim_mode else "")
+    html_top += _metric_card("Total P&L", f"${total_pl:+,.0f}", pl_sub, pl_color)
     html_top += _metric_card("Net DV01", f"${total_dv01:+,.0f}", "$ per 1bp parallel shift", dv_color)
     for leg in legs:
         dv01_per_m = leg["dv01_abs"] / leg["face_m"]
