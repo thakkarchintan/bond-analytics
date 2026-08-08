@@ -342,99 +342,104 @@ def curve_trade_builder() -> None:
     fig_yc.update_xaxes(title="Maturity (years)", tickvals=_TENOR_MATS, ticktext=_TENOR_LABELS)
     st.plotly_chart(fig_yc, use_container_width=True)
 
-    # ── P&L and DV01 per leg ─────────────────────────────────────────────────
-    r_left, r_right = st.columns([3, 2])
+    # ── Totals ────────────────────────────────────────────────────────────────
+    total_pl   = sum(l["pl_usd"] for l in legs)
+    total_dv01 = sum(l["dv01"]   for l in legs)
+    pl_color   = _GRN if total_pl   >= 0 else _RED
+    dv_color   = _GRN if total_dv01 >= 0 else _RED
 
-    with r_left:
-        st.markdown(
-            f'<div style="font-size:12px;font-weight:700;color:{_T1};margin-bottom:8px;">'
-            f'Per-Leg Metrics</div>',
-            unsafe_allow_html=True,
+    html_top = f'<div style="display:grid;grid-template-columns:repeat({2 + n_legs},1fr);gap:10px;margin-bottom:14px;">'
+    html_top += _metric_card("Total P&L", f"${total_pl:+,.0f}", f"Scenario: {scenario}", pl_color)
+    html_top += _metric_card("Net DV01", f"${total_dv01:+,.0f}", "$ per 1bp parallel shift", dv_color)
+    for leg in legs:
+        dv01_per_m = leg["dv01_abs"] / leg["face_m"]
+        html_top += _metric_card(
+            f"{leg['tenor']} DV01 / $1M",
+            f"${dv01_per_m:,.0f}",
+            f"{leg['direction']} · total ${leg['dv01_abs']:,.0f}",
+            leg["color"],
         )
-        leg_rows = []
-        for leg in legs:
-            leg_rows.append({
-                "Leg":             leg["label"],
-                "Cur Yield (%)":   f"{leg['cur_yld']:.2f}",
-                "Shift (bp)":      f"{leg['shift_bp']:+.0f}",
-                "New Yield (%)":   f"{leg['new_yld']:.2f}",
-                "Price (cur)":     f"{leg['price']:.3f}",
-                "Price (new)":     f"{leg['new_price']:.3f}",
-                "Mod Dur":         f"{leg['moddur']:.3f}",
-                "DV01 ($k/bp)":    f"${leg['dv01_abs']/1000:,.2f}k",
-                "P&L ($)":         f"${leg['pl_usd']:+,.0f}",
-            })
-        leg_df = pd.DataFrame(leg_rows)
+    html_top += '</div>'
+    st.markdown(html_top, unsafe_allow_html=True)
 
-        def _color_leg(row):
-            idx   = int(row.name)
-            color = legs[idx]["color"]
-            # light tint of the leg color for background
-            tints = {"#3b82f6": "#1e3a5f", "#fbbf24": "#3b2a00", "#10b981": "#052e16"}
-            bg    = tints.get(color, _CARD)
-            return [f"background-color:{bg}" for _ in row]
+    # ── Per-leg table (full width) ────────────────────────────────────────────
+    leg_rows = []
+    for leg in legs:
+        dv01_per_m = leg["dv01_abs"] / leg["face_m"]
+        leg_rows.append({
+            "Leg":              leg["label"],
+            "Notional ($M)":    f"{leg['face_m']:.1f}",
+            "Cur Yield (%)":    f"{leg['cur_yld']:.2f}",
+            "Shift (bp)":       f"{leg['shift_bp']:+.0f}",
+            "New Yield (%)":    f"{leg['new_yld']:.2f}",
+            "Price (cur)":      f"{leg['price']:.3f}",
+            "Price (new)":      f"{leg['new_price']:.3f}",
+            "Mod Dur":          f"{leg['moddur']:.3f}",
+            "DV01/bp per $1M":  f"${dv01_per_m:,.0f}",
+            "DV01/bp (total)":  f"${leg['dv01_abs']:,.0f}",
+            "P&L ($)":          f"${leg['pl_usd']:+,.0f}",
+        })
+    leg_df = pd.DataFrame(leg_rows)
 
-        st.dataframe(
-            leg_df.style.apply(_color_leg, axis=1),
-            use_container_width=True, hide_index=True,
-        )
+    def _color_leg(row):
+        idx   = int(row.name)
+        color = legs[idx]["color"]
+        tints = {"#3b82f6": "#1e3a5f", "#fbbf24": "#3b2a00", "#10b981": "#052e16"}
+        bg    = tints.get(color, _CARD)
+        return [f"background-color:{bg};color:#f1f5f9" for _ in row]
 
-    with r_right:
-        total_pl  = sum(l["pl_usd"] for l in legs)
-        total_dv01 = sum(l["dv01"] for l in legs)
+    st.dataframe(
+        leg_df.style.apply(_color_leg, axis=1),
+        use_container_width=True, hide_index=True,
+    )
 
-        pl_color  = _GRN if total_pl >= 0 else _RED
-        dv_color  = _GRN if total_dv01 >= 0 else _RED
+    # ── Charts side by side, taller ───────────────────────────────────────────
+    ch_left, ch_right = st.columns(2)
 
-        html_metrics = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">'
-        html_metrics += _metric_card("Total P&L", f"${total_pl:+,.0f}", f"Scenario: {scenario}", pl_color)
-        html_metrics += _metric_card("Net DV01", f"${total_dv01:+,.0f}", "$ per 1bp parallel shift", dv_color)
-        html_metrics += '</div>'
-        st.markdown(html_metrics, unsafe_allow_html=True)
-
-        # P&L bar chart per leg
+    with ch_left:
         fig_pl = go.Figure(go.Bar(
             x=[l["tenor"] for l in legs],
             y=[l["pl_usd"] for l in legs],
             marker_color=[l["color"] for l in legs],
             text=[f"${l['pl_usd']:+,.0f}" for l in legs],
             textposition="outside",
-            textfont=dict(size=10, color=_T1),
+            textfont=dict(size=11, color=_T1),
             hovertemplate="Leg: %{x}<br>P&L: $%{y:+,.0f}<extra></extra>",
         ))
+        fig_pl.add_hline(y=0, line_color=_EDGE, line_width=1)
         fig_pl.update_layout(
-            height=220,
-            title=dict(text="P&L per Leg ($)", font=dict(size=12, color=_T1), x=0),
+            height=340,
+            title=dict(text="P&L per Leg ($)", font=dict(size=13, color=_T1), x=0),
             showlegend=False,
             xaxis_title="",
             yaxis_title="P&L ($)",
-            **_layout(margin=dict(l=60, r=20, t=36, b=30)),
+            **_layout(margin=dict(l=70, r=20, t=44, b=40)),
         )
         st.plotly_chart(fig_pl, use_container_width=True)
 
-    # ── DV01 attribution chart ────────────────────────────────────────────────
-    dv_vals = [l["dv01"] for l in legs] + [total_dv01]
-    dv_lbls = [l["tenor"] for l in legs] + ["Net"]
-    dv_clrs = [l["color"] for l in legs] + [_GRN if total_dv01 >= 0 else _RED]
+    with ch_right:
+        dv_vals = [l["dv01"] for l in legs] + [total_dv01]
+        dv_lbls = [f"{l['tenor']}\n({l['direction']})" for l in legs] + ["Net"]
+        dv_clrs = [l["color"] for l in legs] + [_GRN if total_dv01 >= 0 else _RED]
 
-    fig_dv = go.Figure(go.Bar(
-        x=dv_lbls, y=dv_vals,
-        marker_color=dv_clrs,
-        text=[f"${v:+,.0f}" for v in dv_vals],
-        textposition="outside",
-        textfont=dict(size=10, color=_T1),
-        hovertemplate="%{x}<br>DV01: $%{y:+,.0f}<extra></extra>",
-    ))
-    fig_dv.add_hline(y=0, line_color=_EDGE, line_width=1)
-    fig_dv.update_layout(
-        height=240,
-        title=dict(text="DV01 Attribution — $ per 1bp parallel shift (signed by direction)", font=dict(size=12, color=_T1), x=0),
-        xaxis_title="",
-        yaxis_title="DV01 ($)",
-        showlegend=False,
-        **_layout(margin=dict(l=60, r=20, t=40, b=30)),
-    )
-    st.plotly_chart(fig_dv, use_container_width=True)
+        fig_dv = go.Figure(go.Bar(
+            x=dv_lbls, y=dv_vals,
+            marker_color=dv_clrs,
+            text=[f"${v:+,.0f}" for v in dv_vals],
+            textposition="outside",
+            textfont=dict(size=11, color=_T1),
+            hovertemplate="%{x}<br>DV01: $%{y:+,.0f}<extra></extra>",
+        ))
+        fig_dv.add_hline(y=0, line_color=_EDGE, line_width=1)
+        fig_dv.update_layout(
+            height=340,
+            title=dict(text="DV01 Attribution — $ per 1bp (signed by direction)", font=dict(size=13, color=_T1), x=0),
+            xaxis_title="",
+            yaxis_title="DV01 ($)",
+            showlegend=False,
+            **_layout(margin=dict(l=70, r=20, t=44, b=40)),
+        )
+        st.plotly_chart(fig_dv, use_container_width=True)
 
     # ── DV01-neutral ratios ───────────────────────────────────────────────────
     _section(
@@ -442,87 +447,105 @@ def curve_trade_builder() -> None:
         "Notional ratios that make the trade DV01-flat — useful when you want pure curve exposure with no parallel-rate risk",
     )
 
+    def _parallel_pl(leg_list: list[dict], shift_bp: float) -> float:
+        """P&L of a set of legs under a uniform parallel yield shift."""
+        total = 0.0
+        for leg in leg_list:
+            new_y = max(leg["cur_yld"] + shift_bp / 100, 0.01)
+            np_   = _new_price(leg["cur_yld"], leg["maturity"], new_y)
+            total += (np_ - leg["price"]) / 100 * leg["face_usd"] * leg["dir_sign"]
+        return total
+
     if n_legs == 2:
         leg_a, leg_b = legs[0], legs[1]
-        dv_a = leg_a["dv01_abs"]   # per $face_m
-        dv_b = leg_b["dv01_abs"]
+        dv_per_m_a = leg_a["dv01_abs"] / leg_a["face_m"]   # $ per 1bp per $1M
+        dv_per_m_b = leg_b["dv01_abs"] / leg_b["face_m"]
 
-        # ratio: for every $1M of leg A, you need ratio_b $M of leg B (opposite direction)
-        ratio_b = dv_a / dv_b if dv_b else 0.0
-        ratio_a = dv_b / dv_a if dv_a else 0.0
+        # DV01-neutral: fix leg A notional, solve for leg B notional
+        neutral_face_b = leg_a["face_m"] * (dv_per_m_a / dv_per_m_b) if dv_per_m_b else 0.0
+        ratio = dv_per_m_a / dv_per_m_b if dv_per_m_b else 0.0
 
-        html_r = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">'
-        html_r += _metric_card(
-            f"DV01 — {leg_a['tenor']} ({leg_a['direction']})",
-            f"${dv_a/1000:.2f}k / $M",
-            f"Per $1M face of {leg_a['tenor']}",
-            _BLUE,
-        )
-        html_r += _metric_card(
-            f"DV01 — {leg_b['tenor']} ({leg_b['direction']})",
-            f"${dv_b/1000:.2f}k / $M",
-            f"Per $1M face of {leg_b['tenor']}",
-            _AMB,
-        )
-        html_r += _metric_card(
-            "Hedge Ratio",
-            f"{ratio_b:.3f}×",
-            f"${ratio_b:.3f}M of {leg_b['tenor']} per $1M of {leg_a['tenor']}",
-            _GRN,
-        )
+        # Build neutral legs for verification
+        neutral_legs = [
+            {**leg_a},
+            {**leg_b,
+             "face_m":   neutral_face_b,
+             "face_usd": neutral_face_b * 1_000_000,
+             "dv01":     -leg_a["dv01"] / leg_a["face_m"] * neutral_face_b * leg_b["dir_sign"],
+            },
+        ]
+        verify_pl_up   = _parallel_pl(neutral_legs, +50)
+        verify_pl_down = _parallel_pl(neutral_legs, -50)
+
+        html_r = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;">'
+        html_r += _metric_card(f"DV01/bp per $1M — {leg_a['tenor']}", f"${dv_per_m_a:,.0f}", f"{leg_a['direction']}", _BLUE)
+        html_r += _metric_card(f"DV01/bp per $1M — {leg_b['tenor']}", f"${dv_per_m_b:,.0f}", f"{leg_b['direction']}", _AMB)
+        html_r += _metric_card("Hedge Ratio", f"{ratio:.4f}×", f"$M of {leg_b['tenor']} per $1M of {leg_a['tenor']}", _GRN)
+        html_r += _metric_card(f"Neutral size — {leg_b['tenor']}", f"${neutral_face_b:.2f}M", f"Given ${leg_a['face_m']:.0f}M of {leg_a['tenor']}", _PRP)
         html_r += '</div>'
         st.markdown(html_r, unsafe_allow_html=True)
 
+        vfy_color_up   = _GRN if abs(verify_pl_up)   < 50 else _AMB
+        vfy_color_down = _GRN if abs(verify_pl_down) < 50 else _AMB
         st.markdown(
             f'<div style="background:{_CARD};border:1px solid {_EDGE};border-radius:8px;'
-            f'padding:14px 16px;font-size:13px;color:{_T2};line-height:1.7;">'
-            f'<b style="color:{_T1};">DV01-neutral construction:</b><br>'
-            f'To make this trade DV01-flat (no parallel rate risk), for every '
-            f'<b style="color:{_BLUE};">${leg_a["face_m"]:.0f}M</b> of <b>{leg_a["tenor"]}</b> '
-            f'({leg_a["direction"]}), trade '
-            f'<b style="color:{_AMB};">${leg_a["face_m"] * ratio_b:.1f}M</b> of '
-            f'<b>{leg_b["tenor"]}</b> in the opposite direction.<br><br>'
-            f'At your current sizes: net DV01 = <b style="color:{"#10b981" if total_dv01 >= 0 else "#ef4444"};">'
-            f'${total_dv01:+,.0f}</b> per 1bp parallel shift. '
-            f'{"This trade has <b>net long duration</b> — it profits from parallel yield falls." if total_dv01 > 0 else "This trade has <b>net short duration</b> — it profits from parallel yield rises." if total_dv01 < 0 else "DV01-neutral."}'
+            f'padding:16px 18px;font-size:13px;color:{_T2};line-height:1.9;">'
+            f'<b style="color:{_T1};">DV01-neutral construction</b><br>'
+            f'For every <b style="color:{_BLUE};">${leg_a["face_m"]:.0f}M</b> of '
+            f'<b>{leg_a["tenor"]}</b> ({leg_a["direction"]}), '
+            f'trade <b style="color:{_AMB};">${neutral_face_b:.2f}M</b> of '
+            f'<b>{leg_b["tenor"]}</b> in the opposite direction.<br>'
+            f'DV01 per $1M: {leg_a["tenor"]} = <b style="color:{_BLUE};">${dv_per_m_a:,.0f}</b> &nbsp;·&nbsp; '
+            f'{leg_b["tenor"]} = <b style="color:{_AMB};">${dv_per_m_b:,.0f}</b> &nbsp;·&nbsp; '
+            f'Ratio = <b style="color:{_GRN};">{ratio:.4f}×</b><br><br>'
+            f'<b style="color:{_T1};">✓ Parallel shift verification (at neutral sizes)</b><br>'
+            f'Parallel <b>+50bp</b>: P&L = <b style="color:{vfy_color_up};">${verify_pl_up:+,.0f}</b> &nbsp;·&nbsp; '
+            f'Parallel <b>−50bp</b>: P&L = <b style="color:{vfy_color_down};">${verify_pl_down:+,.0f}</b><br>'
+            f'<span style="font-size:11px;">Small residual (~$0) is convexity — duration-hedged trades are not '
+            f'perfectly convexity-neutral. A larger negative residual means additional convexity hedging is needed.</span>'
             f'</div>',
             unsafe_allow_html=True,
         )
 
     elif n_legs == 3:
-        # Butterfly: leg1 = short wing, leg2 = belly (or vice versa), leg3 = long wing
         leg_a, leg_b, leg_c = legs
-        dv_a = leg_a["dv01_abs"]
-        dv_b = leg_b["dv01_abs"]
-        dv_c = leg_c["dv01_abs"]
+        dv_per_m_a = leg_a["dv01_abs"] / leg_a["face_m"]
+        dv_per_m_b = leg_b["dv01_abs"] / leg_b["face_m"]
+        dv_per_m_c = leg_c["dv01_abs"] / leg_c["face_m"]
 
-        # DV01-neutral butterfly: fix belly (leg2), solve wing weights
-        # w_a * dv_a + w_b * dv_b * dir_b + w_c * dv_c = 0 (all signed)
-        # Standard approach: show the ratios that neutralise overall DV01
+        # Fix belly (leg_b), size wings so combined wing DV01 = belly DV01
+        # Each wing gets half the belly DV01 (equal-weighted butterfly)
+        neutral_face_a = (leg_b["face_m"] * dv_per_m_b / 2) / dv_per_m_a if dv_per_m_a else 0
+        neutral_face_c = (leg_b["face_m"] * dv_per_m_b / 2) / dv_per_m_c if dv_per_m_c else 0
 
-        if dv_b > 0:
-            ratio_a_to_b = dv_b / dv_a if dv_a else 0
-            ratio_c_to_b = dv_b / dv_c if dv_c else 0
-        else:
-            ratio_a_to_b = ratio_c_to_b = 0
+        neutral_legs = [
+            {**leg_a, "face_m": neutral_face_a, "face_usd": neutral_face_a * 1_000_000},
+            {**leg_b},
+            {**leg_c, "face_m": neutral_face_c, "face_usd": neutral_face_c * 1_000_000},
+        ]
+        verify_pl_up   = _parallel_pl(neutral_legs, +50)
+        verify_pl_down = _parallel_pl(neutral_legs, -50)
 
+        html_r = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">'
+        html_r += _metric_card(f"DV01/bp per $1M — {leg_a['tenor']}", f"${dv_per_m_a:,.0f}", leg_a['direction'], _BLUE)
+        html_r += _metric_card(f"DV01/bp per $1M — {leg_b['tenor']}", f"${dv_per_m_b:,.0f}", leg_b['direction'], _AMB)
+        html_r += _metric_card(f"DV01/bp per $1M — {leg_c['tenor']}", f"${dv_per_m_c:,.0f}", leg_c['direction'], _GRN)
+        html_r += '</div>'
+        st.markdown(html_r, unsafe_allow_html=True)
+
+        vfy_color_up   = _GRN if abs(verify_pl_up)   < 100 else _AMB
+        vfy_color_down = _GRN if abs(verify_pl_down) < 100 else _AMB
         st.markdown(
             f'<div style="background:{_CARD};border:1px solid {_EDGE};border-radius:8px;'
-            f'padding:14px 16px;font-size:13px;color:{_T2};line-height:1.8;">'
-            f'<b style="color:{_T1};">3-Leg DV01 Attribution:</b><br>'
-            f'<span style="color:{_BLUE};">{leg_a["tenor"]} ({leg_a["direction"]}):</span> '
-            f'DV01 = ${leg_a["dv01"]:+,.0f}<br>'
-            f'<span style="color:{_AMB};">{leg_b["tenor"]} ({leg_b["direction"]}):</span> '
-            f'DV01 = ${leg_b["dv01"]:+,.0f}<br>'
-            f'<span style="color:{_GRN};">{leg_c["tenor"]} ({leg_c["direction"]}):</span> '
-            f'DV01 = ${leg_c["dv01"]:+,.0f}<br><br>'
-            f'<b style="color:{_T1};">Net DV01 = ${total_dv01:+,.0f}</b> per 1bp parallel shift.<br><br>'
-            f'<b style="color:{_T1};">DV01-neutral butterfly suggestion</b> (fix {leg_b["tenor"]} belly at '
-            f'${leg_b["face_m"]:.0f}M):<br>'
-            f'&nbsp;&nbsp;{leg_a["tenor"]}: ${leg_b["face_m"] * ratio_a_to_b:.1f}M &nbsp;|&nbsp; '
-            f'{leg_b["tenor"]}: ${leg_b["face_m"]:.0f}M &nbsp;|&nbsp; '
-            f'{leg_c["tenor"]}: ${leg_b["face_m"] * ratio_c_to_b:.1f}M<br>'
-            f'(Both wings sized so their combined DV01 matches the belly.)'
+            f'padding:16px 18px;font-size:13px;color:{_T2};line-height:1.9;">'
+            f'<b style="color:{_T1};">DV01-neutral butterfly (fix {leg_b["tenor"]} belly at ${leg_b["face_m"]:.0f}M)</b><br>'
+            f'{leg_a["tenor"]}: <b style="color:{_BLUE};">${neutral_face_a:.2f}M</b> ({leg_a["direction"]}) &nbsp;|&nbsp; '
+            f'{leg_b["tenor"]}: <b style="color:{_AMB};">${leg_b["face_m"]:.0f}M</b> ({leg_b["direction"]}) &nbsp;|&nbsp; '
+            f'{leg_c["tenor"]}: <b style="color:{_GRN};">${neutral_face_c:.2f}M</b> ({leg_c["direction"]})<br>'
+            f'Each wing carries half the belly DV01 → net DV01 = $0 per 1bp parallel shift.<br><br>'
+            f'<b style="color:{_T1};">✓ Parallel shift verification (at neutral sizes)</b><br>'
+            f'Parallel <b>+50bp</b>: P&L = <b style="color:{vfy_color_up};">${verify_pl_up:+,.0f}</b> &nbsp;·&nbsp; '
+            f'Parallel <b>−50bp</b>: P&L = <b style="color:{vfy_color_down};">${verify_pl_down:+,.0f}</b>'
             f'</div>',
             unsafe_allow_html=True,
         )

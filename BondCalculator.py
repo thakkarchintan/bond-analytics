@@ -392,7 +392,6 @@ Portfolio risk managers aggregate DV01 across all positions.
         value=1_000_000.0,
         step=500_000.0,
         min_value=1.0,
-        format="%,.0f",
         key="evo_face",
         help="Used for DV01 dollar display only",
     )
