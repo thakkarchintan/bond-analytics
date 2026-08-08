@@ -147,18 +147,27 @@ if "connected" not in st.session_state:
 if "login_message_shown" not in st.session_state:
     st.session_state["login_message_shown"] = False
 
-if not st.session_state["connected"]:
-    st.markdown(
-        """
-        <div style="display:flex; justify-content:center; align-items:center; margin-top:200px;">
-            <h1 style="color:#0f172a;">Bond Analytics</h1>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-authenticator.check_auth()
-authenticator.login()
+# Local dev bypass — set LOCAL_DEV=true in .env to skip Google login
+if os.getenv("LOCAL_DEV", "").lower() == "true":
+    if not st.session_state["connected"]:
+        st.session_state["connected"] = True
+        st.session_state["user_info"] = {
+            "email": os.getenv("ALLOWED_USERS", "").split(",")[0].strip(),
+            "name": "Local Dev",
+            "oauth_id": "local",
+        }
+else:
+    if not st.session_state["connected"]:
+        st.markdown(
+            """
+            <div style="display:flex; justify-content:center; align-items:center; margin-top:200px;">
+                <h1 style="color:#0f172a;">Bond Analytics</h1>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    authenticator.check_auth()
+    authenticator.login()
 
 if st.session_state["connected"]:
     APP_MAP = {
