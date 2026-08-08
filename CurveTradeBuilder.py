@@ -214,20 +214,51 @@ def curve_trade_builder() -> None:
 
     new_yields = [max(y + s / 100, 0.01) for y, s in zip(current_yields, shifts_bp)]
 
-    # Show shift table (with DV01 per $1M at each tenor)
-    with st.expander("Tenor-by-tenor shifts", expanded=False):
-        dv01_per_m = []
-        for y, mat in zip(current_yields, _TENOR_MATS):
-            m = _bond_metrics(y, mat, 1.0)   # $1M notional
-            dv01_per_m.append(m["dv01"])
-        shift_df = pd.DataFrame({
+    # ── Tenor-by-tenor shifts (editable DV01) ────────────────────────────────
+    dv01_defaults = []
+    for y, mat in zip(current_yields, _TENOR_MATS):
+        dv01_defaults.append(_bond_metrics(y, mat, 1.0)["dv01"])
+
+    if "ctb_dv01_reset_n" not in st.session_state:
+        st.session_state["ctb_dv01_reset_n"] = 0
+
+    with st.expander("Tenor-by-tenor shifts — double-click DV01 to override", expanded=True):
+        hdr_l, hdr_r = st.columns([6, 1])
+        with hdr_r:
+            if st.button("↺ Reset DV01s", key="ctb_dv01_reset_btn"):
+                st.session_state["ctb_dv01_reset_n"] += 1
+                st.rerun()
+
+        shift_edit_df = pd.DataFrame({
             "Tenor":              _TENOR_LABELS,
-            "Current (%)":        [f"{y:.2f}"      for y  in current_yields],
-            "Shift (bp)":         [f"{s:+.0f}"     for s  in shifts_bp],
-            "New Yield (%)":      [f"{y:.2f}"      for y  in new_yields],
-            "DV01/bp per $1M ($)":[f"${d:,.0f}"   for d  in dv01_per_m],
+            "Current (%)":        [round(y, 4) for y in current_yields],
+            "Shift (bp)":         [round(s, 2) for s in shifts_bp],
+            "New Yield (%)":      [round(y, 4) for y in new_yields],
+            "DV01/bp per $1M ($)":dv01_defaults,
         })
-        st.dataframe(shift_df, use_container_width=True, hide_index=True)
+
+        edited_shifts = st.data_editor(
+            shift_edit_df,
+            column_config={
+                "Tenor":              st.column_config.TextColumn(disabled=True, width="small"),
+                "Current (%)":        st.column_config.NumberColumn(disabled=True, format="%.2f", width="small"),
+                "Shift (bp)":         st.column_config.NumberColumn(disabled=True, format="%+.0f", width="small"),
+                "New Yield (%)":      st.column_config.NumberColumn(disabled=True, format="%.2f", width="small"),
+                "DV01/bp per $1M ($)":st.column_config.NumberColumn(
+                    format="$%.0f", min_value=0.0, step=10.0,
+                    help="Double-click to override. Click ↺ Reset above to restore model values.",
+                ),
+            },
+            hide_index=True,
+            use_container_width=True,
+            key=f"ctb_dv01_editor_{st.session_state['ctb_dv01_reset_n']}",
+        )
+
+    # Map tenor → user-overridden DV01 per $1M
+    dv01_override = {
+        row["Tenor"]: float(row["DV01/bp per $1M ($)"])
+        for _, row in edited_shifts.iterrows()
+    }
 
     # ═══════════════════════════════════════════════════════════════════════════
     # STEP 3 — Trade legs
@@ -265,16 +296,19 @@ def curve_trade_builder() -> None:
                 min_value=0.1, max_value=10000.0, format="%.1f",
                 key=f"ctb_leg{i}_face",
             )
-            tenor_idx = _TENOR_LABELS.index(tenor_sel)
-            mat       = _TENOR_MATS[tenor_idx]
-            cur_yld   = current_yields[tenor_idx]
-            new_yld   = new_yields[tenor_idx]
-            shift     = shifts_bp[tenor_idx]
-            metrics   = _bond_metrics(cur_yld, mat, face_m)
-            dir_sign  = 1 if direction == "Long" else -1
-            np_       = _new_price(cur_yld, mat, new_yld)
-            pl_pts    = np_ - metrics["price"]           # price points
+            tenor_idx   = _TENOR_LABELS.index(tenor_sel)
+            mat         = _TENOR_MATS[tenor_idx]
+            cur_yld     = current_yields[tenor_idx]
+            new_yld     = new_yields[tenor_idx]
+            shift       = shifts_bp[tenor_idx]
+            metrics     = _bond_metrics(cur_yld, mat, face_m)
+            dir_sign    = 1 if direction == "Long" else -1
+            np_         = _new_price(cur_yld, mat, new_yld)
+            pl_pts      = np_ - metrics["price"]
             pl_usd      = pl_pts / 100 * metrics["face_usd"] * dir_sign
+            # Use user-overridden DV01 per $1M if available
+            dv01_per_m  = dv01_override.get(tenor_sel, metrics["dv01"] / face_m)
+            dv01_abs    = dv01_per_m * face_m
 
             legs.append({
                 "label":    f"Leg {i+1}: {direction} {face_m:.0f}M {tenor_sel}",
@@ -283,17 +317,17 @@ def curve_trade_builder() -> None:
                 "direction": direction,
                 "dir_sign": dir_sign,
                 "face_m":   face_m,
-                "face_usd":   metrics["face_usd"],
+                "face_usd": metrics["face_usd"],
                 "cur_yld":  cur_yld,
                 "new_yld":  new_yld,
                 "shift_bp": shift,
                 "price":    metrics["price"],
                 "new_price": np_,
                 "moddur":   metrics["moddur"],
-                "dv01":     metrics["dv01"] * dir_sign,
-                "dv01_abs": metrics["dv01"],
+                "dv01":     dv01_abs * dir_sign,
+                "dv01_abs": dv01_abs,
                 "pl_pts":   pl_pts * dir_sign,
-                "pl_usd":     pl_usd,
+                "pl_usd":   pl_usd,
                 "color":    leg_colors[i],
             })
 
