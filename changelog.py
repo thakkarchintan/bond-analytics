@@ -1,5 +1,33 @@
 CHANGELOG = [
     {
+        "id": 40,
+        "version": "1.40",
+        "timestamp": "08 Aug 2026, 19:08 IST",
+        "category": "Feature",
+        "title": "Curve Trade Builder — 2/3-leg yield curve trades with scenario P&L and DV01-neutral ratios",
+        "description": [
+            "CurveTradeBuilder.py — new page: 4-step builder for yield curve trades",
+            "Step 1: Choose a yield curve shape preset (Normal / Flat / Inverted / Humped) with per-tenor manual override",
+            "Step 2: Select scenario — Bear/Bull Steepening, Bear/Bull Flattening, Parallel Up/Down, or Custom — with magnitude (bp) slider and per-tenor shift table",
+            "Step 3: Build 2- or 3-leg trades with tenor, direction (Long/Short) and notional ($M) per leg",
+            "Step 4: Yield curve before/after chart, P&L per leg, DV01 attribution chart, net trade DV01, and DV01-neutral hedge ratio calculation with trade sizing guidance",
+            "app.py + HomePage.py — Curve Trade Builder registered and added to home screen",
+        ],
+    },
+    {
+        "id": 39,
+        "version": "1.39",
+        "timestamp": "08 Aug 2026, 19:08 IST",
+        "category": "Enhancement",
+        "title": "Bond Calculator — hold-to-maturity rate evolution: Price, Duration and DV01 over time",
+        "description": [
+            "BondCalculator.py — new section 'Rate Scenario — Risk Evolution Over Time' at the bottom of the page",
+            "For any bond, select rate shock scenarios (sidebar multiselect: −200bp to +200bp) and a position size",
+            "Three charts: (1) Price pull-to-par showing all paths converge to face at maturity, (2) Modified Duration declining as bond ages, (3) DV01 dollar risk over the holding period",
+            "Scenario snapshot expander: per-scenario table of YTM, Price, ModDur, DV01 and mark-to-market P&L vs base case at t=0",
+        ],
+    },
+    {
         "id": 38,
         "version": "1.38",
         "timestamp": "07 Aug 2026, 13:50 IST",

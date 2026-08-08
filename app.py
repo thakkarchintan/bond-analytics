@@ -21,6 +21,7 @@ from LeadingIndicators import leading_indicators
 from BondSimulator import bond_simulator
 from GlobalBusinessCycle import global_business_cycle
 from HistoricalShocks import historical_shocks
+from CurveTradeBuilder import curve_trade_builder
 from FiscalScorecard import fiscal_scorecard
 from InflationGrowth import inflation_growth
 from FXCurrencies import fx_currencies
@@ -191,6 +192,7 @@ if st.session_state["connected"]:
         "Bond Simulator": bond_simulator,
         "Global Business Cycle": global_business_cycle,
         "Historical Shocks": historical_shocks,
+        "Curve Trade Builder": curve_trade_builder,
         "Changelog": changelog_tab,
         "Data Sources": data_sources,
     }

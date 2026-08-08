@@ -367,3 +367,164 @@ Portfolio risk managers aggregate DV01 across all positions.
 **Approximation formula:**
 ΔPrice ≈ −ModDur × Price × Δy + ½ × Convexity × Price × Δy²
         """)
+
+    # ── Hold-to-maturity: risk evolution over time ────────────────────────────
+    _section(
+        "Rate Scenario — Risk Evolution Over Time",
+        "How Price, Modified Duration and DV01 change as you hold this bond to maturity under different rate regimes",
+    )
+
+    st.sidebar.markdown("---")
+    st.sidebar.markdown(
+        f'<div style="font-size:11px;font-weight:700;color:#94a3b8;'
+        f'text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">'
+        f'Rate Evolution</div>',
+        unsafe_allow_html=True,
+    )
+    sel_shocks = st.sidebar.multiselect(
+        "Scenarios (bp shift)",
+        options=[-200, -100, -50, 0, +50, +100, +200],
+        default=[-100, 0, +100],
+        key="evo_shocks",
+    )
+    pos_face = st.sidebar.number_input(
+        "Position size ($)",
+        value=1_000_000.0,
+        step=500_000.0,
+        min_value=1.0,
+        format="%,.0f",
+        key="evo_face",
+        help="Used for DV01 dollar display only",
+    )
+
+    if not sel_shocks:
+        st.info("Select at least one rate scenario in the sidebar.")
+    else:
+        # colour map: blue spectrum for cuts, grey for 0, red spectrum for hikes
+        _SHOCK_COLORS = {
+            -200: "#1d4ed8", -100: "#3b82f6", -50: "#93c5fd",
+            0:    "#94a3b8",
+            +50:  "#fca5a5", +100: "#ef4444", +200: "#991b1b",
+        }
+
+        # time axis — quarterly steps
+        n_steps = max(int(maturity * 4), 1)
+        t_axis  = [i / 4 for i in range(n_steps + 1)]
+
+        # compute series per scenario
+        series: dict[int, dict] = {}
+        for shock in sorted(sel_shocks):
+            s_ytm = max(ytm + shock / 10000, 0.0001)
+            px_s, md_s, dv_s = [], [], []
+            for t in t_axis:
+                rem = maturity - t
+                if rem < 1 / freq / 2:
+                    px_s.append(face); md_s.append(0.0); dv_s.append(0.0)
+                else:
+                    p_  = bond_price(face, coupon_rate, rem, s_ytm, freq)
+                    md_ = modified_duration(face, coupon_rate, rem, s_ytm, freq)
+                    dv_ = md_ * (p_ / face) * pos_face * 0.0001
+                    px_s.append(p_); md_s.append(md_); dv_s.append(dv_)
+            series[shock] = {"price": px_s, "moddur": md_s, "dv01": dv_s, "ytm": s_ytm}
+
+        col_a, col_b, col_c = st.columns(3)
+
+        # Chart 1 — Price pull-to-par
+        fig_px = go.Figure()
+        fig_px.add_hline(y=face, line_color=_EDGE, line_dash="dot", line_width=1,
+                         annotation_text="Par", annotation_font=dict(size=9, color=_T2))
+        for shock in sorted(sel_shocks):
+            clr   = _SHOCK_COLORS.get(shock, _BLUE)
+            lbl   = f"{shock:+d} bp"
+            fig_px.add_trace(go.Scatter(
+                x=t_axis, y=series[shock]["price"], name=lbl,
+                line=dict(color=clr, width=1.8),
+                hovertemplate=f"t=%{{x:.2f}} yr | {lbl}<br>Price: $%{{y:,.2f}}<extra></extra>",
+            ))
+        fig_px.update_layout(
+            height=320,
+            title=dict(text="Price — Pull to Par", font=dict(size=12, color=_T1), x=0),
+            xaxis_title="Years held",
+            yaxis_title=f"Price ($)",
+            **_layout(),
+        )
+        with col_a:
+            st.plotly_chart(fig_px, use_container_width=True)
+            st.caption(
+                "All paths converge to face value at maturity regardless of rate level. "
+                "A rate shock shifts the starting price but the pull-to-par effect is "
+                "inexorable — guaranteeing par if held to maturity."
+            )
+
+        # Chart 2 — Modified Duration decline
+        fig_md = go.Figure()
+        for shock in sorted(sel_shocks):
+            clr = _SHOCK_COLORS.get(shock, _BLUE)
+            fig_md.add_trace(go.Scatter(
+                x=t_axis, y=series[shock]["moddur"], name=f"{shock:+d} bp",
+                line=dict(color=clr, width=1.8),
+                hovertemplate=f"t=%{{x:.2f}} yr<br>ModDur: %{{y:.3f}}<extra></extra>",
+            ))
+        fig_md.update_layout(
+            height=320,
+            title=dict(text="Modified Duration — Declining as Bond Ages", font=dict(size=12, color=_T1), x=0),
+            xaxis_title="Years held",
+            yaxis_title="ModDur (years)",
+            **_layout(),
+        )
+        with col_b:
+            st.plotly_chart(fig_md, use_container_width=True)
+            st.caption(
+                "Duration falls as remaining maturity shrinks — the bond becomes less "
+                "interest-rate sensitive over time. Higher-YTM scenarios show slightly "
+                "lower duration because cashflows are discounted more heavily."
+            )
+
+        # Chart 3 — DV01 dollar risk
+        fig_dv = go.Figure()
+        for shock in sorted(sel_shocks):
+            clr = _SHOCK_COLORS.get(shock, _BLUE)
+            fig_dv.add_trace(go.Scatter(
+                x=t_axis, y=series[shock]["dv01"], name=f"{shock:+d} bp",
+                line=dict(color=clr, width=1.8),
+                hovertemplate=f"t=%{{x:.2f}} yr<br>DV01: $%{{y:,.1f}}<extra></extra>",
+            ))
+        fig_dv.update_layout(
+            height=320,
+            title=dict(text=f"DV01 — Dollar Risk per 1bp (${pos_face:,.0f} position)", font=dict(size=12, color=_T1), x=0),
+            xaxis_title="Years held",
+            yaxis_title="DV01 ($)",
+            **_layout(),
+        )
+        with col_c:
+            st.plotly_chart(fig_dv, use_container_width=True)
+            st.caption(
+                "DV01 combines price and duration — it is the actual dollar P&L per 1bp "
+                "move in yield for this position. Both decline toward zero at maturity, "
+                "showing risk naturally reduces as a bond ages."
+            )
+
+        # Math detail table at t=0
+        with st.expander("Scenario snapshot at purchase (t = 0)"):
+            detail_rows = []
+            base_price = series.get(0, {}).get("price", [price])[0] if 0 in series else price
+            for shock in sorted(sel_shocks):
+                s   = series[shock]
+                p0  = s["price"][0]
+                md0 = s["moddur"][0]
+                dv0 = s["dv01"][0]
+                pl_vs_base = (p0 - price) / face * pos_face
+                detail_rows.append({
+                    "Scenario":         f"{shock:+d} bp",
+                    "YTM (%)":          f"{s['ytm']*100:.4f}",
+                    "Price ($)":        f"${p0:,.4f}",
+                    "vs Face":          f"{(p0-face)/face*100:+.2f}%",
+                    "Mod Duration":     f"{md0:.3f}",
+                    "DV01 ($)":         f"${dv0:,.1f}",
+                    "P&L vs 0bp ($)":   f"${pl_vs_base:+,.0f}",
+                })
+            st.dataframe(pd.DataFrame(detail_rows), use_container_width=True, hide_index=True)
+            st.caption(
+                f"P&L vs 0bp shows the mark-to-market gain/loss on a ${pos_face:,.0f} position "
+                "if rates move by the scenario amount on the day of purchase."
+            )
