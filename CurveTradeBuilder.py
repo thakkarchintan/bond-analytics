@@ -336,6 +336,38 @@ def curve_trade_builder() -> None:
     # ═══════════════════════════════════════════════════════════════════════════
     _section("Step 4 — Results", "Yield curve shift · P&L · DV01 attribution · hedge ratios")
 
+    # ── DV01 override warning ─────────────────────────────────────────────────
+    overridden = []
+    for leg in legs:
+        idx = _TENOR_LABELS.index(leg["tenor"])
+        model_dv01 = dv01_defaults[idx]
+        user_dv01  = dv01_override.get(leg["tenor"], model_dv01)
+        if abs(user_dv01 - model_dv01) > 0.5:
+            overridden.append((leg["tenor"], model_dv01, user_dv01))
+
+    if overridden:
+        detail = " · ".join(
+            f"{t}: model <b>${m:,.0f}</b> → override <b>${u:,.0f}</b>"
+            for t, m, u in overridden
+        )
+        st.markdown(
+            f'<div style="background:#431407;border:1px solid #f97316;'
+            f'border-left:4px solid #f97316;border-radius:8px;'
+            f'padding:12px 16px;margin-bottom:14px;font-size:13px;color:#fed7aa;">'
+            f'<b style="color:#fb923c;">⚠ DV01 values overridden</b> — '
+            f'P&amp;L is computed from exact bond pricing, not from the rounded DV01s shown. '
+            f'A small residual P&amp;L will appear even when the displayed DV01s are perfectly balanced, '
+            f'because real bond math rarely produces round numbers.<br>'
+            f'<span style="font-size:11px;color:#fdba74;line-height:1.8;">'
+            f'{detail}<br>'
+            f'In practice, market DV01s are never exactly round — traders use the precise model values '
+            f'and size positions to the nearest \$1k notional to get as close to neutral as possible. '
+            f'Hit <b>↺ Reset DV01s</b> in the table above to restore exact model values '
+            f'and see the verification section below confirm ~\$0 parallel P&amp;L.'
+            f'</span></div>',
+            unsafe_allow_html=True,
+        )
+
     # ── Yield curve chart ────────────────────────────────────────────────────
     fig_yc = go.Figure()
 
