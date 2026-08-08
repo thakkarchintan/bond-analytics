@@ -214,13 +214,18 @@ def curve_trade_builder() -> None:
 
     new_yields = [max(y + s / 100, 0.01) for y, s in zip(current_yields, shifts_bp)]
 
-    # Show shift table
+    # Show shift table (with DV01 per $1M at each tenor)
     with st.expander("Tenor-by-tenor shifts", expanded=False):
+        dv01_per_m = []
+        for y, mat in zip(current_yields, _TENOR_MATS):
+            m = _bond_metrics(y, mat, 1.0)   # $1M notional
+            dv01_per_m.append(m["dv01"])
         shift_df = pd.DataFrame({
-            "Tenor":         _TENOR_LABELS,
-            "Current (%)":   [f"{y:.2f}" for y in current_yields],
-            "Shift (bp)":    [f"{s:+.0f}" for s in shifts_bp],
-            "New Yield (%)": [f"{y:.2f}" for y in new_yields],
+            "Tenor":              _TENOR_LABELS,
+            "Current (%)":        [f"{y:.2f}"      for y  in current_yields],
+            "Shift (bp)":         [f"{s:+.0f}"     for s  in shifts_bp],
+            "New Yield (%)":      [f"{y:.2f}"      for y  in new_yields],
+            "DV01/bp per $1M ($)":[f"${d:,.0f}"   for d  in dv01_per_m],
         })
         st.dataframe(shift_df, use_container_width=True, hide_index=True)
 
