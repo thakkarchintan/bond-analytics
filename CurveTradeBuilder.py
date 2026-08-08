@@ -336,10 +336,10 @@ def curve_trade_builder() -> None:
     fig_yc.update_layout(
         height=360,
         title=dict(text="Yield Curve — Before & After Scenario", font=dict(size=13, color=_T1), x=0),
-        xaxis=dict(title="Maturity (years)", tickvals=_TENOR_MATS, ticktext=_TENOR_LABELS),
         yaxis_title="Yield (%)",
         **_layout(),
     )
+    fig_yc.update_xaxes(title="Maturity (years)", tickvals=_TENOR_MATS, ticktext=_TENOR_LABELS)
     st.plotly_chart(fig_yc, use_container_width=True)
 
     # ── P&L and DV01 per leg ─────────────────────────────────────────────────
