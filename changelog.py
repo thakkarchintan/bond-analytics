@@ -1,5 +1,21 @@
 CHANGELOG = [
     {
+        "id": 45,
+        "version": "1.45",
+        "timestamp": "09 Aug 2026, 06:38 IST",
+        "category": "Feature",
+        "title": "Historical Shocks — Yield Curve Before & After section on every event page",
+        "description": [
+            "HistoricalShocks.py — new section at the bottom of each event: 3 full-width yield curve charts showing shape before and after the shock",
+            "Row 1: US Treasury curve (FRED data — 11 maturities) at event start vs event end dates",
+            "Row 2: Euro Area curve (ECB Svensson model via DBnomics) at same dates",
+            "Row 3: Sovereign curve for any country in the Excel dataset — selectable via dropdown",
+            "Before/after dates derived from each event's shade period; point-in-time events use ±3 months around the key date",
+            "Graceful 'not cached' messages for US and Euro curves if caches not yet populated",
+            "Legend margin increased (b=110, y=-0.20) so legend text is fully visible below x-axis",
+        ],
+    },
+    {
         "id": 44,
         "version": "1.44",
         "timestamp": "09 Aug 2026, 06:38 IST",

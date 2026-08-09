@@ -5,15 +5,20 @@ from __future__ import annotations
 
 import pathlib
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
 from data import load_data
+from firebase_utils import get_instrument_metadata
 from global_macro_data import (
     BREAKEVEN_CACHE, CROSS_ASSET_CACHE, SPREADS_LONG_CACHE,
+    US_CURVE_CACHE, US_CURVE_MAT_YRS,
     load_breakeven, load_cross_asset, load_spreads_long, refresh_spreads_long,
+    load_us_curve,
 )
+from dbnomics_data import ECB_YC_CACHE, load_ecb_yc
 
 _HERE = pathlib.Path(__file__).parent
 _CBPOL_CACHE = _HERE / "dbn_cbpol_cache.parquet"
@@ -43,6 +48,181 @@ _DRIVER_STYLE: dict[str, tuple[str, str]] = {
     "Sovereign Credit Risk":            ("#3b0f0f", "#f87171"),
     "Fiscal Policy & Market Structure": ("#2d2008", "#fbbf24"),
 }
+
+# ── Yield curve helpers ───────────────────────────────────────────────────────
+
+_US_YC_MATS  = ["1M","3M","6M","1Y","2Y","3Y","5Y","7Y","10Y","20Y","30Y"]
+_EA_YC_MATS  = ["3M","6M","1Y","2Y","5Y","10Y","20Y","30Y"]
+_EA_YC_XS    = [0.25, 0.5, 1, 2, 5, 10, 20, 30]
+
+_SOV_MAT_YRS: dict[str, float] = {
+    "1M": 1/12, "3M": 0.25, "6M": 0.5, "1Y": 1.0, "2Y": 2.0,
+    "3Y": 3.0, "5Y": 5.0, "7Y": 7.0, "10Y": 10.0,
+    "15Y": 15.0, "20Y": 20.0, "30Y": 30.0,
+}
+_SOV_MAT_LBL = {v: k for k, v in _SOV_MAT_YRS.items()}
+
+
+def _event_curve_dates(ev: dict) -> tuple[str, str]:
+    """Return (before_date, after_date) strings for yield curve snapshots."""
+    if ev.get("shade"):
+        return ev["shade"][0], ev["shade"][1]
+    if ev.get("keys"):
+        key_dt = pd.Timestamp(ev["keys"][0][0])
+        before = max((key_dt - pd.DateOffset(months=3)).strftime("%Y-%m-%d"), ev["window"][0])
+        after  = min((key_dt + pd.DateOffset(months=3)).strftime("%Y-%m-%d"), ev["window"][1])
+        return before, after
+    return ev["window"][0], ev["window"][1]
+
+
+def _hs_curve_fig(title: str,
+                  bx, by, b_lbls, b_date: str,
+                  ax, ay, a_lbls, a_date: str,
+                  x_tickvals, x_ticktext) -> go.Figure:
+    """Build a before/after yield curve figure using the Bloomberg base style."""
+    fig = _base(title, "Yield (%)")
+    kw = dict(mode="lines+markers", marker=dict(size=9))
+    if bx:
+        fig.add_trace(go.Scatter(
+            x=bx, y=by, name=f"Before  {b_date}",
+            line=dict(color=_COLS[0], width=2.5),
+            customdata=b_lbls,
+            hovertemplate="<b>%{customdata}</b><br>Yield: %{y:.3f}%<extra>Before</extra>",
+            **kw,
+        ))
+    if ax:
+        fig.add_trace(go.Scatter(
+            x=ax, y=ay, name=f"After  {a_date}",
+            line=dict(color=_COLS[3], width=2.5, dash="dash"),
+            customdata=a_lbls,
+            hovertemplate="<b>%{customdata}</b><br>Yield: %{y:.3f}%<extra>After</extra>",
+            **kw,
+        ))
+    fig.update_xaxes(tickvals=x_tickvals, ticktext=x_ticktext, title="Maturity")
+    return fig
+
+
+def _nearest_row(df: pd.DataFrame, target_dt):
+    """Return the closest available date and the filtered DataFrame row."""
+    dates = df["DateOnly"].unique()
+    actual = min(dates, key=lambda d: abs((d - target_dt).days))
+    return df[df["DateOnly"] == actual], actual
+
+
+def _hs_us_curve_chart(df_us: pd.DataFrame, before_dt, after_dt, ev: dict) -> None:
+    if df_us is None or df_us.empty:
+        st.info("US Treasury curve not cached — open **Global Yield Curves → US Treasury Curve** and click Refresh.", icon="ℹ️")
+        return
+    df_us = df_us.copy()
+    df_us["DateOnly"] = pd.to_datetime(df_us["Date"]).dt.date
+
+    def _get(target):
+        sub, actual = _nearest_row(df_us, target)
+        row = {r["Maturity"]: r["Yield_Pct"] for _, r in sub.iterrows()}
+        xs, ys, lbls = [], [], []
+        for m in _US_YC_MATS:
+            if m in row and pd.notna(row[m]):
+                xs.append(US_CURVE_MAT_YRS[m])
+                ys.append(row[m])
+                lbls.append(m)
+        return xs, ys, lbls, str(actual)
+
+    bx, by, bl, bd = _get(before_dt)
+    ax, ay, al, ad = _get(after_dt)
+    x_ticks = [US_CURVE_MAT_YRS[m] for m in _US_YC_MATS]
+    fig = _hs_curve_fig(f"US Treasury Yield Curve — {ev['label']}", bx, by, bl, bd, ax, ay, al, ad, x_ticks, _US_YC_MATS)
+    _pchrt(fig, f"Before: {bd}  ·  After: {ad}  ·  Source: FRED constant-maturity Treasury yields")
+
+
+def _hs_ea_curve_chart(df_ecb: pd.DataFrame, before_dt, after_dt, ev: dict) -> None:
+    if df_ecb is None or df_ecb.empty:
+        st.info("Euro Area curve not cached — open **Global Yield Curves → Euro Area Curve** and click Refresh.", icon="ℹ️")
+        return
+    df_ecb = df_ecb.copy()
+    df_ecb["DateOnly"] = pd.to_datetime(df_ecb["Date"]).dt.date
+
+    def _get(target):
+        sub, actual = _nearest_row(df_ecb, target)
+        sub = sub.sort_values("MatYrs")
+        return sub["MatYrs"].tolist(), sub["Rate"].tolist(), sub["Maturity"].tolist(), str(actual)
+
+    bx, by, bl, bd = _get(before_dt)
+    ax, ay, al, ad = _get(after_dt)
+    fig = _hs_curve_fig(f"Euro Area Yield Curve (ECB) — {ev['label']}", bx, by, bl, bd, ax, ay, al, ad, _EA_YC_XS, _EA_YC_MATS)
+    _pchrt(fig, f"Before: {bd}  ·  After: {ad}  ·  Source: ECB Svensson model spot rates (AAA euro area govts)")
+
+
+def _hs_sov_curve_chart(df_bond: pd.DataFrame, bond_insts: dict, country: str,
+                         before_dt, after_dt, ev: dict) -> None:
+    cinsts = {inst: m for inst, m in bond_insts.items()
+              if m["country"] == country and inst in df_bond.columns}
+    if not cinsts:
+        st.info(f"No sovereign curve data tagged for **{country}** in instrument metadata.")
+        return
+
+    df2 = df_bond.copy()
+    df2["DateOnly"] = pd.to_datetime(df2["Date"]).dt.date
+    all_mat_yrs = sorted({_SOV_MAT_YRS[m["maturity"]] for m in cinsts.values()})
+
+    def _get(target):
+        sub, actual = _nearest_row(df2, target)
+        row = sub.iloc[0] if not sub.empty else pd.Series(dtype=float)
+        pts = []
+        for inst, m in cinsts.items():
+            my = _SOV_MAT_YRS[m["maturity"]]
+            val = row.get(inst, np.nan)
+            if pd.notna(val):
+                pts.append((my, float(val), m["maturity"]))
+        pts.sort()
+        if not pts:
+            return [], [], [], str(actual)
+        xs, ys, lbls = zip(*pts)
+        return list(xs), list(ys), list(lbls), str(actual)
+
+    bx, by, bl, bd = _get(before_dt)
+    ax, ay, al, ad = _get(after_dt)
+    x_tv  = all_mat_yrs
+    x_tt  = [_SOV_MAT_LBL.get(m, str(m)) for m in all_mat_yrs]
+    fig = _hs_curve_fig(f"{country} Sovereign Yield Curve — {ev['label']}", bx, by, bl, bd, ax, ay, al, ad, x_tv, x_tt)
+    _pchrt(fig, f"Before: {bd}  ·  After: {ad}  ·  Source: Final.xlsx bond instrument data")
+
+
+@st.cache_data(ttl=600)
+def _load_hs_metadata() -> dict:
+    return get_instrument_metadata()
+
+
+def _render_yield_curve_section(ev: dict, df_bond: pd.DataFrame,
+                                 df_us: pd.DataFrame, df_ecb: pd.DataFrame,
+                                 bond_insts: dict) -> None:
+    before_str, after_str = _event_curve_dates(ev)
+    before_dt = pd.Timestamp(before_str).date()
+    after_dt  = pd.Timestamp(after_str).date()
+
+    st.markdown(
+        f'<div style="background:#1e293b;border-left:4px solid #ff8c00;'
+        f'padding:12px 16px;margin:28px 0 10px;border-radius:0 8px 8px 0;">'
+        f'<span style="font-size:13px;font-weight:700;color:#f1f5f9;'
+        f'text-transform:uppercase;letter-spacing:.08em;">Yield Curve — Before &amp; After</span>'
+        f'<div style="font-size:12px;color:#94a3b8;margin-top:4px;">'
+        f'Curve shape at event start <b style="color:#ff8c00;">{before_str}</b> vs '
+        f'event end <b style="color:#ff4d4d;">{after_str}</b></div></div>',
+        unsafe_allow_html=True,
+    )
+
+    _hs_us_curve_chart(df_us, before_dt, after_dt, ev)
+    _hs_ea_curve_chart(df_ecb, before_dt, after_dt, ev)
+
+    countries = sorted({m["country"] for m in bond_insts.values()})
+    if countries:
+        sel = st.selectbox(
+            "Sovereign curve — select country",
+            countries, key=f"hs_sov_{ev['id']}",
+        )
+        _hs_sov_curve_chart(df_bond, bond_insts, sel, before_dt, after_dt, ev)
+    else:
+        st.caption("Sovereign curve unavailable — instrument metadata not loaded.")
+
 
 # ── Event catalogue ───────────────────────────────────────────────────────────
 
@@ -399,9 +579,9 @@ def _base(title: str, y_label: str = "", h: int = 400) -> go.Figure:
         yaxis=dict(gridcolor=_GRD, zeroline=False, title=y_label,
                    linecolor="#333", tickfont=dict(size=16, color=_T2),
                    title_font=dict(size=17)),
-        margin=dict(l=65, r=20, t=54, b=90),
+        margin=dict(l=65, r=20, t=54, b=110),
         legend=dict(
-            orientation="h", yanchor="top", y=-0.16,
+            orientation="h", yanchor="top", y=-0.20,
             xanchor="left", x=0,
             font=dict(size=16, color="#111111"),
             bgcolor="rgba(0,0,0,0)",
@@ -862,6 +1042,23 @@ def historical_shocks() -> None:
     if not df_sl.empty:
         df_sl["Date"] = pd.to_datetime(df_sl["Date"])
 
+    # ── Yield curve caches (may not exist — graceful fallback) ────────────────
+    df_us_yc  = load_us_curve()  if US_CURVE_CACHE.exists()  else pd.DataFrame()
+    df_ecb_yc = load_ecb_yc()   if ECB_YC_CACHE.exists()    else pd.DataFrame()
+
+    # Bond instrument metadata for sovereign curves
+    try:
+        _meta = _load_hs_metadata()
+        bond_insts = {
+            inst: m for inst, m in _meta.items()
+            if m.get("asset_class") == "Fixed Income Bonds"
+            and m.get("maturity") in _SOV_MAT_YRS
+            and m.get("country")
+            and inst in df_bond.columns
+        }
+    except Exception:
+        bond_insts = {}
+
     # ── Event card (metadata + write-up) ─────────────────────────────────────
     _event_card(ev)
 
@@ -871,6 +1068,9 @@ def historical_shocks() -> None:
         render_fn(ev, df_bond, df_cbpol, df_cross, df_be, df_sl)
     else:
         st.info("Renderer not yet defined for this event.")
+
+    # ── Yield curve before / after ────────────────────────────────────────────
+    _render_yield_curve_section(ev, df_bond, df_us_yc, df_ecb_yc, bond_insts)
 
     # ── Data sources note ─────────────────────────────────────────────────────
     with st.expander("Data sources", expanded=False):
