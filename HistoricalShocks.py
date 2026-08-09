@@ -18,15 +18,22 @@ from global_macro_data import (
 _HERE = pathlib.Path(__file__).parent
 _CBPOL_CACHE = _HERE / "dbn_cbpol_cache.parquet"
 
-# ── Palette ───────────────────────────────────────────────────────────────────
-_T1  = "#f1f5f9"
-_T2  = "#94a3b8"
-_GRD = "#1e293b"
-_BG  = "rgba(0,0,0,0)"
+# ── Palette — Bloomberg terminal style ────────────────────────────────────────
+_T1   = "#f1f5f9"
+_T2   = "#9a9590"       # warm terminal gray
+_GRD  = "#1c1c1c"       # near-black grid
+_BG   = "rgba(0,0,0,0)" # transparent paper
+_PLT  = "#0a0a0a"       # Bloomberg black plot area
 
 _COLS = [
-    "#60a5fa", "#f59e0b", "#34d399", "#f87171",
-    "#a78bfa", "#fb923c", "#38bdf8", "#6ee7b7",
+    "#ff8c00",  # Bloomberg orange
+    "#00e5e5",  # cyan
+    "#66ff66",  # green
+    "#ff4d4d",  # red
+    "#f5f500",  # yellow
+    "#ff66cc",  # magenta
+    "#99ccff",  # light blue
+    "#ffaa44",  # amber
 ]
 
 _DRIVER_STYLE: dict[str, tuple[str, str]] = {
@@ -367,31 +374,34 @@ def _decorate(fig: go.Figure, ev: dict) -> go.Figure:
         fig.add_shape(
             type="line", x0=date, x1=date, y0=0, y1=1,
             xref="x", yref="paper",
-            line=dict(color="#f59e0b", width=1.5, dash="dot"),
+            line=dict(color="#ff8c00", width=1.2, dash="dot"),
         )
         fig.add_annotation(
-            x=date, y=0.98, xref="x", yref="paper",
+            x=date, y=0.97, xref="x", yref="paper",
             text=label, showarrow=False,
             xanchor="left", yanchor="top",
-            font=dict(size=9, color="#f59e0b"),
-            bgcolor="rgba(0,0,0,0)",
+            font=dict(size=9, color="#ff8c00"),
+            bgcolor="rgba(10,10,10,0.7)",
         )
     return fig
 
 
-def _base(title: str, y_label: str = "", h: int = 310) -> go.Figure:
+def _base(title: str, y_label: str = "", h: int = 400) -> go.Figure:
     fig = go.Figure()
     fig.update_layout(
         template="plotly_dark",
-        paper_bgcolor=_BG, plot_bgcolor=_BG,
+        paper_bgcolor=_BG, plot_bgcolor=_PLT,
         font=dict(size=11, color=_T2),
-        title=dict(text=title, font=dict(size=13, color=_T1), x=0),
-        xaxis=dict(gridcolor=_GRD, zeroline=False),
-        yaxis=dict(gridcolor=_GRD, zeroline=False, title=y_label),
-        margin=dict(l=0, r=0, t=38, b=0),
+        title=dict(text=title, font=dict(size=14, color="#ff8c00"), x=0),
+        xaxis=dict(gridcolor=_GRD, zeroline=False, linecolor="#333",
+                   tickfont=dict(color=_T2)),
+        yaxis=dict(gridcolor=_GRD, zeroline=False, title=y_label,
+                   linecolor="#333", tickfont=dict(color=_T2)),
+        margin=dict(l=55, r=20, t=44, b=70),
         legend=dict(
-            orientation="h", yanchor="bottom", y=1.02, x=0,
-            font=dict(size=11, color=_T1),
+            orientation="h", yanchor="top", y=-0.14,
+            xanchor="left", x=0,
+            font=dict(size=11, color="#e8e3d3"),
             bgcolor="rgba(0,0,0,0)",
         ),
         height=h,
@@ -523,286 +533,231 @@ def _oas_chart(df_sl: pd.DataFrame, ev: dict,
 # ── Event renderers ───────────────────────────────────────────────────────────
 
 def _render_dotcom(ev, df, cbpol, cross, be, sl):
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        _pchrt(_yields(df, ev, ["US2Y", "US10Y", "US30Y"],
-                       ["US 2Y Treasury", "US 10Y Treasury", "US 30Y Treasury"],
-                       "US Treasury Yields (%)"),
-               "Fed cut rates 11× from 6.5 % to 1.0 % (2001–03). US 10Y fell from ~6.5 % to 3.1 %. "
-               "Flight to safety drove the bond rally as equities collapsed.")
-    with c2:
-        _pchrt(_spread(df, ev, "US10Y", "US2Y", "10Y minus 2Y",
-                       "US 2Y10Y Yield Curve Slope (bp)", color="#34d399"),
-               "The 2Y10Y spread inverted briefly in 2000 — a classic recession warning signal — "
-               "then steepened sharply as the Fed cut short rates faster than long rates fell.")
-    with c3:
-        _pchrt(_single_cross(cross, ev, "S&P 500", "S&P 500 Index (Level)", "Level", "#34d399"),
-               "S&P 500 lost ~49 % from the March 2000 peak to the October 2002 trough. "
-               "Equity wealth destruction of ~$8 trillion drove the flight into Treasuries.")
+    _pchrt(_yields(df, ev, ["US2Y", "US10Y", "US30Y"],
+                   ["US 2Y Treasury", "US 10Y Treasury", "US 30Y Treasury"],
+                   "US Treasury Yields (%)"),
+           "Fed cut rates 11× from 6.5 % to 1.0 % (2001–03). US 10Y fell from ~6.5 % to 3.1 %. "
+           "Flight to safety drove the bond rally as equities collapsed.")
+    _pchrt(_spread(df, ev, "US10Y", "US2Y", "10Y minus 2Y",
+                   "US 2Y10Y Yield Curve Slope (bp)", color=_COLS[2]),
+           "The 2Y10Y spread inverted briefly in 2000 — a classic recession warning signal — "
+           "then steepened sharply as the Fed cut short rates faster than long rates fell.")
+    _pchrt(_single_cross(cross, ev, "S&P 500", "S&P 500 Index (Level)", "Level", _COLS[2]),
+           "S&P 500 lost ~49 % from the March 2000 peak to the October 2002 trough. "
+           "Equity wealth destruction of ~$8 trillion drove the flight into Treasuries.")
 
 
 def _render_gfc(ev, df, cbpol, cross, be, sl):
-    has_spreads = not sl.empty
-    n = 4 if has_spreads else 3
-    cols = st.columns(n)
-    with cols[0]:
-        _pchrt(_yields(df, ev, ["US2Y", "US10Y"],
-                       ["US 2Y Treasury", "US 10Y Treasury"],
-                       "US Treasury Yields (%)"),
-               "10Y Treasury fell from ~4.5 % to ~2 % as flight-to-quality dominated. "
-               "Even at historic lows, Treasuries were bought because everything else was far worse.")
-    with cols[1]:
-        _pchrt(_cb_rates(cbpol, ev,
-                         ["United States", "Euro Area", "United Kingdom", "Japan"],
-                         ["Fed (US)", "ECB (Euro Area)", "BoE (UK)", "BoJ (Japan)"],
-                         "Central Bank Policy Rates (%)"),
-               "Fed cut 525 bp in 15 months to 0–0.25 % and launched QE1 ($600 bn). "
-               "ECB, BoE and BoJ all followed with aggressive easing cycles.")
-    with cols[2]:
-        _pchrt(_single_cross(cross, ev, "VIX", "VIX Volatility Index", "", "#f87171"),
-               "VIX hit 80.86 on October 24, 2008 — an all-time record at the time. "
-               "Elevated VIX signals extreme uncertainty and forced liquidation of risk assets.")
-    if has_spreads:
-        with cols[3]:
-            _pchrt(_oas_chart(sl, ev, ["HY", "BBB"],
-                              "US Credit Spreads — OAS (%)"),
-                   "HY OAS blew out to ~19 % in December 2008 — unprecedented. "
-                   "Even BBB (lower investment-grade) spreads exceeded 7 %. Credit markets effectively froze.")
+    _pchrt(_yields(df, ev, ["US2Y", "US10Y"],
+                   ["US 2Y Treasury", "US 10Y Treasury"],
+                   "US Treasury Yields (%)"),
+           "10Y Treasury fell from ~4.5 % to ~2 % as flight-to-quality dominated. "
+           "Even at historic lows, Treasuries were bought because everything else was far worse.")
+    _pchrt(_cb_rates(cbpol, ev,
+                     ["United States", "Euro Area", "United Kingdom", "Japan"],
+                     ["Fed (US)", "ECB (Euro Area)", "BoE (UK)", "BoJ (Japan)"],
+                     "Central Bank Policy Rates (%)"),
+           "Fed cut 525 bp in 15 months to 0–0.25 % and launched QE1 ($600 bn). "
+           "ECB, BoE and BoJ all followed with aggressive easing cycles.")
+    _pchrt(_single_cross(cross, ev, "VIX", "VIX Volatility Index", "", _COLS[3]),
+           "VIX hit 80.86 on October 24, 2008 — an all-time record at the time. "
+           "Elevated VIX signals extreme uncertainty and forced liquidation of risk assets.")
+    if not sl.empty:
+        _pchrt(_oas_chart(sl, ev, ["HY", "BBB"],
+                          "US Credit Spreads — OAS (%)"),
+               "HY OAS blew out to ~19 % in December 2008 — unprecedented. "
+               "Even BBB (lower investment-grade) spreads exceeded 7 %. Credit markets effectively froze.")
 
 
 def _render_eurozone(ev, df, cbpol, cross, be, sl):
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        _pchrt(_spread(df, ev, "FBTPY", "FGBLY", "Italy 10Y minus Germany 10Y",
-                       "Italy – Germany 10Y Spread (bp)", color="#f87171"),
-               "BTP-Bund spread peaked at ~550 bp in November 2011 when Italy's 10Y yield "
-               "crossed 7 % — the threshold widely considered unsustainable for €2 trillion of debt.")
-    with c2:
-        _pchrt(_multi_spreads(df, ev,
-                              [("FOATY", "FGBLY", "France – Germany 10Y", "#c084fc"),
-                               ("UK10Y",  "FGBLY", "UK – Germany 10Y",    "#fb923c")],
-                              "Contagion Spreads vs German Bund (bp)"),
-               "French OAT and UK Gilt spreads over Germany also widened, showing contagion "
-               "beyond the obvious PIIGS. No eurozone sovereign was fully immune.")
-    with c3:
-        _pchrt(_yields(df, ev, ["FGBLY"], ["German 10Y Bund"],
-                       "German 10Y Bund — Safe Haven Within Europe (%)"),
-               "German Bund yields fell sharply as the safe-haven within Europe. "
-               "Within a currency union, credit risk drives spreads; Bunds played the role "
-               "that Treasuries play globally.")
+    _pchrt(_spread(df, ev, "FBTPY", "FGBLY", "Italy 10Y minus Germany 10Y",
+                   "Italy – Germany 10Y Spread (bp)", color=_COLS[3]),
+           "BTP-Bund spread peaked at ~550 bp in November 2011 when Italy's 10Y yield "
+           "crossed 7 % — the threshold widely considered unsustainable for €2 trillion of debt.")
+    _pchrt(_multi_spreads(df, ev,
+                          [("FOATY", "FGBLY", "France – Germany 10Y", _COLS[5]),
+                           ("UK10Y",  "FGBLY", "UK – Germany 10Y",    _COLS[0])],
+                          "Contagion Spreads vs German Bund (bp)"),
+           "French OAT and UK Gilt spreads over Germany also widened, showing contagion "
+           "beyond the obvious PIIGS. No eurozone sovereign was fully immune.")
+    _pchrt(_yields(df, ev, ["FGBLY"], ["German 10Y Bund"],
+                   "German 10Y Bund — Safe Haven Within Europe (%)"),
+           "German Bund yields fell sharply as the safe-haven within Europe. "
+           "Within a currency union, credit risk drives spreads; Bunds played the role "
+           "that Treasuries play globally.")
 
 
 def _render_draghi(ev, df, cbpol, cross, be, sl):
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        _pchrt(_spread(df, ev, "FBTPY", "FGBLY", "Italy 10Y minus Germany 10Y",
-                       "Italy – Germany 10Y Spread (bp)", color="#f87171"),
-               "BTP-Bund spread fell from ~530 bp (late July 2012) to ~230 bp by year-end — "
-               "on Draghi's words alone. The OMT programme never formally purchased a single bond.")
-    with c2:
-        _pchrt(_multi_spreads(df, ev,
-                              [("FOATY", "FGBLY", "France – Germany 10Y", "#c084fc"),
-                               ("FBTSY", "FGBSY", "Italy – Germany 2Y",   "#f87171")],
-                              "Contagion Spreads — Speech Impact (bp)"),
-               "French 10Y and Italian 2Y spreads also collapsed immediately after the speech. "
-               "Short-dated spreads fell fastest — markets repriced near-term break-up risk to near zero.")
-    with c3:
-        _pchrt(_cb_rates(cbpol, ev, ["Euro Area"], ["ECB Policy Rate"],
-                         "ECB Policy Rate (%)"),
-               "The ECB rate was at 0.75 % at the time of the speech. The real tool was the OMT "
-               "backstop — an unlimited, conditional commitment to buy peripheral sovereign bonds.")
+    _pchrt(_spread(df, ev, "FBTPY", "FGBLY", "Italy 10Y minus Germany 10Y",
+                   "Italy – Germany 10Y Spread (bp)", color=_COLS[3]),
+           "BTP-Bund spread fell from ~530 bp (late July 2012) to ~230 bp by year-end — "
+           "on Draghi's words alone. The OMT programme never formally purchased a single bond.")
+    _pchrt(_multi_spreads(df, ev,
+                          [("FOATY", "FGBLY", "France – Germany 10Y", _COLS[5]),
+                           ("FBTSY", "FGBSY", "Italy – Germany 2Y",   _COLS[3])],
+                          "Contagion Spreads — Speech Impact (bp)"),
+           "French 10Y and Italian 2Y spreads also collapsed immediately after the speech. "
+           "Short-dated spreads fell fastest — markets repriced near-term break-up risk to near zero.")
+    _pchrt(_cb_rates(cbpol, ev, ["Euro Area"], ["ECB Policy Rate"],
+                     "ECB Policy Rate (%)"),
+           "The ECB rate was at 0.75 % at the time of the speech. The real tool was the OMT "
+           "backstop — an unlimited, conditional commitment to buy peripheral sovereign bonds.")
 
 
 def _render_taper(ev, df, cbpol, cross, be, sl):
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        _pchrt(_yields(df, ev, ["US10Y", "US30Y"],
-                       ["US 10Y Treasury", "US 30Y Treasury"],
-                       "US Treasury Yields — The Tantrum (%)"),
-               "US 10Y rose ~140 bp in 7 months on a hint — not an actual rate change. "
-               "Bernanke merely suggested slowing bond purchases; the market repriced the entire long end.")
-    with c2:
-        _pchrt(_spread(df, ev, "US10Y", "US2Y", "10Y minus 2Y",
-                       "US Yield Curve — Steepening on Taper Expectations (bp)", color="#34d399"),
-               "The 2Y10Y spread steepened significantly. 2Y yields were anchored near zero "
-               "(Fed held rates steady); 10Y and 30Y repriced future inflation and term premium.")
-    with c3:
-        _pchrt(_cb_rates(cbpol, ev, ["United States"], ["Federal Funds Rate"],
-                         "Federal Funds Rate — Held at 0 % Throughout (%)"),
-               "The Fed did not raise rates once in 2013. Long-term yields can move 100+ bp "
-               "while the policy rate is frozen — expectations are the transmission mechanism.")
+    _pchrt(_yields(df, ev, ["US10Y", "US30Y"],
+                   ["US 10Y Treasury", "US 30Y Treasury"],
+                   "US Treasury Yields — The Tantrum (%)"),
+           "US 10Y rose ~140 bp in 7 months on a hint — not an actual rate change. "
+           "Bernanke merely suggested slowing bond purchases; the market repriced the entire long end.")
+    _pchrt(_spread(df, ev, "US10Y", "US2Y", "10Y minus 2Y",
+                   "US Yield Curve — Steepening on Taper Expectations (bp)", color=_COLS[2]),
+           "The 2Y10Y spread steepened significantly. 2Y yields were anchored near zero "
+           "(Fed held rates steady); 10Y and 30Y repriced future inflation and term premium.")
+    _pchrt(_cb_rates(cbpol, ev, ["United States"], ["Federal Funds Rate"],
+                     "Federal Funds Rate — Held at 0 % Throughout (%)"),
+           "The Fed did not raise rates once in 2013. Long-term yields can move 100+ bp "
+           "while the policy rate is frozen — expectations are the transmission mechanism.")
 
 
 def _render_oil_deflation(ev, df, cbpol, cross, be, sl):
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        _pchrt(_single_cross(cross, ev, "WTI Crude",
-                             "WTI Crude Oil — The Deflationary Driver (USD/bbl)",
-                             "USD / bbl", "#fb923c"),
-               "WTI fell from $107/bbl (June 2014) to below $26/bbl (February 2016). "
-               "OPEC's November 2014 decision to maintain output despite surging US shale triggered the crash.")
-    with c2:
-        _pchrt(_breakeven_chart(be, ev, ["5Y Breakeven", "10Y Breakeven"],
-                                "US Inflation Expectations — Falling Toward Deflation (%)"),
-               "US 5Y breakeven inflation fell from ~2 % to ~1.1 % as oil collapsed. "
-               "Markets priced sustained deflation risk; the Fed's 2 % target became a distant goal.")
-    with c3:
-        _pchrt(_yields(df, ev, ["FGBLY", "US10Y"],
-                       ["German 10Y Bund", "US 10Y Treasury"],
-                       "Nominal Yields Fall — German Bund Goes Negative (%)"),
-               "German 10Y Bund yield crossed zero on July 6, 2016 — a historic first. "
-               "When expected inflation is negative, a negative nominal yield can still be a "
-               "positive real return.")
+    _pchrt(_single_cross(cross, ev, "WTI Crude",
+                         "WTI Crude Oil — The Deflationary Driver (USD/bbl)",
+                         "USD / bbl", _COLS[0]),
+           "WTI fell from $107/bbl (June 2014) to below $26/bbl (February 2016). "
+           "OPEC's November 2014 decision to maintain output despite surging US shale triggered the crash.")
+    _pchrt(_breakeven_chart(be, ev, ["5Y Breakeven", "10Y Breakeven"],
+                            "US Inflation Expectations — Falling Toward Deflation (%)"),
+           "US 5Y breakeven inflation fell from ~2 % to ~1.1 % as oil collapsed. "
+           "Markets priced sustained deflation risk; the Fed's 2 % target became a distant goal.")
+    _pchrt(_yields(df, ev, ["FGBLY", "US10Y"],
+                   ["German 10Y Bund", "US 10Y Treasury"],
+                   "Nominal Yields Fall — German Bund Goes Negative (%)"),
+           "German 10Y Bund yield crossed zero on July 6, 2016 — a historic first. "
+           "When expected inflation is negative, a negative nominal yield can still be a "
+           "positive real return.")
 
 
 def _render_brexit(ev, df, cbpol, cross, be, sl):
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        _pchrt(_yields(df, ev,
-                       ["UK10Y", "FGBLY", "US10Y"],
-                       ["UK 10Y Gilt", "German 10Y Bund", "US 10Y Treasury"],
-                       "10Y Government Yields — Risk-Off Rally (%)"),
-               "UK Gilt yields fell on the vote result — investors bought gilts of the very "
-               "country facing political risk. Reflex risk-off dominated before more nuanced repricing.")
-    with c2:
-        _pchrt(_multi_spreads(df, ev,
-                              [("UK10Y", "FGBLY", "UK Gilt – German Bund 10Y", "#fb923c"),
-                               ("US10Y", "FGBLY", "US Treasury – German Bund 10Y", "#60a5fa")],
-                              "10Y Spreads vs German Bund (bp)"),
-               "UK–Germany spread initially compressed (both gilts and Bunds rallied in risk-off), "
-               "then widened as markets repriced UK-specific growth and political uncertainty risk.")
-    with c3:
-        _pchrt(_single_cross(cross, ev, "S&P 500",
-                             "S&P 500 — Rapid Recovery (Level)", "Level", "#34d399"),
-               "US equities fell initially but recovered within days — markets quickly concluded "
-               "Brexit was a UK-specific shock, not a global one. FTSE 100 rose on sterling weakness.")
+    _pchrt(_yields(df, ev,
+                   ["UK10Y", "FGBLY", "US10Y"],
+                   ["UK 10Y Gilt", "German 10Y Bund", "US 10Y Treasury"],
+                   "10Y Government Yields — Risk-Off Rally (%)"),
+           "UK Gilt yields fell on the vote result — investors bought gilts of the very "
+           "country facing political risk. Reflex risk-off dominated before more nuanced repricing.")
+    _pchrt(_multi_spreads(df, ev,
+                          [("UK10Y", "FGBLY", "UK Gilt – German Bund 10Y", _COLS[0]),
+                           ("US10Y", "FGBLY", "US Treasury – German Bund 10Y", _COLS[1])],
+                          "10Y Spreads vs German Bund (bp)"),
+           "UK–Germany spread initially compressed (both gilts and Bunds rallied in risk-off), "
+           "then widened as markets repriced UK-specific growth and political uncertainty risk.")
+    _pchrt(_single_cross(cross, ev, "S&P 500",
+                         "S&P 500 — Rapid Recovery (Level)", "Level", _COLS[2]),
+           "US equities fell initially but recovered within days — markets quickly concluded "
+           "Brexit was a UK-specific shock, not a global one. FTSE 100 rose on sterling weakness.")
 
 
 def _render_covid(ev, df, cbpol, cross, be, sl):
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        _pchrt(_yields(df, ev,
-                       ["US2Y", "US10Y", "US30Y"],
-                       ["US 2Y Treasury", "US 10Y Treasury", "US 30Y Treasury"],
-                       "US Treasury Yields — Historic Lows (%)"),
-               "US 10Y hit 0.54 % on March 9, 2020 — the lowest in 230 years of US Treasury history. "
-               "The entire US curve traded below 1 % simultaneously for the first time ever.")
-    with c2:
-        _pchrt(_cb_rates(cbpol, ev,
-                         ["United States", "Euro Area", "United Kingdom", "Japan"],
-                         ["Fed (US)", "ECB (Euro Area)", "BoE (UK)", "BoJ (Japan)"],
-                         "Central Bank Policy Rates — Emergency Cuts (%)"),
-               "Fed cut 150 bp in two emergency moves in March 2020 and launched unlimited QE. "
-               "All major central banks converged to the zero lower bound within weeks.")
-    with c3:
-        _pchrt(_single_cross(cross, ev, "VIX",
-                             "VIX — All-Time Record High", "", "#f87171"),
-               "VIX hit 82.69 on March 16, 2020 — a new all-time record. "
-               "The speed of the shock (lockdowns in 12 days from WHO pandemic declaration) "
-               "was unprecedented in modern financial history.")
+    _pchrt(_yields(df, ev,
+                   ["US2Y", "US10Y", "US30Y"],
+                   ["US 2Y Treasury", "US 10Y Treasury", "US 30Y Treasury"],
+                   "US Treasury Yields — Historic Lows (%)"),
+           "US 10Y hit 0.54 % on March 9, 2020 — the lowest in 230 years of US Treasury history. "
+           "The entire US curve traded below 1 % simultaneously for the first time ever.")
+    _pchrt(_cb_rates(cbpol, ev,
+                     ["United States", "Euro Area", "United Kingdom", "Japan"],
+                     ["Fed (US)", "ECB (Euro Area)", "BoE (UK)", "BoJ (Japan)"],
+                     "Central Bank Policy Rates — Emergency Cuts (%)"),
+           "Fed cut 150 bp in two emergency moves in March 2020 and launched unlimited QE. "
+           "All major central banks converged to the zero lower bound within weeks.")
+    _pchrt(_single_cross(cross, ev, "VIX",
+                         "VIX — All-Time Record High", "", _COLS[3]),
+           "VIX hit 82.69 on March 16, 2020 — a new all-time record. "
+           "The speed of the shock (lockdowns in 12 days from WHO pandemic declaration) "
+           "was unprecedented in modern financial history.")
 
 
 def _render_inflation_hike(ev, df, cbpol, cross, be, sl):
-    r1c1, r1c2 = st.columns(2)
-    r2c1, r2c2 = st.columns(2)
-    with r1c1:
-        _pchrt(_cb_rates(cbpol, ev,
-                         ["United States", "Euro Area", "United Kingdom", "Japan", "Canada"],
-                         ["Fed (US)", "ECB (Euro Area)", "BoE (UK)", "BoJ (Japan)", "BoC (Canada)"],
-                         "Central Bank Policy Rates — Fastest Hike in 40 Years (%)"),
-               "Fed hiked 525 bp in 17 months — the fastest cycle since Volcker (1980). "
-               "ECB hiked 450 bp from a negative base rate. Four consecutive 75 bp Fed moves in H2 2022.")
-    with r1c2:
-        _pchrt(_yields(df, ev,
-                       ["US2Y", "US10Y", "US30Y"],
-                       ["US 2Y Treasury", "US 10Y Treasury", "US 30Y Treasury"],
-                       "US Treasury Yields — Worst Bond Bear Market in a Century (%)"),
-               "US 10Y rose from 1.5 % (Jan 2022) to 5.0 % (Oct 2023) — a 351 bp rise. "
-               "US Treasuries returned -18 % in 2022, the worst calendar year since the Civil War era.")
-    with r2c1:
-        _pchrt(_spread(df, ev, "US10Y", "US2Y", "10Y minus 2Y",
-                       "US 2Y10Y Slope — Historic Inversion (bp)", color="#f87171"),
-               "2Y10Y inverted to -108 bp in July 2023 — deepest since 1981. "
-               "Inverted curves reliably precede recessions: near-term hikes priced in, future cuts expected.")
-    with r2c2:
-        _pchrt(_breakeven_chart(be, ev,
-                                ["5Y Breakeven", "10Y Breakeven", "5Y Real Yield"],
-                                "US Inflation & Real Yield Repricing (%)"),
-               "5Y breakeven peaked at 3.6 % (March 2022) then declined as hike credibility built. "
-               "5Y real yield rose from -2 % to +2.5 % — a massive repricing of the risk-free rate.")
+    _pchrt(_cb_rates(cbpol, ev,
+                     ["United States", "Euro Area", "United Kingdom", "Japan", "Canada"],
+                     ["Fed (US)", "ECB (Euro Area)", "BoE (UK)", "BoJ (Japan)", "BoC (Canada)"],
+                     "Central Bank Policy Rates — Fastest Hike in 40 Years (%)"),
+           "Fed hiked 525 bp in 17 months — the fastest cycle since Volcker (1980). "
+           "ECB hiked 450 bp from a negative base rate. Four consecutive 75 bp Fed moves in H2 2022.")
+    _pchrt(_yields(df, ev,
+                   ["US2Y", "US10Y", "US30Y"],
+                   ["US 2Y Treasury", "US 10Y Treasury", "US 30Y Treasury"],
+                   "US Treasury Yields — Worst Bond Bear Market in a Century (%)"),
+           "US 10Y rose from 1.5 % (Jan 2022) to 5.0 % (Oct 2023) — a 351 bp rise. "
+           "US Treasuries returned -18 % in 2022, the worst calendar year since the Civil War era.")
+    _pchrt(_spread(df, ev, "US10Y", "US2Y", "10Y minus 2Y",
+                   "US 2Y10Y Slope — Historic Inversion (bp)", color=_COLS[3]),
+           "2Y10Y inverted to -108 bp in July 2023 — deepest since 1981. "
+           "Inverted curves reliably precede recessions: near-term hikes priced in, future cuts expected.")
+    _pchrt(_breakeven_chart(be, ev,
+                            ["5Y Breakeven", "10Y Breakeven", "5Y Real Yield"],
+                            "US Inflation & Real Yield Repricing (%)"),
+           "5Y breakeven peaked at 3.6 % (March 2022) then declined as hike credibility built. "
+           "5Y real yield rose from -2 % to +2.5 % — a massive repricing of the risk-free rate.")
 
 
 def _render_uk_ldi(ev, df, cbpol, cross, be, sl):
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        _pchrt(_yields(df, ev,
-                       ["UK10Y", "FGBXY"],
-                       ["UK 10Y Gilt", "German 30Y Buxl"],
-                       "Long-End Yields — The LDI Spike (%)"),
-               "UK 10Y rose 110 bp in 5 days after the mini-budget. The 30Y gilt "
-               "— the key LDI instrument for pension funds — spiked even more dramatically.")
-    with c2:
-        _pchrt(_multi_spreads(df, ev,
-                              [("UK10Y", "FGBLY", "UK Gilt – German Bund 10Y", "#fb923c"),
-                               ("UK10Y", "US10Y", "UK Gilt – US Treasury 10Y", "#a78bfa")],
-                              "UK Gilt Spreads — Fiscal Credibility Premium (bp)"),
-               "UK–Germany and UK–US spreads blew out sharply — this was UK-specific, not a global move. "
-               "Bond markets priced a fiscal credibility premium for the first time in modern UK history.")
-    with c3:
-        _pchrt(_cb_rates(cbpol, ev,
-                         ["United Kingdom", "United States", "Euro Area"],
-                         ["BoE (UK)", "Fed (US)", "ECB (Euro Area)"],
-                         "Policy Rates — BoE Conflict: Hike or Intervene? (%)"),
-               "The BoE was already hiking to combat 11 % UK CPI when the mini-budget hit. "
-               "It faced a conflict: tighten to fight inflation, or intervene to prevent a pension "
-               "fund collapse. It ultimately did both — hike and launch emergency gilt purchases.")
+    _pchrt(_yields(df, ev,
+                   ["UK10Y", "FGBXY"],
+                   ["UK 10Y Gilt", "German 30Y Buxl"],
+                   "Long-End Yields — The LDI Spike (%)"),
+           "UK 10Y rose 110 bp in 5 days after the mini-budget. The 30Y gilt "
+           "— the key LDI instrument for pension funds — spiked even more dramatically.")
+    _pchrt(_multi_spreads(df, ev,
+                          [("UK10Y", "FGBLY", "UK Gilt – German Bund 10Y", _COLS[0]),
+                           ("UK10Y", "US10Y", "UK Gilt – US Treasury 10Y", _COLS[5])],
+                          "UK Gilt Spreads — Fiscal Credibility Premium (bp)"),
+           "UK–Germany and UK–US spreads blew out sharply — this was UK-specific, not a global move. "
+           "Bond markets priced a fiscal credibility premium for the first time in modern UK history.")
+    _pchrt(_cb_rates(cbpol, ev,
+                     ["United Kingdom", "United States", "Euro Area"],
+                     ["BoE (UK)", "Fed (US)", "ECB (Euro Area)"],
+                     "Policy Rates — BoE Conflict: Hike or Intervene? (%)"),
+           "The BoE was already hiking to combat 11 % UK CPI when the mini-budget hit. "
+           "It faced a conflict: tighten to fight inflation, or intervene to prevent a pension "
+           "fund collapse. It ultimately did both — hike and launch emergency gilt purchases.")
 
 
 def _render_trump_reflation(ev, df, cbpol, cross, be, sl):
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        _pchrt(_yields(df, ev,
-                       ["US2Y", "US10Y", "US30Y"],
-                       ["US 2Y Treasury", "US 10Y Treasury", "US 30Y Treasury"],
-                       "US Treasury Yields — Reflationary Jump (%)"),
-               "US 10Y rose 83 bp in 5 weeks post-election. Unlike most yield spikes, "
-               "equity markets rallied simultaneously — markets priced higher growth, not just higher "
-               "inflation.")
-    with c2:
-        _pchrt(_spread(df, ev, "US10Y", "US2Y", "10Y minus 2Y",
-                       "US Curve — Steepening on Fiscal Expansion Expectations (bp)",
-                       color="#34d399"),
-               "The 2Y10Y spread steepened sharply. Longer maturities repriced fiscal expansion "
-               "and inflation risks; 2Y remained anchored to near-term Fed rate expectations.")
-    with c3:
-        _pchrt(_single_cross(cross, ev, "S&P 500",
-                             "S&P 500 — Equities and Yields Rise Together (Level)",
-                             "Level", "#34d399"),
-               "S&P 500 rose ~5 % alongside bond yields. The 'Trump trade' — yields and equities "
-               "rising together — is the classic reflationary scenario driven by growth expectations.")
+    _pchrt(_yields(df, ev,
+                   ["US2Y", "US10Y", "US30Y"],
+                   ["US 2Y Treasury", "US 10Y Treasury", "US 30Y Treasury"],
+                   "US Treasury Yields — Reflationary Jump (%)"),
+           "US 10Y rose 83 bp in 5 weeks post-election. Unlike most yield spikes, "
+           "equity markets rallied simultaneously — markets priced higher growth, not just higher "
+           "inflation.")
+    _pchrt(_spread(df, ev, "US10Y", "US2Y", "10Y minus 2Y",
+                   "US Curve — Steepening on Fiscal Expansion Expectations (bp)", color=_COLS[2]),
+           "The 2Y10Y spread steepened sharply. Longer maturities repriced fiscal expansion "
+           "and inflation risks; 2Y remained anchored to near-term Fed rate expectations.")
+    _pchrt(_single_cross(cross, ev, "S&P 500",
+                         "S&P 500 — Equities and Yields Rise Together (Level)", "Level", _COLS[2]),
+           "S&P 500 rose ~5 % alongside bond yields. The 'Trump trade' — yields and equities "
+           "rising together — is the classic reflationary scenario driven by growth expectations.")
 
 
 def _render_negative_yields(ev, df, cbpol, cross, be, sl):
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        _pchrt(_yields(df, ev,
-                       ["FGBLY", "FGBMY", "FGBXY"],
-                       ["German 10Y Bund", "German 5Y Bobl", "German 30Y Buxl"],
-                       "German Sovereign Yields — Into Negative Territory (%)"),
-               "German 10Y went negative in July 2016 and stayed negative through 2021. "
-               "At the peak, all German maturities out to 10 years traded below zero simultaneously.")
-    with c2:
-        _pchrt(_cb_rates(cbpol, ev, ["Euro Area", "Japan"],
-                         ["ECB (Euro Area)", "BoJ (Japan)"],
-                         "ECB and BoJ — Negative Rate Pioneers (%)"),
-               "ECB deposit rate cut to -0.40 % by March 2016. BoJ implemented Yield Curve Control "
-               "in September 2016, explicitly targeting a 0 % 10Y yield via unlimited bond purchases.")
-    with c3:
-        _pchrt(_breakeven_chart(be, ev, ["5Y Breakeven", "10Y Breakeven"],
-                                "US Inflation Expectations — Deflation Fear (%)"),
-               "US inflation expectations also drifted lower, though never as far as European equivalents. "
-               "The era ended abruptly in 2021 when US inflation surged, eventually pulling European "
-               "yields higher through global rate contagion.")
+    _pchrt(_yields(df, ev,
+                   ["FGBLY", "FGBMY", "FGBXY"],
+                   ["German 10Y Bund", "German 5Y Bobl", "German 30Y Buxl"],
+                   "German Sovereign Yields — Into Negative Territory (%)"),
+           "German 10Y went negative in July 2016 and stayed negative through 2021. "
+           "At the peak, all German maturities out to 10 years traded below zero simultaneously.")
+    _pchrt(_cb_rates(cbpol, ev, ["Euro Area", "Japan"],
+                     ["ECB (Euro Area)", "BoJ (Japan)"],
+                     "ECB and BoJ — Negative Rate Pioneers (%)"),
+           "ECB deposit rate cut to -0.40 % by March 2016. BoJ implemented Yield Curve Control "
+           "in September 2016, explicitly targeting a 0 % 10Y yield via unlimited bond purchases.")
+    _pchrt(_breakeven_chart(be, ev, ["5Y Breakeven", "10Y Breakeven"],
+                            "US Inflation Expectations — Deflation Fear (%)"),
+           "US inflation expectations also drifted lower, though never as far as European equivalents. "
+           "The era ended abruptly in 2021 when US inflation surged, eventually pulling European "
+           "yields higher through global rate contagion.")
 
 
 _RENDERERS = {

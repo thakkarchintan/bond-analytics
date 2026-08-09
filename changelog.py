@@ -1,5 +1,19 @@
 CHANGELOG = [
     {
+        "id": 42,
+        "version": "1.42",
+        "timestamp": "09 Aug 2026, 06:38 IST",
+        "category": "Enhancement",
+        "title": "Curve Trade Builder + Historical Shocks — layout and UX improvements",
+        "description": [
+            "CurveTradeBuilder.py — Step 1: shape selector and tenor yields in left column; live yield curve chart in right column updates as yields are edited",
+            "CurveTradeBuilder.py — DV01 overrides now persist in session state; changing scenario, shape or magnitude no longer resets custom DV01 values",
+            "HistoricalShocks.py — charts now displayed one per row at full page width (no more side-by-side columns)",
+            "HistoricalShocks.py — Bloomberg terminal colour scheme: near-black plot background, orange titles, Bloomberg series palette (orange/cyan/green/red/yellow/magenta)",
+            "HistoricalShocks.py — legends moved to bottom inside the chart area (horizontal, below x-axis)",
+        ],
+    },
+    {
         "id": 41,
         "version": "1.41",
         "timestamp": "08 Aug 2026, 21:22 IST",

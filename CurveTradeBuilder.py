@@ -163,31 +163,58 @@ def curve_trade_builder() -> None:
     # ═══════════════════════════════════════════════════════════════════════════
     _section("Step 1 — Current Yield Curve", "Choose a preset shape or input yields manually")
 
-    shape_choice = st.selectbox(
-        "Curve shape preset",
-        options=list(_SHAPES.keys()),
-        index=0,
-        key="ctb_shape",
-    )
-
-    # Seed default yields from preset; allow manual override
-    preset_yields = _SHAPES[shape_choice]
-
-    st.markdown(
-        f'<div style="font-size:12px;color:{_T2};margin:6px 0 4px;">'
-        f'Edit any yield below to override the preset:</div>',
-        unsafe_allow_html=True,
-    )
-    cols_y = st.columns(7)
+    s1_left, s1_right = st.columns([1, 2])
     current_yields: list[float] = []
-    for i, (lbl, preset) in enumerate(zip(_TENOR_LABELS, preset_yields)):
-        with cols_y[i]:
+
+    with s1_left:
+        shape_choice = st.selectbox(
+            "Curve shape preset",
+            options=list(_SHAPES.keys()),
+            index=0,
+            key="ctb_shape",
+        )
+        preset_yields = _SHAPES[shape_choice]
+        st.markdown(
+            f'<div style="font-size:11px;color:{_T2};margin:8px 0 4px;">Tenor yields (%) — click to edit:</div>',
+            unsafe_allow_html=True,
+        )
+        for lbl, preset in zip(_TENOR_LABELS, preset_yields):
             y = st.number_input(
                 lbl, value=float(preset), step=0.05,
                 min_value=0.01, max_value=20.0, format="%.2f",
                 key=f"ctb_y_{lbl}",
             )
             current_yields.append(y)
+
+    with s1_right:
+        _preset_ys = _SHAPES[shape_choice]
+        _any_override = any(abs(current_yields[i] - _preset_ys[i]) > 0.005 for i in range(len(_TENOR_LABELS)))
+        fig_s1 = go.Figure()
+        if _any_override:
+            fig_s1.add_trace(go.Scatter(
+                x=_TENOR_MATS, y=_preset_ys, name=f"Preset: {shape_choice}",
+                mode="lines+markers",
+                line=dict(color=_T2, width=1.5, dash="dot"),
+                marker=dict(size=5, color=_T2),
+                hovertemplate="%{text}: %{y:.2f}%<extra>Preset</extra>",
+                text=_TENOR_LABELS,
+            ))
+        fig_s1.add_trace(go.Scatter(
+            x=_TENOR_MATS, y=current_yields, name="Current Curve",
+            mode="lines+markers",
+            line=dict(color=_BLUE, width=2.5),
+            marker=dict(size=7, color=_BLUE, line=dict(width=1, color=_BG)),
+            hovertemplate="%{text}: %{y:.2f}%<extra>Current</extra>",
+            text=_TENOR_LABELS,
+        ))
+        fig_s1.update_layout(
+            height=360,
+            title=dict(text=f"Yield Curve — {shape_choice}", font=dict(size=13, color=_T1), x=0),
+            yaxis_title="Yield (%)",
+            **_layout(),
+        )
+        fig_s1.update_xaxes(title="Maturity (years)", tickvals=_TENOR_MATS, ticktext=_TENOR_LABELS)
+        st.plotly_chart(fig_s1, use_container_width=True)
 
     # ═══════════════════════════════════════════════════════════════════════════
     # STEP 2 — Scenario
@@ -240,11 +267,20 @@ def curve_trade_builder() -> None:
 
     if "ctb_dv01_reset_n" not in st.session_state:
         st.session_state["ctb_dv01_reset_n"] = 0
+    if "ctb_dv01_overrides" not in st.session_state:
+        st.session_state["ctb_dv01_overrides"] = {}
+
+    # Build display values: use stored overrides so scenario changes don't reset them
+    dv01_display = [
+        st.session_state["ctb_dv01_overrides"].get(lbl, dv01_defaults[i])
+        for i, lbl in enumerate(_TENOR_LABELS)
+    ]
 
     with st.expander("Tenor-by-tenor shifts — double-click DV01 to override", expanded=True):
         hdr_l, hdr_r = st.columns([6, 1])
         with hdr_r:
             if st.button("↺ Reset DV01s", key="ctb_dv01_reset_btn"):
+                st.session_state["ctb_dv01_overrides"] = {}
                 st.session_state["ctb_dv01_reset_n"] += 1
                 st.rerun()
 
@@ -253,7 +289,7 @@ def curve_trade_builder() -> None:
             "Current (%)":        [round(y, 4) for y in current_yields],
             "Shift (bp)":         [round(s, 2) for s in shifts_bp],
             "New Yield (%)":      [round(y, 4) for y in new_yields],
-            "DV01/bp per $1M ($)":dv01_defaults,
+            "DV01/bp per $1M ($)":dv01_display,
         })
 
         edited_shifts = st.data_editor(
@@ -272,6 +308,16 @@ def curve_trade_builder() -> None:
             use_container_width=True,
             key=f"ctb_dv01_editor_{st.session_state['ctb_dv01_reset_n']}",
         )
+
+    # Persist edits to session state so scenario/shape changes don't wipe them
+    for _, row in edited_shifts.iterrows():
+        tenor = row["Tenor"]
+        val = float(row["DV01/bp per $1M ($)"])
+        idx = _TENOR_LABELS.index(tenor)
+        if abs(val - dv01_defaults[idx]) > 0.1:
+            st.session_state["ctb_dv01_overrides"][tenor] = val
+        elif tenor in st.session_state["ctb_dv01_overrides"]:
+            del st.session_state["ctb_dv01_overrides"][tenor]
 
     # Map tenor → user-overridden DV01 per $1M
     dv01_override = {
