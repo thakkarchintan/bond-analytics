@@ -1,5 +1,19 @@
 CHANGELOG = [
     {
+        "id": 46,
+        "version": "1.46",
+        "timestamp": "09 Aug 2026, 10:45 IST",
+        "category": "Enhancement",
+        "title": "Curve Trade Builder — larger fonts across page",
+        "description": [
+            "CurveTradeBuilder.py — base chart font increased 12→15, axis tick font 11→14, legend font 11→14",
+            "Section headers increased 13→15px, subtitles 12→14px",
+            "Metric cards: label 10→13px, value 18→22px, sub text 10→13px",
+            "Inline HTML text blocks (banner, shape description, tenor labels, DV01 info, warnings) all scaled up ~2px",
+            "Bottom chart margin increased 44→64px to accommodate larger legend text",
+        ],
+    },
+    {
         "id": 45,
         "version": "1.45",
         "timestamp": "09 Aug 2026, 06:38 IST",

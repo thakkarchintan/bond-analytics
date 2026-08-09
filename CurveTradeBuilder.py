@@ -93,13 +93,13 @@ _SCENARIO_DESCRIPTIONS = {
 
 def _section(title: str, subtitle: str = "") -> None:
     sub = (
-        f'<div style="font-size:12px;color:{_T2};margin-top:4px;">{subtitle}</div>'
+        f'<div style="font-size:14px;color:{_T2};margin-top:4px;">{subtitle}</div>'
         if subtitle else ""
     )
     st.markdown(
         f'<div style="background:{_CARD};border-left:4px solid {_BLUE};'
         f'padding:12px 16px;margin:24px 0 10px;border-radius:0 8px 8px 0;">'
-        f'<span style="font-size:13px;font-weight:700;color:{_T1};'
+        f'<span style="font-size:15px;font-weight:700;color:{_T1};'
         f'text-transform:uppercase;letter-spacing:.08em;">{title}</span>{sub}</div>',
         unsafe_allow_html=True,
     )
@@ -110,14 +110,14 @@ def _layout(**kw) -> dict:
         template="plotly_dark",
         paper_bgcolor=_CARD,
         plot_bgcolor=_BG,
-        margin=dict(l=60, r=20, t=44, b=44),
-        font=dict(color=_T1, size=12),
-        xaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2),
+        margin=dict(l=60, r=20, t=44, b=64),
+        font=dict(color=_T1, size=15),
+        xaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2, size=14),
                    showline=True, linecolor=_EDGE),
-        yaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2),
+        yaxis=dict(gridcolor=_EDGE, tickfont=dict(color=_T2, size=14),
                    showline=True, linecolor=_EDGE),
         hoverlabel=dict(bgcolor=_CARD, font_color=_T1, bordercolor=_EDGE),
-        legend=dict(font=dict(color=_T1, size=11), bgcolor="rgba(0,0,0,0)"),
+        legend=dict(font=dict(color=_T1, size=14), bgcolor="rgba(0,0,0,0)"),
     )
     base.update(kw)
     return base
@@ -125,15 +125,15 @@ def _layout(**kw) -> dict:
 
 def _metric_card(label: str, value: str, sub: str = "", accent: str = _BLUE) -> str:
     sub_html = (
-        f'<div style="font-size:10px;color:{_T2};margin-top:3px;">{sub}</div>'
+        f'<div style="font-size:13px;color:{_T2};margin-top:3px;">{sub}</div>'
         if sub else ""
     )
     return (
         f'<div style="background:{_CARD};border:1px solid {_EDGE};border-left:3px solid {accent};'
         f'border-radius:8px;padding:12px 14px;">'
-        f'<div style="font-size:10px;color:{_T2};text-transform:uppercase;'
+        f'<div style="font-size:13px;color:{_T2};text-transform:uppercase;'
         f'letter-spacing:.1em;margin-bottom:5px;">{label}</div>'
-        f'<div style="font-size:18px;font-weight:700;color:{_T1};">{value}</div>'
+        f'<div style="font-size:22px;font-weight:700;color:{_T1};">{value}</div>'
         f'{sub_html}</div>'
     )
 
@@ -164,7 +164,7 @@ def _new_price(coupon_pct: float, maturity: float, new_yield_pct: float) -> floa
 def curve_trade_builder() -> None:
     st.markdown(
         f'<h2 style="color:#0f172a;margin:0 0 2px;">Yield Curve Trade Builder</h2>'
-        f'<div style="font-size:12px;color:#475569;">'
+        f'<div style="font-size:14px;color:#475569;">'
         f'Scenario analysis · 2 &amp; 3-leg trades · DV01 attribution · P&amp;L · DV01-neutral ratios</div>'
         f'<hr style="border:none;border-top:1px solid #e2e8f0;margin:12px 0 8px;">',
         unsafe_allow_html=True,
@@ -182,7 +182,7 @@ def curve_trade_builder() -> None:
     if sim_mode:
         st.markdown(
             f'<div style="background:#1e3a5f;border:1px solid {_BLUE};border-left:4px solid {_BLUE};'
-            f'border-radius:8px;padding:10px 16px;margin-bottom:10px;font-size:13px;color:#bfdbfe;">'
+            f'border-radius:8px;padding:10px 16px;margin-bottom:10px;font-size:15px;color:#bfdbfe;">'
             f'<b style="color:{_BLUE};">Simulation Mode ON</b> — '
             f'P&amp;L uses the DV01 × bp approximation. When Net DV01 = $0, Total P&amp;L = $0 exactly. '
             f'Toggle off to see real bond-pricing P&amp;L.</div>',
@@ -206,7 +206,7 @@ def curve_trade_builder() -> None:
         )
         preset_yields = _SHAPES[shape_choice]
         st.markdown(
-            f'<div style="font-size:11px;color:{_T2};margin:6px 0 2px;">Tenor yields (%) — click to edit:</div>',
+            f'<div style="font-size:13px;color:{_T2};margin:6px 0 2px;">Tenor yields (%) — click to edit:</div>',
             unsafe_allow_html=True,
         )
         for lbl, preset in zip(_TENOR_LABELS, preset_yields):
@@ -214,7 +214,7 @@ def curve_trade_builder() -> None:
             with _lc:
                 st.markdown(
                     f'<div style="display:flex;align-items:center;height:40px;'
-                    f'font-size:13px;font-weight:600;color:{_T2};">{lbl}</div>',
+                    f'font-size:15px;font-weight:600;color:{_T2};">{lbl}</div>',
                     unsafe_allow_html=True,
                 )
             with _ic:
@@ -249,14 +249,14 @@ def curve_trade_builder() -> None:
         # Height: selectbox ~60px + hint ~24px + 7 rows × ~44px = ~390px
         fig_s1.update_layout(
             height=400,
-            title=dict(text=f"Yield Curve — {shape_choice}", font=dict(size=13, color=_T1), x=0),
+            title=dict(text=f"Yield Curve — {shape_choice}", font=dict(size=15, color=_T1), x=0),
             yaxis_title="Yield (%)",
             **_layout(),
         )
         fig_s1.update_xaxes(title="Maturity (years)", tickvals=_TENOR_MATS, ticktext=_TENOR_LABELS)
         st.plotly_chart(fig_s1, use_container_width=True)
         st.markdown(
-            f'<div style="font-size:12px;color:{_T2};line-height:1.7;'
+            f'<div style="font-size:14px;color:{_T2};line-height:1.7;'
             f'padding:8px 12px;border-left:3px solid {_EDGE};margin-top:-8px;">'
             f'{_SHAPE_DESCRIPTIONS.get(shape_choice, "")}</div>',
             unsafe_allow_html=True,
@@ -287,7 +287,7 @@ def curve_trade_builder() -> None:
 
     if scenario == "Custom":
         st.markdown(
-            f'<div style="font-size:12px;color:{_T2};margin:6px 0 4px;">'
+            f'<div style="font-size:14px;color:{_T2};margin:6px 0 4px;">'
             f'Input the shift (bp) for each tenor:</div>',
             unsafe_allow_html=True,
         )
@@ -388,7 +388,7 @@ def curve_trade_builder() -> None:
                 f'<div style="background:{_CARD};border:1px solid {_EDGE};'
                 f'border-top:3px solid {leg_colors[i]};border-radius:8px;'
                 f'padding:14px 14px 10px;margin-bottom:8px;">'
-                f'<div style="font-size:12px;font-weight:700;color:{_T1};margin-bottom:10px;">'
+                f'<div style="font-size:14px;font-weight:700;color:{_T1};margin-bottom:10px;">'
                 f'Leg {i+1}</div></div>',
                 unsafe_allow_html=True,
             )
@@ -467,12 +467,12 @@ def curve_trade_builder() -> None:
         st.markdown(
             f'<div style="background:#431407;border:1px solid #f97316;'
             f'border-left:4px solid #f97316;border-radius:8px;'
-            f'padding:12px 16px;margin-bottom:14px;font-size:13px;color:#fed7aa;">'
+            f'padding:12px 16px;margin-bottom:14px;font-size:15px;color:#fed7aa;">'
             f'<b style="color:#fb923c;">⚠ DV01 values overridden</b> — '
             f'P&amp;L is computed from exact bond pricing, not from the rounded DV01s shown. '
             f'A small residual P&amp;L will appear even when the displayed DV01s are perfectly balanced, '
             f'because real bond math rarely produces round numbers.<br>'
-            f'<span style="font-size:11px;color:#fdba74;line-height:1.8;">'
+            f'<span style="font-size:13px;color:#fdba74;line-height:1.8;">'
             f'{detail}<br>'
             f'In practice, market DV01s are never exactly round — traders use the precise model values '
             f'and size positions to the nearest \$1k notional to get as close to neutral as possible. '
@@ -675,7 +675,7 @@ def curve_trade_builder() -> None:
         vfy_color_down = _GRN if abs(verify_pl_down) < 50 else _AMB
         st.markdown(
             f'<div style="background:{_CARD};border:1px solid {_EDGE};border-radius:8px;'
-            f'padding:16px 18px;font-size:13px;color:{_T2};line-height:1.9;">'
+            f'padding:16px 18px;font-size:15px;color:{_T2};line-height:1.9;">'
             f'<b style="color:{_T1};">DV01-neutral construction</b><br>'
             f'For every <b style="color:{_BLUE};">${leg_a["face_m"]:.0f}M</b> of '
             f'<b>{leg_a["tenor"]}</b> ({leg_a["direction"]}), '
@@ -687,7 +687,7 @@ def curve_trade_builder() -> None:
             f'<b style="color:{_T1};">✓ Parallel shift verification (at neutral sizes)</b><br>'
             f'Parallel <b>+50bp</b>: P&L = <b style="color:{vfy_color_up};">${verify_pl_up:+,.0f}</b> &nbsp;·&nbsp; '
             f'Parallel <b>−50bp</b>: P&L = <b style="color:{vfy_color_down};">${verify_pl_down:+,.0f}</b><br>'
-            f'<span style="font-size:11px;">Small residual (~$0) is convexity — duration-hedged trades are not '
+            f'<span style="font-size:13px;">Small residual (~$0) is convexity — duration-hedged trades are not '
             f'perfectly convexity-neutral. A larger negative residual means additional convexity hedging is needed.</span>'
             f'</div>',
             unsafe_allow_html=True,
@@ -723,7 +723,7 @@ def curve_trade_builder() -> None:
         vfy_color_down = _GRN if abs(verify_pl_down) < 100 else _AMB
         st.markdown(
             f'<div style="background:{_CARD};border:1px solid {_EDGE};border-radius:8px;'
-            f'padding:16px 18px;font-size:13px;color:{_T2};line-height:1.9;">'
+            f'padding:16px 18px;font-size:15px;color:{_T2};line-height:1.9;">'
             f'<b style="color:{_T1};">DV01-neutral butterfly (fix {leg_b["tenor"]} belly at ${leg_b["face_m"]:.0f}M)</b><br>'
             f'{leg_a["tenor"]}: <b style="color:{_BLUE};">${neutral_face_a:.2f}M</b> ({leg_a["direction"]}) &nbsp;|&nbsp; '
             f'{leg_b["tenor"]}: <b style="color:{_AMB};">${leg_b["face_m"]:.0f}M</b> ({leg_b["direction"]}) &nbsp;|&nbsp; '
