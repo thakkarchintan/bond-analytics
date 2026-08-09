@@ -35,6 +35,37 @@ _SHAPES: dict[str, list[float]] = {
     "Custom":                  [4.50, 4.60, 4.70, 4.75, 4.80, 4.85, 4.90],
 }
 
+_SHAPE_DESCRIPTIONS: dict[str, str] = {
+    "Normal (Upward Sloping)": (
+        "The classic healthy-economy curve: investors demand extra yield for lending long, reflecting "
+        "positive growth expectations and normal term risk. Typically forms during mid-expansion when "
+        "the central bank has normalised rates — a steeper slope signals stronger growth or rising "
+        "long-end inflation expectations."
+    ),
+    "Flat": (
+        "Short and long yields converge when markets expect minimal policy rate change over the medium "
+        "term, most commonly late in a hiking cycle when the terminal rate is nearly reached. Flat curves "
+        "compress bank net-interest margins and are a reliable signal of deteriorating growth momentum "
+        "— often a precursor to inversion."
+    ),
+    "Inverted": (
+        "Short-end yields above long-end yields signal the market expects aggressive rate cuts ahead "
+        "because growth is set to slow materially or inflation to fall sharply. Every US recession since "
+        "1970 has been preceded by a 2Y–10Y inversion; the depth and duration of inversion correlates "
+        "with the severity of the subsequent slowdown."
+    ),
+    "Humped (Mid-Cycle)": (
+        "Yields peak at intermediate maturities (5–7Y) before declining at the long end — a shape "
+        "that reflects peak uncertainty about the near-term rate path. Typical when the central bank is "
+        "at or near peak rates but the market is unsure whether policy stays restrictive or pivots, while "
+        "long-end yields remain anchored by subdued long-run growth and inflation expectations."
+    ),
+    "Custom": (
+        "User-defined curve — set each tenor manually to model bespoke scenarios, replicate historical "
+        "episodes, or stress-test non-standard curve configurations."
+    ),
+}
+
 # Scenario shift profiles: fraction of total magnitude per tenor
 # Positive = yield rises, negative = yield falls
 _SCENARIO_PROFILES: dict[str, list[float]] = {
@@ -224,6 +255,12 @@ def curve_trade_builder() -> None:
         )
         fig_s1.update_xaxes(title="Maturity (years)", tickvals=_TENOR_MATS, ticktext=_TENOR_LABELS)
         st.plotly_chart(fig_s1, use_container_width=True)
+        st.markdown(
+            f'<div style="font-size:12px;color:{_T2};line-height:1.7;'
+            f'padding:8px 12px;border-left:3px solid {_EDGE};margin-top:-8px;">'
+            f'{_SHAPE_DESCRIPTIONS.get(shape_choice, "")}</div>',
+            unsafe_allow_html=True,
+        )
 
     # ═══════════════════════════════════════════════════════════════════════════
     # STEP 2 — Scenario

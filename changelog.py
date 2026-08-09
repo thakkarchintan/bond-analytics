@@ -1,5 +1,17 @@
 CHANGELOG = [
     {
+        "id": 44,
+        "version": "1.44",
+        "timestamp": "09 Aug 2026, 06:38 IST",
+        "category": "Enhancement",
+        "title": "Curve Trade Builder — curve shape descriptions below Step 1 chart",
+        "description": [
+            "CurveTradeBuilder.py — added _SHAPE_DESCRIPTIONS with 2–3 line fixed-income strategist commentary for each preset",
+            "Descriptions explain what the curve shape signals and when it historically forms (Normal / Flat / Inverted / Humped / Custom)",
+            "Rendered below the Step 1 yield curve chart with a left accent bar, filling the empty space cleanly",
+        ],
+    },
+    {
         "id": 43,
         "version": "1.43",
         "timestamp": "09 Aug 2026, 06:38 IST",
