@@ -380,7 +380,7 @@ def _decorate(fig: go.Figure, ev: dict) -> go.Figure:
             x=date, y=0.97, xref="x", yref="paper",
             text=label, showarrow=False,
             xanchor="left", yanchor="top",
-            font=dict(size=9, color="#ff8c00"),
+            font=dict(size=13, color="#ff8c00"),
             bgcolor="rgba(10,10,10,0.7)",
         )
     return fig
@@ -391,17 +391,19 @@ def _base(title: str, y_label: str = "", h: int = 400) -> go.Figure:
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor=_BG, plot_bgcolor=_PLT,
-        font=dict(size=11, color=_T2),
-        title=dict(text=title, font=dict(size=14, color="#ff8c00"), x=0),
+        font=dict(size=17, color=_T2),
+        title=dict(text=title, font=dict(size=21, color="#ff8c00"), x=0),
         xaxis=dict(gridcolor=_GRD, zeroline=False, linecolor="#333",
-                   tickfont=dict(color=_T2)),
+                   tickfont=dict(size=16, color=_T2),
+                   title_font=dict(size=17)),
         yaxis=dict(gridcolor=_GRD, zeroline=False, title=y_label,
-                   linecolor="#333", tickfont=dict(color=_T2)),
-        margin=dict(l=55, r=20, t=44, b=70),
+                   linecolor="#333", tickfont=dict(size=16, color=_T2),
+                   title_font=dict(size=17)),
+        margin=dict(l=65, r=20, t=54, b=90),
         legend=dict(
-            orientation="h", yanchor="top", y=-0.14,
+            orientation="h", yanchor="top", y=-0.16,
             xanchor="left", x=0,
-            font=dict(size=11, color="#e8e3d3"),
+            font=dict(size=16, color="#111111"),
             bgcolor="rgba(0,0,0,0)",
         ),
         height=h,
@@ -511,7 +513,7 @@ def _breakeven_chart(df_be: pd.DataFrame, ev: dict,
             line=dict(color=_COLS[i % len(_COLS)], width=1.8),
         ))
     fig.add_hline(y=2.0, line_color="#475569", line_dash="dot", line_width=1,
-                  annotation_text="2 % target", annotation_font=dict(size=9, color=_T2))
+                  annotation_text="2 % target", annotation_font=dict(size=13, color=_T2))
     return _decorate(fig, ev)
 
 

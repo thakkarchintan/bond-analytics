@@ -175,15 +175,23 @@ def curve_trade_builder() -> None:
         )
         preset_yields = _SHAPES[shape_choice]
         st.markdown(
-            f'<div style="font-size:11px;color:{_T2};margin:8px 0 4px;">Tenor yields (%) — click to edit:</div>',
+            f'<div style="font-size:11px;color:{_T2};margin:6px 0 2px;">Tenor yields (%) — click to edit:</div>',
             unsafe_allow_html=True,
         )
         for lbl, preset in zip(_TENOR_LABELS, preset_yields):
-            y = st.number_input(
-                lbl, value=float(preset), step=0.05,
-                min_value=0.01, max_value=20.0, format="%.2f",
-                key=f"ctb_y_{lbl}",
-            )
+            _lc, _ic = st.columns([0.7, 3])
+            with _lc:
+                st.markdown(
+                    f'<div style="display:flex;align-items:center;height:40px;'
+                    f'font-size:13px;font-weight:600;color:{_T2};">{lbl}</div>',
+                    unsafe_allow_html=True,
+                )
+            with _ic:
+                y = st.number_input(
+                    " ", value=float(preset), step=0.05,
+                    min_value=0.01, max_value=20.0, format="%.2f",
+                    key=f"ctb_y_{lbl}", label_visibility="collapsed",
+                )
             current_yields.append(y)
 
     with s1_right:
@@ -207,8 +215,9 @@ def curve_trade_builder() -> None:
             hovertemplate="%{text}: %{y:.2f}%<extra>Current</extra>",
             text=_TENOR_LABELS,
         ))
+        # Height: selectbox ~60px + hint ~24px + 7 rows × ~44px = ~390px
         fig_s1.update_layout(
-            height=360,
+            height=400,
             title=dict(text=f"Yield Curve — {shape_choice}", font=dict(size=13, color=_T1), x=0),
             yaxis_title="Yield (%)",
             **_layout(),

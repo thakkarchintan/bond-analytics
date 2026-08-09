@@ -1,5 +1,17 @@
 CHANGELOG = [
     {
+        "id": 43,
+        "version": "1.43",
+        "timestamp": "09 Aug 2026, 06:38 IST",
+        "category": "Enhancement",
+        "title": "Curve Trade Builder + Historical Shocks — compact inputs and font improvements",
+        "description": [
+            "CurveTradeBuilder.py — Step 1 tenor inputs now inline (label + number box on same row); chart height matched to input panel height",
+            "HistoricalShocks.py — chart fonts increased 50 %: body 11→17, titles 14→21, axis ticks 16, legend 16, annotations 9→13",
+            "HistoricalShocks.py — legend text colour changed to near-black (#111111) for readability on light page backgrounds",
+        ],
+    },
+    {
         "id": 42,
         "version": "1.42",
         "timestamp": "09 Aug 2026, 06:38 IST",
