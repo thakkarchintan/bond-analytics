@@ -1,0 +1,22 @@
+/* Fullscreen card — fills the screen with a page-coloured background */
+.fs-card:fullscreen,
+.fs-card:-webkit-full-screen,
+.fs-card:-moz-full-screen {
+    background: #f0f4f8 !important;
+    padding: 24px !important;
+    overflow: auto !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Fullscreen button hover */
+.fs-btn:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+/* Sidebar toggle button hover */
+#cm-toggle:hover {
+    background: #f1f5f9 !important;
+}

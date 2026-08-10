@@ -134,10 +134,33 @@ def _card_wrap(children, style: dict | None = None) -> html.Div:
         "padding": "20px 24px",
         "marginBottom": "20px",
         "boxShadow": "0 1px 3px rgba(0,0,0,0.06)",
+        "position": "relative",   # anchor for the fullscreen button
     }
     if style:
         s.update(style)
-    return html.Div(children, style=s)
+
+    fs_btn = html.Button(
+        "⛶",
+        className="fs-btn",
+        title="Fullscreen",
+        style={
+            "position":   "absolute",
+            "top":        "14px",
+            "right":      "14px",
+            "background": "rgba(248,250,252,0.95)",
+            "border":     f"1px solid {_BORDER}",
+            "borderRadius": "5px",
+            "padding":    "2px 8px",
+            "cursor":     "pointer",
+            "fontSize":   "15px",
+            "color":      _T2,
+            "lineHeight": "1.3",
+            "zIndex":     "50",
+        },
+    )
+
+    children_list = children if isinstance(children, list) else [children]
+    return html.Div([fs_btn] + children_list, style=s, className="fs-card")
 
 
 def _section_label(title: str, subtitle: str = "") -> html.Div:
@@ -167,28 +190,59 @@ app = dash.Dash(
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 
+_SIDEBAR_W  = "260px"
+_COLLAPSED_W = "44px"
+
 _sidebar_style = {
-    "position":    "fixed",
-    "top":         0,
-    "left":        0,
-    "bottom":      0,
-    "width":       "260px",
-    "padding":     "24px 18px",
-    "background":  _SIDE,
+    "position":   "fixed",
+    "top":        0,
+    "left":       0,
+    "bottom":     0,
+    "width":      _SIDEBAR_W,
+    "padding":    "12px 18px 24px",
+    "background": _SIDE,
     "borderRight": f"1px solid {_BORDER}",
-    "overflowY":   "auto",
-    "zIndex":      1000,
-    "boxShadow":   "2px 0 8px rgba(0,0,0,0.06)",
+    "overflowY":  "auto",
+    "overflowX":  "hidden",
+    "zIndex":     1000,
+    "boxShadow":  "2px 0 8px rgba(0,0,0,0.06)",
+    "transition": "width 0.22s ease, padding 0.22s ease",
+}
+
+_sidebar_collapsed = {
+    **_sidebar_style,
+    "width":   _COLLAPSED_W,
+    "padding": "12px 6px 24px",
 }
 
 _content_style = {
-    "marginLeft": "260px",
+    "marginLeft": _SIDEBAR_W,
     "padding":    "28px 32px",
     "background": _PAGE,
     "minHeight":  "100vh",
+    "transition": "margin-left 0.22s ease",
+}
+
+_content_expanded = {
+    **_content_style,
+    "marginLeft": _COLLAPSED_W,
+}
+
+_TOGGLE_BTN_STYLE = {
+    "width": "100%", "background": "none", "border": f"1px solid {_BORDER}",
+    "borderRadius": "6px", "padding": "5px", "cursor": "pointer",
+    "color": _T2, "fontSize": "15px", "lineHeight": "1",
+    "marginBottom": "14px", "textAlign": "center",
+    "transition": "background 0.15s",
 }
 
 sidebar = html.Div([
+
+    # Toggle button (always visible)
+    html.Button("◀", id="cm-toggle", title="Collapse sidebar", style=_TOGGLE_BTN_STYLE),
+
+    # Everything below is hidden when sidebar is collapsed
+    html.Div(id="cm-sidebar-content", children=[
 
     # Brand
     html.Div([
@@ -278,10 +332,12 @@ sidebar = html.Div([
 
     html.Hr(style={"borderColor": _BORDER, "margin": "20px 0"}),
 
-    html.Div("💡 Tip: use the toolbar to zoom / pan / download PNG. Use the ⤢ button on each chart to go fullscreen.",
+    html.Div("💡 Tip: use the toolbar to zoom / pan / download PNG. Use the ⛶ button on each chart card to go fullscreen.",
              style={"fontSize": "11px", "color": _T3, "lineHeight": "1.5"}),
 
-], style=_sidebar_style)
+    ]),  # end cm-sidebar-content
+
+], id="cm-sidebar", style=_sidebar_style)
 
 
 content = html.Div([
@@ -312,13 +368,43 @@ content = html.Div([
         ], style={"fontSize": "11px", "color": _T3}),
     ], style={"marginTop": "40px"}),
 
-], style=_content_style)
+], id="cm-content", style=_content_style)
 
 
 app.layout = html.Div(
     [sidebar, content],
     style={"fontFamily": "Inter, system-ui, sans-serif", "background": _PAGE},
 )
+
+
+# ── Sidebar toggle callback ────────────────────────────────────────────────────
+
+@callback(
+    Output("cm-sidebar",         "style"),
+    Output("cm-content",         "style"),
+    Output("cm-sidebar-content", "style"),
+    Output("cm-toggle",          "children"),
+    Output("cm-toggle",          "title"),
+    Input("cm-toggle",           "n_clicks"),
+    prevent_initial_call=True,
+)
+def toggle_sidebar(n):
+    collapsed = bool(n and n % 2 == 1)
+    if collapsed:
+        return (
+            _sidebar_collapsed,
+            _content_expanded,
+            {"display": "none"},
+            "▶",
+            "Expand sidebar",
+        )
+    return (
+        _sidebar_style,
+        _content_style,
+        {},
+        "◀",
+        "Collapse sidebar",
+    )
 
 
 # ── Main callback ──────────────────────────────────────────────────────────────
