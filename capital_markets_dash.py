@@ -101,7 +101,7 @@ def _chart_layout(**kw) -> dict:
         paper_bgcolor=_CARD,
         plot_bgcolor=_PLOT,
         font=dict(family="Inter, system-ui, sans-serif", color=_T1, size=12),
-        margin=dict(l=60, r=24, t=48, b=44),
+        margin=dict(l=60, r=24, t=48, b=90),
         xaxis=dict(
             gridcolor=_BORDER, tickfont=dict(color=_T2),
             showline=True, linecolor=_BORDER, zerolinecolor=_BORDER,
@@ -112,6 +112,11 @@ def _chart_layout(**kw) -> dict:
         ),
         hoverlabel=dict(bgcolor=_CARD, font_color=_T1, bordercolor=_BORDER),
         legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.18,
+            xanchor="center",
+            x=0.5,
             font=dict(color=_T2, size=11),
             bgcolor="rgba(255,255,255,0.8)",
             bordercolor=_BORDER, borderwidth=1,
@@ -273,7 +278,7 @@ sidebar = html.Div([
 
     html.Hr(style={"borderColor": _BORDER, "margin": "20px 0"}),
 
-    html.Div("💡 Tip: use the toolbar on each chart to zoom, pan, download as PNG, or go fullscreen.",
+    html.Div("💡 Tip: use the toolbar to zoom / pan / download PNG. Use the ⤢ button on each chart to go fullscreen.",
              style={"fontSize": "11px", "color": _T3, "lineHeight": "1.5"}),
 
 ], style=_sidebar_style)
@@ -438,7 +443,7 @@ def _market_size(yr_df: pd.DataFrame, year: int) -> html.Div:
         title=dict(text=f"Capital Market Size by Country ({year})",
                    font=dict(size=14, color=_T1, weight="bold"), x=0),
         xaxis_title="USD Trillions",
-        **_chart_layout(margin=dict(l=150, r=24, t=48, b=44)),
+        **_chart_layout(margin=dict(l=150, r=24, t=48, b=90)),
     )
 
     return _card_wrap([
@@ -521,7 +526,7 @@ def _equity_gdp(yr_df: pd.DataFrame, year: int) -> html.Div:
         title=dict(text=f"Equity Market Cap / GDP ({year})",
                    font=dict(size=13, color=_T1, weight="bold"), x=0),
         xaxis_title="Equity Market Cap as % of GDP",
-        **_chart_layout(margin=dict(l=140, r=24, t=48, b=44)),
+        **_chart_layout(margin=dict(l=140, r=24, t=48, b=44), showlegend=False),
     )
     return _card_wrap([
         _section_label("Equity / GDP", "How large is the stock market vs the economy?"),
@@ -545,7 +550,7 @@ def _govtbond_gdp(yr_df: pd.DataFrame, year: int) -> html.Div:
         title=dict(text=f"Govt Bond Market / GDP ({year})",
                    font=dict(size=13, color=_T1, weight="bold"), x=0),
         xaxis_title="Govt Bond Outstanding as % of GDP",
-        **_chart_layout(margin=dict(l=140, r=24, t=48, b=44)),
+        **_chart_layout(margin=dict(l=140, r=24, t=48, b=44), showlegend=False),
     )
     return _card_wrap([
         _section_label("Govt Bond / GDP",
@@ -572,7 +577,7 @@ def _total_ranking(yr_df: pd.DataFrame, year: int) -> html.Div:
         title=dict(text=f"Total Capital Market Size — Ranked ({year})",
                    font=dict(size=14, color=_T1, weight="bold"), x=0),
         xaxis_title="USD Trillions",
-        **_chart_layout(margin=dict(l=150, r=24, t=48, b=44)),
+        **_chart_layout(margin=dict(l=150, r=24, t=48, b=90)),
     )
     return _card_wrap([
         _section_label("Total Capital Market Ranking",
@@ -603,7 +608,7 @@ def _historical(hist_df: pd.DataFrame) -> html.Div:
             height=340,
             title=dict(text=title, font=dict(size=13, color=_T1, weight="bold"), x=0),
             yaxis_title=ylab,
-            **_chart_layout(),
+            **_chart_layout(margin=dict(l=60, r=24, t=48, b=130)),
         )
         charts.append(dbc.Col(dcc.Graph(figure=fig, config=_CHART_CONFIG), width=6))
 
@@ -626,7 +631,7 @@ def _historical(hist_df: pd.DataFrame) -> html.Div:
             font=dict(size=14, color=_T1, weight="bold"), x=0,
         ),
         yaxis_title="USD Trillions",
-        **_chart_layout(),
+        **_chart_layout(margin=dict(l=60, r=24, t=48, b=130)),
     )
 
     return _card_wrap([
@@ -653,7 +658,7 @@ def _ratios_and_bubble(yr_df: pd.DataFrame, year: int) -> html.Div:
         title=dict(text=f"Govt Bond / Equity Ratio ({year})",
                    font=dict(size=13, color=_T1, weight="bold"), x=0),
         xaxis_title="Govt Bond Market ÷ Equity Market",
-        **_chart_layout(margin=dict(l=150, r=24, t=48, b=44)),
+        **_chart_layout(margin=dict(l=150, r=24, t=48, b=44), showlegend=False),
     )
 
     df2 = yr_df.dropna(subset=["GDP_USD", "Total_Cap_USD", "Population"])
