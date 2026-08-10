@@ -14,8 +14,9 @@ import plotly.graph_objects as go
 import plotly.express as px
 
 import dash
-from dash import dcc, html, Input, Output, callback, dash_table
+from dash import dcc, html, Input, Output, State, callback, dash_table, ctx
 import dash_bootstrap_components as dbc
+from datetime import date
 
 # ── Light palette ──────────────────────────────────────────────────────────────
 _PAGE   = "#f0f4f8"       # outer page background
@@ -61,6 +62,71 @@ FINANCING_MODEL = {
 
 HERE  = Path(__file__).parent
 CACHE = HERE / "capital_markets_cache.parquet"
+
+# ── Bond Analytics data ────────────────────────────────────────────────────────
+
+_BOND_DATA: pd.DataFrame | None = None
+
+def _load_bond_data() -> pd.DataFrame:
+    global _BOND_DATA
+    if _BOND_DATA is None:
+        xlsx = HERE / "Final.xlsx"
+        if not xlsx.exists():
+            _BOND_DATA = pd.DataFrame()
+            return _BOND_DATA
+        try:
+            df = pd.read_excel(xlsx, sheet_name=0)
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+            df.dropna(subset=["Date"], inplace=True)
+            _BOND_DATA = df
+        except Exception as exc:
+            print(f"[bond-data] load error: {exc}")
+            _BOND_DATA = pd.DataFrame()
+    return _BOND_DATA
+
+
+_FORMULAS: dict[str, str] = {
+    "Eurex 5-10 Spread":          "FGBLY - FGBMY",
+    "Eurex 2-5 Spread":           "FGBMY - FGBSY",
+    "Eurex 2-10 Spread":          "FGBLY - FGBSY",
+    "Eurex 10-30 Spread":         "FGBXY - FGBLY",
+    "Eurex 2-5-10 Fly":           "FGBLY - 2 * FGBMY + FGBSY",
+    "Eurex 5-10-30 Fly":          "FGBXY - 2 * FGBLY + FGBMY",
+    "US 5-10 Spread":             "US10Y - US5Y",
+    "US 2-5 Spread":              "US5Y - US2Y",
+    "US 2-10 Spread":             "US10Y - US2Y",
+    "US 10-30 Spread":            "US30Y - US10Y",
+    "US 2-5-10 Fly":              "US10Y - 2 * US5Y + US2Y",
+    "US 5-10-30 Fly":             "US30Y - 2 * US10Y + US5Y",
+    "Italian vs German 2Y":       "FBTSY - FGBSY",
+    "Italian vs German 10Y":      "FBTPY - FGBLY",
+    "Australian vs Canadian 10Y": "AUS10Y - CAD10Y",
+    "French vs German 10Y":       "FOATY - FGBLY",
+    "UK vs German 10Y":           "UK10Y - FGBLY",
+    "UK vs Australian 10Y":       "UK10Y - AUS10Y",
+    "US vs Australian 10Y":       "US10Y - AUS10Y",
+    "Canadian vs US 2-5-10 Fly":  "CAD10Y - 2 * CAD5Y + CAD2Y - US10Y + 2 * US5Y - US2Y",
+}
+
+_INSTRUMENTS = [
+    "FGBSY", "FGBMY", "FGBLY", "FGBXY",
+    "US2Y", "US5Y", "US10Y", "US30Y",
+    "EUR3M", "EUR1M", "EUR1W", "ESTR",
+    "FBTSY", "FBTPY", "FOATY",
+    "UK10Y", "AUS10Y", "AUS3Y",
+    "CAD10Y", "CAD2Y", "CAD3Y", "CAD5Y", "CAD7Y",
+    "AEX", "CAC40", "DIJA", "FDAX", "FSMI", "FTSE", "NQ", "SPX",
+    "Gold (USD)", "BTC (USD)", "DJIA",
+]
+
+_BA_MIN = "1994-01-03"
+_BA_MAX = "2025-11-06"
+
+_CTRL_LBL = {
+    "fontSize": "10px", "fontWeight": "700", "color": _T3,
+    "textTransform": "uppercase", "letterSpacing": ".1em",
+    "marginBottom": "6px", "marginTop": "14px",
+}
 
 # Plotly toolbar config — show all tools, allow scroll zoom, hide logo
 _CHART_CONFIG = {
@@ -179,6 +245,235 @@ def _section_label(title: str, subtitle: str = "") -> html.Div:
     })
 
 
+# ── Shared footer ─────────────────────────────────────────────────────────────
+
+def _footer(note: str = "") -> html.Div:
+    return html.Div([
+        html.Hr(style={"borderColor": _BORDER}),
+        html.Div(note or (
+            html.Span([
+                html.Strong("Data sources: "),
+                "Capital Markets — World Bank / IMF. "
+                "Bond Analytics — Final.xlsx (Eurex, US Treasuries, cross-country rates).",
+            ])
+        ), style={"fontSize": "11px", "color": _T3}),
+    ], style={"marginTop": "40px"})
+
+
+# ── Bond Analytics renderers ──────────────────────────────────────────────────
+
+def _ba_render_spreads(start: str, end: str, ncols: int) -> html.Div:
+    df = _load_bond_data()
+    if df.empty:
+        return html.Div("⚠ Final.xlsx not found. Place it in the same folder as this script.",
+                        style={"color": _AMB, "padding": "40px 0"})
+
+    filt = df[
+        (df["Date"] >= pd.to_datetime(start)) &
+        (df["Date"] <= pd.to_datetime(end))
+    ].copy()
+
+    if filt.empty:
+        return html.Div("No data in selected date range.", style={"color": _AMB, "padding": "20px 0"})
+
+    nc       = ncols or 2
+    col_w    = 12 // nc
+    chart_h  = {1: 500, 2: 420, 3: 360, 4: 300}.get(nc, 380)
+    items    = list(_FORMULAS.items())
+    rows_out = []
+
+    for i in range(0, len(items), nc):
+        cols_out = []
+        for name, formula in items[i : i + nc]:
+            try:
+                filt["_v"] = filt.eval(formula)
+            except Exception as exc:
+                cols_out.append(dbc.Col(
+                    html.Div(f"Error — {name}: {exc}",
+                             style={"color": _RED, "fontSize": "12px", "padding": "12px"}),
+                    width=col_w,
+                ))
+                continue
+
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=filt["Date"], y=filt["_v"],
+                mode="lines", name=name,
+                line=dict(color=_BLUE, width=1.5),
+                hovertemplate=f"<b>{name}</b><br>%{{x|%d %b %Y}}: %{{y:.4f}}<extra></extra>",
+            ))
+            fig.update_layout(
+                height=chart_h,
+                title=dict(text=name, font=dict(size=12, color=_BLUE, weight="bold"), x=0),
+                showlegend=False,
+                **_chart_layout(margin=dict(l=60, r=16, t=44, b=44)),
+            )
+            cols_out.append(dbc.Col(
+                _card_wrap([dcc.Graph(figure=fig, config=_CHART_CONFIG)]),
+                width=col_w,
+            ))
+        if cols_out:
+            rows_out.append(dbc.Row(cols_out, className="g-3 mb-0"))
+
+    return html.Div([
+        _section_label("Bond Spreads & Flies",
+                       "20 preset formulas — Eurex, US Treasuries, cross-country"),
+        html.Div(rows_out),
+    ])
+
+
+def _ba_render_custom(
+    analysis_type: str,
+    instrument: str,
+    formula: str | None,
+    overlay_instr: str | None,
+    overlay_formula: str | None,
+    start: str,
+    end: str,
+) -> html.Div:
+    df = _load_bond_data()
+    if df.empty:
+        return html.Div("⚠ Final.xlsx not found.", style={"color": _AMB})
+
+    filt = df[
+        (df["Date"] >= pd.to_datetime(start)) &
+        (df["Date"] <= pd.to_datetime(end))
+    ].copy()
+    if filt.empty:
+        return html.Div("No data in selected date range.", style={"color": _AMB})
+
+    # ── Primary ───────────────────────────────────────────────────────────────
+    if instrument == "custom":
+        if not (formula or "").strip():
+            return html.Div("Enter a custom formula and press Submit.", style={"color": _AMB})
+        try:
+            filt["Primary"] = filt.eval(formula.strip())
+            primary_title = formula.strip()
+        except Exception as exc:
+            return html.Div(f"Formula error: {exc}", style={"color": _RED})
+    else:
+        if instrument not in filt.columns:
+            return html.Div(f"Instrument '{instrument}' not in data.", style={"color": _RED})
+        filt["Primary"] = filt[instrument]
+        primary_title = instrument
+
+    charts: list = []
+
+    if analysis_type == "single":
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=filt["Date"], y=filt["Primary"],
+            mode="lines", name=primary_title,
+            line=dict(color=_BLUE, width=1.5),
+        ))
+        fig.update_layout(
+            height=450,
+            title=dict(text=primary_title, font=dict(size=13, color=_BLUE, weight="bold"), x=0),
+            showlegend=False,
+            **_chart_layout(margin=dict(l=60, r=16, t=48, b=44)),
+        )
+        charts.append(_card_wrap([
+            _section_label("Level Chart", primary_title),
+            dcc.Graph(figure=fig, config=_CHART_CONFIG),
+        ]))
+
+        filt["DailyChg"] = filt["Primary"].diff()
+        fig_chg = go.Figure()
+        fig_chg.add_trace(go.Bar(
+            x=filt["Date"], y=filt["DailyChg"],
+            name="Daily Change", marker_color=_BLUE,
+        ))
+        fig_chg.update_layout(
+            height=340,
+            title=dict(text=f"Daily Change — {primary_title}",
+                       font=dict(size=12, color=_T1, weight="bold"), x=0),
+            showlegend=False,
+            **_chart_layout(margin=dict(l=60, r=16, t=44, b=44)),
+        )
+        charts.append(_card_wrap([
+            _section_label("Daily Change"),
+            dcc.Graph(figure=fig_chg, config=_CHART_CONFIG),
+        ]))
+
+    elif analysis_type == "overlay":
+        if overlay_instr == "custom":
+            if not (overlay_formula or "").strip():
+                return html.Div("Enter an overlay formula and press Submit.", style={"color": _AMB})
+            try:
+                filt["Overlay"] = filt.eval(overlay_formula.strip())
+                overlay_title = overlay_formula.strip()
+            except Exception as exc:
+                return html.Div(f"Overlay formula error: {exc}", style={"color": _RED})
+        else:
+            if overlay_instr not in filt.columns:
+                return html.Div(f"Instrument '{overlay_instr}' not in data.", style={"color": _RED})
+            filt["Overlay"] = filt[overlay_instr]
+            overlay_title = overlay_instr or ""
+
+        # dual-axis overlay
+        base = _chart_layout(margin=dict(l=70, r=70, t=48, b=90))
+        yax_base = base.pop("yaxis", {})
+        base.pop("legend", None)
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=filt["Date"], y=filt["Primary"], mode="lines",
+            name=primary_title, line=dict(color=_BLUE, width=1.5), yaxis="y1",
+        ))
+        fig.add_trace(go.Scatter(
+            x=filt["Date"], y=filt["Overlay"], mode="lines",
+            name=overlay_title, line=dict(color=_RED, width=1.5), yaxis="y2",
+        ))
+        fig.update_layout(
+            height=480,
+            title=dict(text=f"{primary_title}  vs  {overlay_title}",
+                       font=dict(size=13, color=_T1, weight="bold"), x=0),
+            **base,
+        )
+        fig.update_layout(
+            yaxis={**yax_base,
+                   "title": dict(text=primary_title, font=dict(color=_BLUE)),
+                   "tickfont": dict(color=_BLUE)},
+            yaxis2=dict(
+                title=dict(text=overlay_title, font=dict(color=_RED)),
+                tickfont=dict(color=_RED),
+                overlaying="y", side="right", showgrid=False,
+            ),
+            legend=dict(
+                orientation="h", yanchor="top", y=-0.14, xanchor="center", x=0.5,
+                font=dict(color=_T2, size=11),
+                bgcolor="rgba(255,255,255,0.8)", bordercolor=_BORDER, borderwidth=1,
+            ),
+        )
+        charts.append(_card_wrap([
+            _section_label("Overlay Chart", f"{primary_title} vs {overlay_title}"),
+            dcc.Graph(figure=fig, config=_CHART_CONFIG),
+        ]))
+
+        for title_, col_, clr_ in [
+            (f"Daily Change — {primary_title}", "Primary", _BLUE),
+            (f"Daily Change — {overlay_title}",  "Overlay",  _RED),
+        ]:
+            filt[col_ + "Chg"] = filt[col_].diff()
+            fig_c = go.Figure()
+            fig_c.add_trace(go.Bar(
+                x=filt["Date"], y=filt[col_ + "Chg"],
+                name=title_, marker_color=clr_,
+            ))
+            fig_c.update_layout(
+                height=320,
+                title=dict(text=title_, font=dict(size=12, color=clr_, weight="bold"), x=0),
+                showlegend=False,
+                **_chart_layout(margin=dict(l=60, r=16, t=44, b=44)),
+            )
+            charts.append(_card_wrap([
+                _section_label(title_),
+                dcc.Graph(figure=fig_c, config=_CHART_CONFIG),
+            ]))
+
+    return html.Div(charts)
+
+
 # ── App ────────────────────────────────────────────────────────────────────────
 
 app = dash.Dash(
@@ -236,6 +531,15 @@ _TOGGLE_BTN_STYLE = {
     "transition": "background 0.15s",
 }
 
+_INPUT_STYLE = {
+    "width": "100%", "fontSize": "12px", "padding": "5px 8px",
+    "border": f"1px solid {_BORDER}", "borderRadius": "5px",
+    "background": "#f8fafc", "color": _T1, "marginBottom": "8px",
+    "boxSizing": "border-box",
+}
+
+_DD_STYLE = {"fontSize": "13px", "marginBottom": "8px"}
+
 sidebar = html.Div([
 
     # Toggle button (always visible)
@@ -250,90 +554,187 @@ sidebar = html.Div([
             "fontSize": "11px", "fontWeight": "700", "color": _BLUE,
             "letterSpacing": ".1em", "textTransform": "uppercase",
         }),
-        html.Div("Capital Markets", style={
+        html.Div("Dashboard", style={
             "fontSize": "20px", "fontWeight": "700", "color": _T1, "marginTop": "2px",
         }),
-        html.Div("10 countries · equity & govt bonds · 2005–2023", style={
-            "fontSize": "11px", "color": _T3, "marginTop": "3px", "lineHeight": "1.4",
-        }),
-    ], style={"marginBottom": "28px"}),
+    ], style={"marginBottom": "14px"}),
 
-    html.Hr(style={"borderColor": _BORDER, "margin": "0 0 20px"}),
+    html.Hr(style={"borderColor": _BORDER, "margin": "0 0 10px"}),
 
-    # Year slider
-    html.Div("YEAR", style={
-        "fontSize": "10px", "fontWeight": "700", "color": _T3,
-        "textTransform": "uppercase", "letterSpacing": ".1em", "marginBottom": "12px",
-    }),
-    dcc.Slider(
-        id="cm-year",
-        min=2005, max=2023, step=1, value=2023,
-        marks={y: {"label": str(y), "style": {"color": _T3, "fontSize": "10px"}}
-               for y in [2005, 2010, 2015, 2020, 2023]},
-        tooltip={"placement": "bottom", "always_visible": True},
+    # ── Page selector ──────────────────────────────────────────────────────────
+    html.Div("PAGE", style=_CTRL_LBL),
+    dcc.Dropdown(
+        id="cm-page",
+        options=[
+            {"label": "Bond Analytics",        "value": "bond"},
+            {"label": "Global Capital Markets", "value": "capital"},
+        ],
+        value="bond",
+        clearable=False,
+        style=_DD_STYLE,
     ),
 
-    html.Hr(style={"borderColor": _BORDER, "margin": "20px 0"}),
+    html.Hr(style={"borderColor": _BORDER, "margin": "12px 0"}),
 
-    # Country filter
-    html.Div("COUNTRIES", style={
-        "fontSize": "10px", "fontWeight": "700", "color": _T3,
-        "textTransform": "uppercase", "letterSpacing": ".1em", "marginBottom": "10px",
-    }),
-    dcc.Checklist(
-        id="cm-countries",
-        options=[
-            {"label": html.Span(c, style={"color": COUNTRY_COLORS.get(c, _T1),
-                                           "fontWeight": "600", "fontSize": "12px",
-                                           "marginLeft": "6px"}),
-             "value": c}
-            for c in [
+    # ── Capital Markets controls (hidden by default) ────────────────────────────
+    html.Div(id="cm-cap-controls", style={"display": "none"}, children=[
+
+        html.Div("YEAR", style=_CTRL_LBL),
+        dcc.Slider(
+            id="cm-year",
+            min=2005, max=2023, step=1, value=2023,
+            marks={y: {"label": str(y), "style": {"color": _T3, "fontSize": "10px"}}
+                   for y in [2005, 2010, 2015, 2020, 2023]},
+            tooltip={"placement": "bottom", "always_visible": True},
+        ),
+
+        html.Hr(style={"borderColor": _BORDER, "margin": "16px 0 10px"}),
+
+        html.Div("COUNTRIES", style=_CTRL_LBL),
+        dcc.Checklist(
+            id="cm-countries",
+            options=[
+                {"label": html.Span(c, style={"color": COUNTRY_COLORS.get(c, _T1),
+                                               "fontWeight": "600", "fontSize": "12px",
+                                               "marginLeft": "6px"}),
+                 "value": c}
+                for c in [
+                    "United States", "China", "Japan", "India", "United Kingdom",
+                    "France", "Germany", "Canada", "Brazil", "Australia",
+                ]
+            ],
+            value=[
                 "United States", "China", "Japan", "India", "United Kingdom",
                 "France", "Germany", "Canada", "Brazil", "Australia",
-            ]
-        ],
-        value=[
-            "United States", "China", "Japan", "India", "United Kingdom",
-            "France", "Germany", "Canada", "Brazil", "Australia",
-        ],
-        style={"display": "flex", "flexDirection": "column", "gap": "7px"},
-        inputStyle={"accentColor": _BLUE},
-    ),
+            ],
+            style={"display": "flex", "flexDirection": "column", "gap": "7px"},
+            inputStyle={"accentColor": _BLUE},
+        ),
 
-    html.Hr(style={"borderColor": _BORDER, "margin": "20px 0"}),
+        html.Hr(style={"borderColor": _BORDER, "margin": "16px 0 10px"}),
 
-    # Sections toggle
-    html.Div("SECTIONS", style={
-        "fontSize": "10px", "fontWeight": "700", "color": _T3,
-        "textTransform": "uppercase", "letterSpacing": ".1em", "marginBottom": "10px",
-    }),
-    dcc.Checklist(
-        id="cm-sections",
-        options=[
-            {"label": html.Span(label, style={"fontSize": "12px", "color": _T2, "marginLeft": "6px"}),
-             "value": val}
-            for label, val in [
-                ("Global Snapshot",          "snapshot"),
-                ("Market Size",              "size"),
-                ("Equity vs Bond Scatter",   "scatter"),
-                ("Equity / GDP",             "eq_gdp"),
-                ("Govt Bond / GDP",          "gb_gdp"),
-                ("Total Ranking",            "ranking"),
-                ("Historical Evolution",     "history"),
-                ("Ratios & Bubbles",         "ratios"),
-                ("Capital Markets DNA",      "dna"),
-            ]
-        ],
-        value=["snapshot", "size", "scatter", "eq_gdp", "gb_gdp",
-               "ranking", "history", "ratios", "dna"],
-        style={"display": "flex", "flexDirection": "column", "gap": "7px"},
-        inputStyle={"accentColor": _BLUE},
-    ),
+        html.Div("SECTIONS", style=_CTRL_LBL),
+        dcc.Checklist(
+            id="cm-sections",
+            options=[
+                {"label": html.Span(label, style={"fontSize": "12px", "color": _T2, "marginLeft": "6px"}),
+                 "value": val}
+                for label, val in [
+                    ("Global Snapshot",          "snapshot"),
+                    ("Market Size",              "size"),
+                    ("Equity vs Bond Scatter",   "scatter"),
+                    ("Equity / GDP",             "eq_gdp"),
+                    ("Govt Bond / GDP",          "gb_gdp"),
+                    ("Total Ranking",            "ranking"),
+                    ("Historical Evolution",     "history"),
+                    ("Ratios & Bubbles",         "ratios"),
+                    ("Capital Markets DNA",      "dna"),
+                ]
+            ],
+            value=["snapshot", "size", "scatter", "eq_gdp", "gb_gdp",
+                   "ranking", "history", "ratios", "dna"],
+            style={"display": "flex", "flexDirection": "column", "gap": "7px"},
+            inputStyle={"accentColor": _BLUE},
+        ),
 
-    html.Hr(style={"borderColor": _BORDER, "margin": "20px 0"}),
+        html.Hr(style={"borderColor": _BORDER, "margin": "16px 0 10px"}),
+        html.Div("💡 Tip: ⛶ button on each chart goes fullscreen.",
+                 style={"fontSize": "11px", "color": _T3, "lineHeight": "1.5"}),
 
-    html.Div("💡 Tip: use the toolbar to zoom / pan / download PNG. Use the ⛶ button on each chart card to go fullscreen.",
-             style={"fontSize": "11px", "color": _T3, "lineHeight": "1.5"}),
+    ]),  # end cm-cap-controls
+
+    # ── Bond Analytics controls (shown by default) ─────────────────────────────
+    html.Div(id="cm-bond-controls", children=[
+
+        html.Div("SECTION", style=_CTRL_LBL),
+        dcc.Dropdown(
+            id="ba-section",
+            options=[
+                {"label": "Bond Spreads & Flies",    "value": "spreads"},
+                {"label": "Custom Formula Graphs",   "value": "custom"},
+            ],
+            value="spreads",
+            clearable=False,
+            style=_DD_STYLE,
+        ),
+
+        html.Hr(style={"borderColor": _BORDER, "margin": "12px 0 8px"}),
+
+        # Spreads controls
+        html.Div(id="ba-spreads-controls", children=[
+            html.Div("FROM DATE", style=_CTRL_LBL),
+            dcc.Input(id="ba-start", type="date", value=_BA_MIN, style=_INPUT_STYLE),
+            html.Div("TO DATE", style=_CTRL_LBL),
+            dcc.Input(id="ba-end",   type="date", value=_BA_MAX, style=_INPUT_STYLE),
+            html.Div("COLUMNS", style=_CTRL_LBL),
+            dcc.Slider(id="ba-ncols", min=1, max=4, step=1, value=2,
+                       marks={i: {"label": str(i), "style": {"color": _T3, "fontSize": "10px"}}
+                              for i in range(1, 5)},
+                       tooltip={"placement": "bottom", "always_visible": True}),
+        ]),
+
+        # Custom formula controls (hidden by default)
+        html.Div(id="ba-custom-controls", style={"display": "none"}, children=[
+
+            html.Div("ANALYSIS TYPE", style=_CTRL_LBL),
+            dcc.Dropdown(
+                id="ba-analysis-type",
+                options=[
+                    {"label": "Single",  "value": "single"},
+                    {"label": "Overlay", "value": "overlay"},
+                ],
+                value="single", clearable=False, style=_DD_STYLE,
+            ),
+
+            html.Div("PRIMARY INSTRUMENT", style=_CTRL_LBL),
+            dcc.Dropdown(
+                id="ba-instrument",
+                options=(
+                    [{"label": "Custom Formula", "value": "custom"}] +
+                    [{"label": c, "value": c} for c in _INSTRUMENTS]
+                ),
+                value="US10Y", clearable=False, style=_DD_STYLE,
+            ),
+            html.Div(id="ba-formula-wrap", style={"display": "none"}, children=[
+                html.Div("FORMULA  (e.g. US10Y - US2Y)", style=_CTRL_LBL),
+                dcc.Textarea(id="ba-formula", value="",
+                             style={**_INPUT_STYLE, "height": "56px", "resize": "vertical",
+                                    "marginBottom": "8px"}),
+            ]),
+
+            # Overlay block
+            html.Div(id="ba-overlay-wrap", style={"display": "none"}, children=[
+                html.Div("OVERLAY INSTRUMENT", style=_CTRL_LBL),
+                dcc.Dropdown(
+                    id="ba-overlay-instr",
+                    options=(
+                        [{"label": "Custom Formula", "value": "custom"}] +
+                        [{"label": c, "value": c} for c in _INSTRUMENTS]
+                    ),
+                    value="US2Y", clearable=False, style=_DD_STYLE,
+                ),
+                html.Div(id="ba-overlay-formula-wrap", style={"display": "none"}, children=[
+                    html.Div("OVERLAY FORMULA", style=_CTRL_LBL),
+                    dcc.Textarea(id="ba-overlay-formula", value="",
+                                 style={**_INPUT_STYLE, "height": "56px", "resize": "vertical",
+                                        "marginBottom": "8px"}),
+                ]),
+            ]),
+
+            html.Div("FROM DATE", style=_CTRL_LBL),
+            dcc.Input(id="ba-cust-start", type="date", value=_BA_MIN, style=_INPUT_STYLE),
+            html.Div("TO DATE", style=_CTRL_LBL),
+            dcc.Input(id="ba-cust-end",   type="date", value=_BA_MAX, style=_INPUT_STYLE),
+
+            html.Button("Submit", id="ba-submit", n_clicks=0, style={
+                "width": "100%", "background": _BLUE, "color": "white",
+                "border": "none", "borderRadius": "6px", "padding": "9px",
+                "cursor": "pointer", "fontWeight": "600", "fontSize": "13px",
+                "marginTop": "10px",
+            }),
+        ]),  # end ba-custom-controls
+
+    ]),  # end cm-bond-controls
 
     ]),  # end cm-sidebar-content
 
@@ -342,7 +743,7 @@ sidebar = html.Div([
 
 content = html.Div([
 
-    # Page header
+    # ── Capital Markets page (hidden by default) ───────────────────────────────
     html.Div([
         html.H2("Global Capital Markets Dashboard", style={
             "color": _T1, "fontWeight": "700", "fontSize": "22px", "marginBottom": "2px",
@@ -352,21 +753,26 @@ content = html.Div([
             "historical evolution 2005–2023",
             style={"fontSize": "12px", "color": _T2, "marginBottom": "24px"},
         ),
-    ]),
+        html.Div(id="cm-cap-page-content"),
+        _footer(
+            "Data: Equity market capitalisation — World Bank. "
+            "Govt bond size — IMF Gross Govt Debt × GDP. "
+            "GDP — IMF World Economic Outlook."
+        ),
+    ], id="cm-cap-page", style={"display": "none"}),
 
-    html.Div(id="cm-page-content"),
-
-    # Footer
+    # ── Bond Analytics page (shown by default) ─────────────────────────────────
     html.Div([
-        html.Hr(style={"borderColor": _BORDER}),
-        html.Div([
-            html.Strong("Data sources: "),
-            "Equity market capitalisation — World Bank (CM.MKT.LCAP.CD). ",
-            "Government bond market size — IMF Gross Government Debt (% GDP) × GDP (USD). ",
-            "GDP data — IMF World Economic Outlook. ",
-            "Corporate bond data (BIS) not yet integrated.",
-        ], style={"fontSize": "11px", "color": _T3}),
-    ], style={"marginTop": "40px"}),
+        html.H2("Bond Analytics", style={
+            "color": _T1, "fontWeight": "700", "fontSize": "22px", "marginBottom": "2px",
+        }),
+        html.Div(
+            "Bond spreads & flies · custom formula charts · Eurex, US Treasuries, cross-country rates",
+            style={"fontSize": "12px", "color": _T2, "marginBottom": "24px"},
+        ),
+        html.Div(id="ba-page-content"),
+        _footer("Data: Final.xlsx — Eurex (FGBSY/MY/LY/XY), US Treasuries, EUR rates, cross-country govt bonds."),
+    ], id="cm-bond-page"),
 
 ], id="cm-content", style=_content_style)
 
@@ -407,15 +813,123 @@ def toggle_sidebar(n):
     )
 
 
-# ── Main callback ──────────────────────────────────────────────────────────────
+# ── Page switch callback ───────────────────────────────────────────────────────
 
 @callback(
-    Output("cm-page-content", "children"),
+    Output("cm-cap-controls", "style"),
+    Output("cm-bond-controls", "style"),
+    Output("cm-cap-page",     "style"),
+    Output("cm-bond-page",    "style"),
+    Input("cm-page", "value"),
+)
+def switch_page(page: str):
+    if page == "capital":
+        return {}, {"display": "none"}, {}, {"display": "none"}
+    return {"display": "none"}, {}, {"display": "none"}, {}
+
+
+# ── Bond Analytics section switch ─────────────────────────────────────────────
+
+@callback(
+    Output("ba-spreads-controls", "style"),
+    Output("ba-custom-controls",  "style"),
+    Input("ba-section", "value"),
+)
+def switch_ba_section(section: str):
+    if section == "custom":
+        return {"display": "none"}, {}
+    return {}, {"display": "none"}
+
+
+# ── Bond Analytics conditional UI ─────────────────────────────────────────────
+
+@callback(
+    Output("ba-formula-wrap", "style"),
+    Input("ba-instrument", "value"),
+)
+def toggle_primary_formula(instrument: str):
+    return {} if instrument == "custom" else {"display": "none"}
+
+
+@callback(
+    Output("ba-overlay-wrap", "style"),
+    Input("ba-analysis-type", "value"),
+)
+def toggle_overlay(analysis_type: str):
+    return {} if analysis_type == "overlay" else {"display": "none"}
+
+
+@callback(
+    Output("ba-overlay-formula-wrap", "style"),
+    Input("ba-overlay-instr", "value"),
+)
+def toggle_overlay_formula(instrument: str):
+    return {} if instrument == "custom" else {"display": "none"}
+
+
+# ── Bond Analytics main render ─────────────────────────────────────────────────
+
+@callback(
+    Output("ba-page-content", "children"),
+    Input("ba-section",  "value"),
+    Input("ba-start",    "value"),
+    Input("ba-end",      "value"),
+    Input("ba-ncols",    "value"),
+    Input("ba-submit",   "n_clicks"),
+    State("ba-analysis-type",     "value"),
+    State("ba-instrument",        "value"),
+    State("ba-formula",           "value"),
+    State("ba-overlay-instr",     "value"),
+    State("ba-overlay-formula",   "value"),
+    State("ba-cust-start",        "value"),
+    State("ba-cust-end",          "value"),
+)
+def render_bond_page(
+    section, start, end, ncols, n_clicks,
+    analysis_type, instrument, formula,
+    overlay_instr, overlay_formula, cust_start, cust_end,
+):
+    tid = ctx.triggered_id
+
+    if section == "spreads":
+        if tid == "ba-submit":
+            return dash.no_update
+        return _ba_render_spreads(start or _BA_MIN, end or _BA_MAX, ncols or 2)
+
+    if section == "custom":
+        if tid == "ba-submit" and n_clicks:
+            return _ba_render_custom(
+                analysis_type or "single",
+                instrument or "US10Y",
+                formula,
+                overlay_instr,
+                overlay_formula,
+                cust_start or _BA_MIN,
+                cust_end   or _BA_MAX,
+            )
+        if tid in ("ba-section", None):
+            return html.Div(
+                "Configure options in the sidebar and press Submit to render charts.",
+                style={"color": _T2, "textAlign": "center", "padding": "80px 0",
+                       "fontSize": "14px"},
+            )
+        return dash.no_update
+
+    return html.Div()
+
+
+# ── Capital Markets callback ───────────────────────────────────────────────────
+
+@callback(
+    Output("cm-cap-page-content", "children"),
     Input("cm-year",      "value"),
     Input("cm-countries", "value"),
     Input("cm-sections",  "value"),
+    Input("cm-page",      "value"),
 )
-def render_page(year: int, selected_countries: list[str], sections: list[str]):
+def render_page(year: int, selected_countries: list[str], sections: list[str], page: str):
+    if page != "capital":
+        return dash.no_update
     full_df = load_df()
     if full_df.empty:
         return html.Div("No data available.", style={"color": _T2, "padding": "40px 0"})
