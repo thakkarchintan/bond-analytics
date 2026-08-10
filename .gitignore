@@ -2,3 +2,6 @@
 client_secret.json
 env
 serviceAccountKey
+__pycache__/
+*.pyc
+*.pyo
