@@ -201,9 +201,8 @@ if st.session_state["connected"]:
 
     user_email = st.session_state["user_info"].get("email", "None")
 
-    admins = [email.strip() for email in os.getenv("ADMINS", "").split(",")]
-    if "admins" not in st.session_state:
-        st.session_state["admins"] = admins
+    admins = [email.strip() for email in os.getenv("ADMINS", "").split(",") if email.strip()]
+    st.session_state["admins"] = admins  # refresh every run so env-var changes take effect
 
     restricted_apps = ["Changelog", "Data Sources", "Roadmap"]
     visible_apps = {
