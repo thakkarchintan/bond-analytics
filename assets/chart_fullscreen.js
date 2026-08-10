@@ -1,14 +1,16 @@
 'use strict';
 /**
  * Fullscreen for chart cards.
- * The ⛶ button is rendered by Python inside every .fs-card div.
- * This script only handles the click → requestFullscreen flow.
+ * ⛶ button is rendered by Python inside every .fs-card.
+ * On enter: relayout all Plotly charts in the card to fill the screen height.
+ * On exit:  restore original heights.
  */
 (function () {
-    var activeBtn = null;
+    var activeBtn  = null;
+    var activeCard = null;
 
+    // ── Click on ⛶ button ───────────────────────────────────────────────────
     document.addEventListener('click', function (e) {
-        // Work with both the button and any child element (SVG, span) that might be clicked
         var btn = e.target.closest ? e.target.closest('.fs-btn') : null;
         if (!btn) return;
 
@@ -16,17 +18,9 @@
         if (!card) return;
 
         if (!document.fullscreenElement) {
-            activeBtn = btn;
-            card.requestFullscreen().then(function () {
-                btn.textContent = '✕';
-                btn.title = 'Exit fullscreen';
-                // Give the browser a frame to resize, then resize Plotly charts
-                setTimeout(function () {
-                    card.querySelectorAll('.js-plotly-plot').forEach(function (gd) {
-                        if (window.Plotly) window.Plotly.Plots.resize(gd);
-                    });
-                }, 150);
-            }).catch(function (err) {
+            activeBtn  = btn;
+            activeCard = card;
+            card.requestFullscreen().catch(function (err) {
                 console.warn('Fullscreen request failed:', err);
             });
         } else {
@@ -34,19 +28,56 @@
         }
     });
 
+    // ── fullscreenchange: fires after transition completes ──────────────────
     document.addEventListener('fullscreenchange', function () {
-        if (!document.fullscreenElement) {
+
+        if (document.fullscreenElement) {
+            // ── Entered fullscreen ──────────────────────────────────────────
+            if (activeBtn) {
+                activeBtn.textContent = '✕';
+                activeBtn.title = 'Exit fullscreen';
+            }
+
+            var card = document.fullscreenElement;
+
+            // Small delay to let the browser finish painting at full size
+            setTimeout(function () {
+                var charts = card.querySelectorAll('.js-plotly-plot');
+                if (!charts.length || !window.Plotly) return;
+
+                // window.innerHeight is the fullscreen viewport height here
+                // Subtract card header (section label + padding ~90px)
+                var headerH = card.querySelector('.section-header-row') ? 90 : 90;
+                var newH    = Math.max(300, window.innerHeight - headerH);
+
+                charts.forEach(function (gd) {
+                    gd._origH = (gd.layout || {}).height;   // save for restore
+                    window.Plotly.relayout(gd, { height: newH });
+                });
+            }, 80);
+
+        } else {
+            // ── Exited fullscreen ────────────────────────────────────────────
             if (activeBtn) {
                 activeBtn.textContent = '⛶';
                 activeBtn.title = 'Fullscreen';
-                activeBtn = null;
             }
-            // Resize all visible Plotly charts back to their original dimensions
+            activeBtn  = null;
+            activeCard = null;
+
+            // Restore all charts to their original heights
             setTimeout(function () {
                 document.querySelectorAll('.js-plotly-plot').forEach(function (gd) {
-                    if (window.Plotly) window.Plotly.Plots.resize(gd);
+                    if (!window.Plotly) return;
+                    if (gd._origH != null) {
+                        window.Plotly.relayout(gd, { height: gd._origH });
+                        gd._origH = null;
+                    } else {
+                        window.Plotly.Plots.resize(gd);
+                    }
                 });
-            }, 150);
+            }, 80);
         }
     });
+
 }());
