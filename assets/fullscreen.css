@@ -20,3 +20,17 @@
 #cm-toggle:hover {
     background: #f1f5f9 !important;
 }
+
+/* Sidebar dropdowns — ensure menu renders above everything */
+.cm-dropdown .Select-control,
+.cm-dropdown .Select-menu-outer,
+.cm-dropdown [class$="-control"],
+.cm-dropdown [class$="-menu"] {
+    z-index: 9999 !important;
+}
+.cm-dropdown [class$="-menu"] {
+    position: fixed !important;
+}
+.cm-dropdown [class$="-MenuList"] {
+    max-height: 200px !important;
+}

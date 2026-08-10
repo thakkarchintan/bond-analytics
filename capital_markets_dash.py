@@ -563,16 +563,16 @@ sidebar = html.Div([
 
     # ── Page selector ──────────────────────────────────────────────────────────
     html.Div("PAGE", style=_CTRL_LBL),
-    dcc.RadioItems(
+    dcc.Dropdown(
         id="cm-page",
         options=[
-            {"label": " Bond Analytics",        "value": "bond"},
-            {"label": " Global Capital Markets", "value": "capital"},
+            {"label": "Bond Analytics",        "value": "bond"},
+            {"label": "Global Capital Markets", "value": "capital"},
         ],
         value="bond",
-        inputStyle={"accentColor": _BLUE, "cursor": "pointer"},
-        labelStyle={"display": "flex", "alignItems": "center", "fontSize": "13px",
-                    "color": _T1, "cursor": "pointer", "marginBottom": "6px"},
+        clearable=False,
+        style={"fontSize": "13px", "marginBottom": "8px"},
+        className="cm-dropdown",
     ),
 
     html.Hr(style={"borderColor": _BORDER, "margin": "12px 0"}),
@@ -648,16 +648,16 @@ sidebar = html.Div([
     html.Div(id="cm-bond-controls", children=[
 
         html.Div("SECTION", style=_CTRL_LBL),
-        dcc.RadioItems(
+        dcc.Dropdown(
             id="ba-section",
             options=[
-                {"label": " Bond Spreads & Flies",   "value": "spreads"},
-                {"label": " Custom Formula Graphs",  "value": "custom"},
+                {"label": "Bond Spreads & Flies",   "value": "spreads"},
+                {"label": "Custom Formula Graphs",  "value": "custom"},
             ],
             value="spreads",
-            inputStyle={"accentColor": _BLUE, "cursor": "pointer"},
-            labelStyle={"display": "flex", "alignItems": "center", "fontSize": "13px",
-                        "color": _T1, "cursor": "pointer", "marginBottom": "6px"},
+            clearable=False,
+            style={"fontSize": "13px", "marginBottom": "8px"},
+            className="cm-dropdown",
         ),
 
         html.Hr(style={"borderColor": _BORDER, "margin": "12px 0 8px"}),
@@ -679,17 +679,16 @@ sidebar = html.Div([
         html.Div(id="ba-custom-controls", style={"display": "none"}, children=[
 
             html.Div("ANALYSIS TYPE", style=_CTRL_LBL),
-            dcc.RadioItems(
+            dcc.Dropdown(
                 id="ba-analysis-type",
                 options=[
-                    {"label": " Single",  "value": "single"},
-                    {"label": " Overlay", "value": "overlay"},
+                    {"label": "Single",  "value": "single"},
+                    {"label": "Overlay", "value": "overlay"},
                 ],
                 value="single",
-                inline=True,
-                inputStyle={"accentColor": _BLUE, "cursor": "pointer"},
-                labelStyle={"fontSize": "13px", "color": _T1, "cursor": "pointer",
-                            "marginRight": "14px"},
+                clearable=False,
+                style={"fontSize": "13px", "marginBottom": "8px"},
+                className="cm-dropdown",
             ),
 
             html.Div("PRIMARY INSTRUMENT", style=_CTRL_LBL),
