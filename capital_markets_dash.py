@@ -440,13 +440,10 @@ def render_page(year: int, selected_countries: list[str], sections: list[str]):
     if "scatter" in sections:
         blocks.append(_scatter_eq_bond(yr_df, year))
 
-    row_charts = []
     if "eq_gdp" in sections:
-        row_charts.append(dbc.Col(_equity_gdp(yr_df, year), width=6))
+        blocks.append(_equity_gdp(yr_df, year))
     if "gb_gdp" in sections:
-        row_charts.append(dbc.Col(_govtbond_gdp(yr_df, year), width=6))
-    if row_charts:
-        blocks.append(dbc.Row(row_charts, style={"marginBottom": "0"}))
+        blocks.append(_govtbond_gdp(yr_df, year))
 
     if "ranking" in sections:
         blocks.append(_total_ranking(yr_df, year))
@@ -608,7 +605,7 @@ def _equity_gdp(yr_df: pd.DataFrame, year: int) -> html.Div:
                   annotation_text="100% of GDP",
                   annotation_font=dict(color=_T3, size=10))
     fig.update_layout(
-        height=340, showlegend=False,
+        height=380, showlegend=False,
         title=dict(text=f"Equity Market Cap / GDP ({year})",
                    font=dict(size=13, color=_T1, weight="bold"), x=0),
         xaxis_title="Equity Market Cap as % of GDP",
@@ -632,7 +629,7 @@ def _govtbond_gdp(yr_df: pd.DataFrame, year: int) -> html.Div:
                   annotation_text="100% of GDP",
                   annotation_font=dict(color=_AMB, size=10))
     fig.update_layout(
-        height=340, showlegend=False,
+        height=380, showlegend=False,
         title=dict(text=f"Govt Bond Market / GDP ({year})",
                    font=dict(size=13, color=_T1, weight="bold"), x=0),
         xaxis_title="Govt Bond Outstanding as % of GDP",
@@ -673,12 +670,12 @@ def _total_ranking(yr_df: pd.DataFrame, year: int) -> html.Div:
 
 
 def _historical(hist_df: pd.DataFrame) -> html.Div:
-    charts = []
+    cards = []
 
-    for title, col, ylab in [
-        ("Equity Market Cap — 2005 to 2023",              "Equity_USD",   "USD Trillions"),
-        ("Govt Bond Market — 2005 to 2023",               "GovtBond_USD", "USD Trillions"),
-    ]:
+    for i, (title, col, ylab) in enumerate([
+        ("Equity Market Cap — 2005 to 2023",  "Equity_USD",   "USD Trillions"),
+        ("Govt Bond Market — 2005 to 2023",   "GovtBond_USD", "USD Trillions"),
+    ]):
         fig = go.Figure()
         for country in hist_df["Country"].unique():
             cdf = hist_df[hist_df["Country"] == country].dropna(subset=[col])
@@ -691,14 +688,20 @@ def _historical(hist_df: pd.DataFrame) -> html.Div:
                 hovertemplate=f"<b>{country}</b><br>%{{x}}: $%{{y:.2f}}T<extra></extra>",
             ))
         fig.update_layout(
-            height=340,
+            height=380,
             title=dict(text=title, font=dict(size=13, color=_T1, weight="bold"), x=0),
             yaxis_title=ylab,
             **_chart_layout(margin=dict(l=60, r=24, t=48, b=130)),
         )
-        charts.append(dbc.Col(dcc.Graph(figure=fig, config=_CHART_CONFIG), width=6))
+        label = _section_label(
+            "Historical Evolution",
+            "Use the Year slider to explore a specific snapshot, or track trends below",
+        ) if i == 0 else None
+        cards.append(_card_wrap(
+            ([label] if label else []) + [dcc.Graph(figure=fig, config=_CHART_CONFIG)]
+        ))
 
-    # Total capital markets — full width
+    # Total capital markets
     fig_total = go.Figure()
     for country in hist_df["Country"].unique():
         cdf = hist_df[hist_df["Country"] == country].dropna(subset=["Total_Cap_USD"])
@@ -711,7 +714,7 @@ def _historical(hist_df: pd.DataFrame) -> html.Div:
             hovertemplate=f"<b>{country}</b><br>%{{x}}: $%{{y:.2f}}T<extra></extra>",
         ))
     fig_total.update_layout(
-        height=380,
+        height=400,
         title=dict(
             text="Total Capital Markets (Equity + Govt Bonds) — 2005 to 2023",
             font=dict(size=14, color=_T1, weight="bold"), x=0,
@@ -719,13 +722,9 @@ def _historical(hist_df: pd.DataFrame) -> html.Div:
         yaxis_title="USD Trillions",
         **_chart_layout(margin=dict(l=60, r=24, t=48, b=130)),
     )
+    cards.append(_card_wrap([dcc.Graph(figure=fig_total, config=_CHART_CONFIG)]))
 
-    return _card_wrap([
-        _section_label("Historical Evolution",
-                       "Use the Year slider to explore a specific snapshot, or track trends below"),
-        dbc.Row(charts, style={"marginBottom": "16px"}),
-        dcc.Graph(figure=fig_total, config=_CHART_CONFIG),
-    ])
+    return html.Div(cards)
 
 
 def _ratios_and_bubble(yr_df: pd.DataFrame, year: int) -> html.Div:
@@ -785,12 +784,14 @@ def _ratios_and_bubble(yr_df: pd.DataFrame, year: int) -> html.Div:
         **_chart_layout(),
     )
 
-    return _card_wrap([
-        _section_label("Ratios & Bubbles",
-                       "The Bond/Equity ratio reveals a country's financing model at a glance"),
-        dbc.Row([
-            dbc.Col(dcc.Graph(figure=fig_ratio,  config=_CHART_CONFIG), width=6),
-            dbc.Col(dcc.Graph(figure=fig_bubble, config=_CHART_CONFIG), width=6),
+    return html.Div([
+        _card_wrap([
+            _section_label("Ratios & Bubbles",
+                           "The Bond/Equity ratio reveals a country's financing model at a glance"),
+            dcc.Graph(figure=fig_ratio, config=_CHART_CONFIG),
+        ]),
+        _card_wrap([
+            dcc.Graph(figure=fig_bubble, config=_CHART_CONFIG),
         ]),
     ])
 
