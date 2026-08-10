@@ -526,7 +526,7 @@ def _equity_gdp(yr_df: pd.DataFrame, year: int) -> html.Div:
         title=dict(text=f"Equity Market Cap / GDP ({year})",
                    font=dict(size=13, color=_T1, weight="bold"), x=0),
         xaxis_title="Equity Market Cap as % of GDP",
-        **_chart_layout(margin=dict(l=140, r=24, t=48, b=44), showlegend=False),
+        **_chart_layout(margin=dict(l=140, r=24, t=48, b=44)),
     )
     return _card_wrap([
         _section_label("Equity / GDP", "How large is the stock market vs the economy?"),
@@ -550,7 +550,7 @@ def _govtbond_gdp(yr_df: pd.DataFrame, year: int) -> html.Div:
         title=dict(text=f"Govt Bond Market / GDP ({year})",
                    font=dict(size=13, color=_T1, weight="bold"), x=0),
         xaxis_title="Govt Bond Outstanding as % of GDP",
-        **_chart_layout(margin=dict(l=140, r=24, t=48, b=44), showlegend=False),
+        **_chart_layout(margin=dict(l=140, r=24, t=48, b=44)),
     )
     return _card_wrap([
         _section_label("Govt Bond / GDP",
@@ -658,7 +658,7 @@ def _ratios_and_bubble(yr_df: pd.DataFrame, year: int) -> html.Div:
         title=dict(text=f"Govt Bond / Equity Ratio ({year})",
                    font=dict(size=13, color=_T1, weight="bold"), x=0),
         xaxis_title="Govt Bond Market ÷ Equity Market",
-        **_chart_layout(margin=dict(l=150, r=24, t=48, b=44), showlegend=False),
+        **_chart_layout(margin=dict(l=150, r=24, t=48, b=44)),
     )
 
     df2 = yr_df.dropna(subset=["GDP_USD", "Total_Cap_USD", "Population"])
