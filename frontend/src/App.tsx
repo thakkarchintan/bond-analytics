@@ -225,7 +225,7 @@ export default function App() {
           {!collapsed && (
             <div>
               <div className="brand-name">Bond Analytics</div>
-              <div className="brand-sub">Bloomberg Terminal</div>
+              <div className="brand-sub">Global Fixed Income</div>
             </div>
           )}
           <button
