@@ -25,9 +25,15 @@ import BondSimulatorPage from './pages/BondSimulator'
 import DataSourcesPage from './pages/DataSources'
 import ChangelogPage from './pages/Changelog'
 import RoadmapPage from './pages/Roadmap'
+import PortfolioRebalancePage from './pages/PortfolioRebalance'
+import BondInvestmentStrategiesPage from './pages/BondInvestmentStrategies'
+import GlobalBusinessCyclePage from './pages/GlobalBusinessCycle'
 
 type Page =
   | 'Bond Analytics'
+  | 'Portfolio Rebalance'
+  | 'Bond Investment Strategies'
+  | 'Global Business Cycle'
   | 'Macro Dashboard'
   | 'Yield Curves'
   | 'Central Bank Rates'
@@ -64,8 +70,10 @@ const navGroups: Array<{
       { label: 'Historical Shocks', icon: History },
       { label: 'Curve Trade Builder', icon: LineChart },
       { label: 'Heatmap',           icon: Activity },
-      { label: 'Bond Portfolio',    icon: BarChart3 },
-      { label: 'Bond Simulator',    icon: LineChart },
+      { label: 'Bond Portfolio',             icon: BarChart3 },
+      { label: 'Bond Simulator',             icon: LineChart },
+      { label: 'Portfolio Rebalance',        icon: BarChart3 },
+      { label: 'Bond Investment Strategies', icon: LineChart },
     ],
   },
   {
@@ -79,7 +87,8 @@ const navGroups: Array<{
       { label: 'Inflation & Growth',  icon: History },
       { label: 'Fiscal Scorecard',    icon: History },
       { label: 'Global Capital Markets', icon: Globe },
-      { label: 'News Summary',      icon: Globe },
+      { label: 'Global Business Cycle',  icon: Globe },
+      { label: 'News Summary',           icon: Globe },
     ],
   },
   {
@@ -199,6 +208,21 @@ const pageHeadings: Record<Page, { eyebrow: string; title: string; subtitle: str
     title: 'Roadmap',
     subtitle: 'Architecture decisions, new page backlog, and data source expansion pipeline.',
   },
+  'Portfolio Rebalance': {
+    eyebrow: 'FIXED INCOME · MULTI-ASSET',
+    title: 'Portfolio Rebalance',
+    subtitle: 'CAGR, max drawdown, Sharpe ratio — backtest a weighted multi-asset portfolio with periodic rebalancing.',
+  },
+  'Bond Investment Strategies': {
+    eyebrow: 'FIXED INCOME · STRATEGY',
+    title: 'Bond Investment Strategies',
+    subtitle: 'Build, compare and stress-test Ladder · Bullet · Barbell portfolios across 30 sovereign bonds.',
+  },
+  'Global Business Cycle': {
+    eyebrow: 'MACRO · OECD · DBNOMICS',
+    title: 'Global Business Cycle',
+    subtitle: 'OECD Business Confidence · Consumer Confidence · Composite Leading Indicator for 29 countries.',
+  },
   'News Summary': {
     eyebrow: 'MARKETS · NEWSAPI',
     title: 'News Summary',
@@ -308,7 +332,10 @@ export default function App() {
           {page === 'Heatmap'              && <HeatmapPage />}
           {page === 'Bond Portfolio'       && <BondPortfolioPage />}
           {page === 'Bond Simulator'       && <BondSimulatorPage />}
-          {page === 'News Summary'         && <NewsSummaryPage />}
+          {page === 'Portfolio Rebalance'        && <PortfolioRebalancePage />}
+          {page === 'Bond Investment Strategies' && <BondInvestmentStrategiesPage />}
+          {page === 'Global Business Cycle'      && <GlobalBusinessCyclePage />}
+          {page === 'News Summary'               && <NewsSummaryPage />}
           {page === 'Data Sources'         && <DataSourcesPage />}
           {page === 'Changelog'            && <ChangelogPage />}
           {page === 'Roadmap'              && <RoadmapPage />}
