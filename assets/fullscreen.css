@@ -28,104 +28,161 @@ body {
     color: #f39200 !important;
 }
 
-/* ── Bloomberg dark: all Dash dropdowns ───────────────────────────────────── */
+/* ── Bloomberg dark: Dash dropdowns (react-select v2 class names) ─────────── */
 
-/* Control (closed state) */
-.Select-control,
-[class$="-control"] {
+/* Closed control box */
+.Select .Select-control,
+.VirtualizedSelectFocusedOption,
+div.Select-control {
     background-color: #1a1a1a !important;
-    border-color: #2a2a2a !important;
+    border-color: #3a3a3a !important;
+}
+.Select .Select-value-label,
+.Select .Select-placeholder,
+.Select .Select-input > input {
     color: #e8e8e8 !important;
 }
-.Select-value-label,
-[class$="-singleValue"],
-[class$="-placeholder"] {
-    color: #e8e8e8 !important;
+.Select .Select-arrow {
+    border-top-color: #888888 !important;
 }
-.Select-arrow-zone .Select-arrow,
-[class$="-indicatorContainer"] svg {
-    color: #888888 !important;
-    fill: #888888 !important;
+.Select.is-open .Select-arrow {
+    border-bottom-color: #888888 !important;
 }
 
-/* Dropdown menu */
-.Select-menu-outer,
-[class$="-menu"] {
+/* Open dropdown menu */
+.Select .Select-menu-outer {
     background-color: #1a1a1a !important;
-    border: 1px solid #2a2a2a !important;
-    color: #e8e8e8 !important;
+    border-color: #3a3a3a !important;
 }
-[class$="-MenuList"] {
+.Select .Select-menu {
     background-color: #1a1a1a !important;
 }
-.Select-option,
-[class$="-option"] {
+.Select .Select-option {
     background-color: #1a1a1a !important;
     color: #e8e8e8 !important;
 }
-.Select-option:hover,
-[class$="-option"]:hover,
-[class$="-option"][class*="focused"],
-[class$="-option"][class*="selected"] {
+.Select .Select-option.is-focused {
     background-color: #2a2a2a !important;
     color: #f39200 !important;
 }
-.Select-option.is-focused {
-    background-color: #2a2a2a !important;
-}
-.Select-option.is-selected {
+.Select .Select-option.is-selected {
     background-color: #242424 !important;
     color: #f39200 !important;
 }
-
-/* Input inside dropdown */
-.Select-input input,
-[class$="-Input"] input {
-    color: #e8e8e8 !important;
-    background: transparent !important;
+.Select .Select-noresults {
+    color: #888888 !important;
+    background-color: #1a1a1a !important;
 }
 
-/* Slider track & handle */
+/* ── Also cover newer react-select v5 (hash-based class names) ────────────── */
+/* These use attribute-contains selectors to catch hashed suffixes */
+
+/* Control wrapper */
+[class*="-control"] {
+    background-color: #1a1a1a !important;
+    border-color: #3a3a3a !important;
+    box-shadow: none !important;
+    color: #e8e8e8 !important;
+}
+[class*="-control"]:hover {
+    border-color: #f39200 !important;
+}
+
+/* Single value + placeholder */
+[class*="-singleValue"],
+[class*="-placeholder"] {
+    color: #e8e8e8 !important;
+}
+
+/* Dropdown indicators */
+[class*="-indicatorContainer"] svg,
+[class*="-indicatorSeparator"] {
+    color: #555555 !important;
+    background-color: #3a3a3a !important;
+}
+
+/* Menu + menu list */
+[class*="-menu"] {
+    background-color: #1a1a1a !important;
+    border: 1px solid #3a3a3a !important;
+    color: #e8e8e8 !important;
+}
+[class*="-MenuList"],
+[class*="-menuList"] {
+    background-color: #1a1a1a !important;
+    padding: 0 !important;
+}
+
+/* Options */
+[class*="-option"] {
+    background-color: #1a1a1a !important;
+    color: #e8e8e8 !important;
+    cursor: pointer !important;
+}
+[class*="-option"]:hover {
+    background-color: #2a2a2a !important;
+    color: #f39200 !important;
+}
+
+/* Input inside search */
+[class*="-Input"] input,
+[class*="-input"] input {
+    color: #e8e8e8 !important;
+    caret-color: #f39200 !important;
+}
+
+/* ── Slider ────────────────────────────────────────────────────────────────── */
 .rc-slider-track {
     background-color: #f39200 !important;
 }
-.rc-slider-handle {
+.rc-slider-handle,
+.rc-slider-handle:active,
+.rc-slider-handle:focus,
+.rc-slider-handle-dragging {
     border-color: #f39200 !important;
     background-color: #f39200 !important;
+    box-shadow: 0 0 0 4px rgba(243,146,0,0.2) !important;
 }
 .rc-slider-rail {
     background-color: #2a2a2a !important;
+}
+.rc-slider-mark-text {
+    color: #888888 !important;
 }
 .rc-slider-tooltip-inner {
     background: #f39200 !important;
     color: #000 !important;
 }
 
-/* Checklist accent */
+/* ── Checklist ─────────────────────────────────────────────────────────────── */
 input[type="checkbox"] {
     accent-color: #f39200;
 }
 
-/* Submit button active state */
-button[id="ba-submit"]:hover {
+/* ── Submit button hover ────────────────────────────────────────────────────── */
+#ba-submit:hover {
     background: #e08600 !important;
 }
 
-/* Sidebar dropdowns — ensure menu renders above fixed sidebar */
+/* ── Sidebar cm-dropdown: z-index + fixed positioning for popup ───────────── */
 .cm-dropdown .Select-control,
 .cm-dropdown .Select-menu-outer,
-.cm-dropdown [class$="-control"],
-.cm-dropdown [class$="-menu"] {
+.cm-dropdown [class*="-control"],
+.cm-dropdown [class*="-menu"] {
     z-index: 9999 !important;
 }
-.cm-dropdown [class$="-menu"] {
+.cm-dropdown [class*="-menu"] {
     position: fixed !important;
 }
-.cm-dropdown [class$="-MenuList"] {
+.cm-dropdown [class*="-MenuList"],
+.cm-dropdown [class*="-menuList"] {
     max-height: 200px !important;
 }
+.cm-dropdown .Select-menu-outer {
+    position: fixed !important;
+}
 
-/* Date inputs dark */
+/* ── Date inputs ─────────────────────────────────────────────────────────────*/
 input[type="date"] {
     color-scheme: dark;
 }
