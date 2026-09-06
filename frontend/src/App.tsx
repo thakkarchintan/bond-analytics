@@ -15,6 +15,10 @@ import CrossAssetPage from './pages/CrossAsset'
 import LeadingIndicatorsPage from './pages/LeadingIndicators'
 import InflationGrowthPage from './pages/InflationGrowth'
 import FiscalScorecardPage from './pages/FiscalScorecard'
+import BondCalculatorPage from './pages/BondCalculator'
+import HeatmapPage from './pages/Heatmap'
+import HistoricalShocksPage from './pages/HistoricalShocks'
+import CurveTradeBuilderPage from './pages/CurveTradeBuilder'
 
 type Page =
   | 'Bond Analytics'
@@ -28,6 +32,10 @@ type Page =
   | 'Inflation & Growth'
   | 'Fiscal Scorecard'
   | 'Global Capital Markets'
+  | 'Bond Calculator'
+  | 'Historical Shocks'
+  | 'Curve Trade Builder'
+  | 'Heatmap'
   | 'Settings'
 
 const navGroups: Array<{
@@ -40,6 +48,10 @@ const navGroups: Array<{
       { label: 'Bond Analytics',    icon: BarChart3 },
       { label: 'Yield Curves',      icon: TrendingUp },
       { label: 'Credit Spreads',    icon: Activity },
+      { label: 'Bond Calculator',   icon: BarChart3 },
+      { label: 'Historical Shocks', icon: History },
+      { label: 'Curve Trade Builder', icon: LineChart },
+      { label: 'Heatmap',           icon: Activity },
     ],
   },
   {
@@ -118,6 +130,26 @@ const pageHeadings: Record<Page, { eyebrow: string; title: string; subtitle: str
     eyebrow: 'MACRO · 10 COUNTRIES · WORLD BANK',
     title: 'Global Capital Markets',
     subtitle: 'Equity vs government bond markets · market size vs GDP · historical evolution 2005–2023.',
+  },
+  'Bond Calculator': {
+    eyebrow: 'FIXED INCOME · ANALYTICS',
+    title: 'Bond Calculator',
+    subtitle: 'Price, yield, Macaulay/Modified duration, DV01, convexity, and P&L sensitivity — client-side math.',
+  },
+  'Historical Shocks': {
+    eyebrow: 'FIXED INCOME · HISTORY',
+    title: 'Historical Shocks',
+    subtitle: 'Compare market behaviour across GFC, Euro Crisis, Taper Tantrum, COVID, and rate hike cycles.',
+  },
+  'Curve Trade Builder': {
+    eyebrow: 'FIXED INCOME · RATES',
+    title: 'Curve Trade Builder',
+    subtitle: '2-leg spreads and 3-leg butterflies — historical levels, z-scores, and estimated P&L.',
+  },
+  'Heatmap': {
+    eyebrow: 'FIXED INCOME · CORRELATION',
+    title: 'Correlation Heatmap',
+    subtitle: 'Pearson correlation matrix for yields, equities, and commodities over any date range.',
   },
   'Settings': {
     eyebrow: 'PREFERENCES',
@@ -217,6 +249,10 @@ export default function App() {
           {page === 'Inflation & Growth'    && <InflationGrowthPage />}
           {page === 'Fiscal Scorecard'      && <FiscalScorecardPage />}
           {page === 'Global Capital Markets'&& <CapitalMarketsPage />}
+          {page === 'Bond Calculator'       && <BondCalculatorPage />}
+          {page === 'Historical Shocks'     && <HistoricalShocksPage />}
+          {page === 'Curve Trade Builder'   && <CurveTradeBuilderPage />}
+          {page === 'Heatmap'              && <HeatmapPage />}
           {page === 'Settings' && (
             <div className="content-wrap">
               <div className="placeholder-state">
