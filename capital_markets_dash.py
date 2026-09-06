@@ -1,8 +1,8 @@
 """
-Global Capital Markets Dashboard — Dash prototype (light theme)
+Global Capital Markets Dashboard — Dash prototype (Bloomberg dark theme)
 Run standalone:  python capital_markets_dash.py  →  http://localhost:8051
 
-Light-themed counterpart to the Credit Spreads dark prototype.
+Bloomberg black + orange dark theme.
 All Plotly charts show the full toolbar (zoom, pan, download, fullscreen).
 """
 from __future__ import annotations
@@ -18,20 +18,20 @@ from dash import dcc, html, Input, Output, State, callback, dash_table, ctx
 import dash_bootstrap_components as dbc
 from datetime import date
 
-# ── Light palette ──────────────────────────────────────────────────────────────
-_PAGE   = "#f0f4f8"       # outer page background
-_SIDE   = "#ffffff"       # sidebar background
-_CARD   = "#ffffff"       # card / chart background
-_PLOT   = "#f8fafc"       # plot area inside chart
-_BORDER = "#e2e8f0"       # borders & grid lines
-_T1     = "#0f172a"       # primary text
-_T2     = "#475569"       # secondary text
-_T3     = "#94a3b8"       # muted text
-_BLUE   = "#2563eb"       # accent
-_GRN    = "#059669"
-_RED    = "#dc2626"
-_AMB    = "#d97706"
-_PRP    = "#7c3aed"
+# ── Bloomberg dark palette ─────────────────────────────────────────────────────
+_PAGE   = "#111111"       # outer page background
+_SIDE   = "#0d0d0d"       # sidebar background
+_CARD   = "#1a1a1a"       # card / chart background
+_PLOT   = "#111111"       # plot area inside chart
+_BORDER = "#2a2a2a"       # borders & grid lines
+_T1     = "#e8e8e8"       # primary text
+_T2     = "#aaaaaa"       # secondary text
+_T3     = "#888888"       # muted text
+_BLUE   = "#f39200"       # Bloomberg orange (accent)
+_GRN    = "#00c087"
+_RED    = "#ff4d4d"
+_AMB    = "#f39200"
+_PRP    = "#b48aff"
 
 # Data colours (same as Streamlit version for consistency)
 COUNTRY_COLORS = {
@@ -184,7 +184,7 @@ def _chart_layout(**kw) -> dict:
             xanchor="center",
             x=0.5,
             font=dict(color=_T2, size=11),
-            bgcolor="rgba(255,255,255,0.8)",
+            bgcolor="rgba(26,26,26,0.9)",
             bordercolor=_BORDER, borderwidth=1,
         ),
     )
@@ -199,7 +199,7 @@ def _card_wrap(children, style: dict | None = None) -> html.Div:
         "borderRadius": "12px",
         "padding": "20px 24px",
         "marginBottom": "20px",
-        "boxShadow": "0 1px 3px rgba(0,0,0,0.06)",
+        "boxShadow": "0 2px 8px rgba(0,0,0,0.4)",
         "position": "relative",   # anchor for the fullscreen button
     }
     if style:
@@ -213,7 +213,7 @@ def _card_wrap(children, style: dict | None = None) -> html.Div:
             "position":   "absolute",
             "top":        "14px",
             "right":      "14px",
-            "background": "rgba(248,250,252,0.95)",
+            "background": "rgba(26,26,26,0.95)",
             "border":     f"1px solid {_BORDER}",
             "borderRadius": "5px",
             "padding":    "2px 8px",
@@ -442,7 +442,7 @@ def _ba_render_custom(
             legend=dict(
                 orientation="h", yanchor="top", y=-0.14, xanchor="center", x=0.5,
                 font=dict(color=_T2, size=11),
-                bgcolor="rgba(255,255,255,0.8)", bordercolor=_BORDER, borderwidth=1,
+                bgcolor="rgba(26,26,26,0.9)", bordercolor=_BORDER, borderwidth=1,
             ),
         )
         charts.append(_card_wrap([
@@ -500,7 +500,7 @@ _sidebar_style = {
     "overflowY":  "auto",
     "overflowX":  "hidden",
     "zIndex":     1000,
-    "boxShadow":  "2px 0 8px rgba(0,0,0,0.06)",
+    "boxShadow":  "2px 0 12px rgba(0,0,0,0.5)",
     "transition": "width 0.22s ease, padding 0.22s ease",
 }
 
@@ -534,7 +534,7 @@ _TOGGLE_BTN_STYLE = {
 _INPUT_STYLE = {
     "width": "100%", "fontSize": "12px", "padding": "5px 8px",
     "border": f"1px solid {_BORDER}", "borderRadius": "5px",
-    "background": "#f8fafc", "color": _T1, "marginBottom": "8px",
+    "background": "#1a1a1a", "color": _T1, "marginBottom": "8px",
     "boxSizing": "border-box",
 }
 
@@ -1356,7 +1356,7 @@ def _dna_table(yr_df: pd.DataFrame) -> html.Div:
             "textAlign":    "left",
         },
         style_data_conditional=[
-            {"if": {"row_index": "odd"}, "background": "#f8fafc"},
+            {"if": {"row_index": "odd"}, "background": "#222222"},
         ],
         page_size=12,
     )
