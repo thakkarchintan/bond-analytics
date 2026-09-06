@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from api.routers import bond, macro, capital, auth, firebase
+from api.routers import bond, macro, capital, auth, firebase, news
 
 app = FastAPI(title="Bond Analytics API", version="1.0.0")
 
@@ -25,6 +25,7 @@ app.include_router(macro.router)
 app.include_router(capital.router)
 app.include_router(auth.router)
 app.include_router(firebase.router)
+app.include_router(news.router)
 
 # ── Serve React build (production) ────────────────────────────────────────────
 _DIST = Path(__file__).parent.parent / "frontend" / "dist"

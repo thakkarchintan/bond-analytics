@@ -19,6 +19,9 @@ import BondCalculatorPage from './pages/BondCalculator'
 import HeatmapPage from './pages/Heatmap'
 import HistoricalShocksPage from './pages/HistoricalShocks'
 import CurveTradeBuilderPage from './pages/CurveTradeBuilder'
+import NewsSummaryPage from './pages/NewsSummary'
+import BondPortfolioPage from './pages/BondPortfolio'
+import BondSimulatorPage from './pages/BondSimulator'
 
 type Page =
   | 'Bond Analytics'
@@ -36,6 +39,9 @@ type Page =
   | 'Historical Shocks'
   | 'Curve Trade Builder'
   | 'Heatmap'
+  | 'Bond Portfolio'
+  | 'Bond Simulator'
+  | 'News Summary'
   | 'Settings'
 
 const navGroups: Array<{
@@ -52,6 +58,8 @@ const navGroups: Array<{
       { label: 'Historical Shocks', icon: History },
       { label: 'Curve Trade Builder', icon: LineChart },
       { label: 'Heatmap',           icon: Activity },
+      { label: 'Bond Portfolio',    icon: BarChart3 },
+      { label: 'Bond Simulator',    icon: LineChart },
     ],
   },
   {
@@ -65,6 +73,7 @@ const navGroups: Array<{
       { label: 'Inflation & Growth',  icon: History },
       { label: 'Fiscal Scorecard',    icon: History },
       { label: 'Global Capital Markets', icon: Globe },
+      { label: 'News Summary',      icon: Globe },
     ],
   },
   {
@@ -150,6 +159,21 @@ const pageHeadings: Record<Page, { eyebrow: string; title: string; subtitle: str
     eyebrow: 'FIXED INCOME · CORRELATION',
     title: 'Correlation Heatmap',
     subtitle: 'Pearson correlation matrix for yields, equities, and commodities over any date range.',
+  },
+  'Bond Portfolio': {
+    eyebrow: 'FIXED INCOME · RISK',
+    title: 'Bond Portfolio Analytics',
+    subtitle: 'Market value, duration, DV01, convexity, and P&L sensitivity for a multi-bond portfolio.',
+  },
+  'Bond Simulator': {
+    eyebrow: 'FIXED INCOME · MONTE CARLO',
+    title: 'Monte Carlo Bond Simulator',
+    subtitle: 'GBM yield simulation — price distribution, VaR, CVaR, and yield fan at horizon.',
+  },
+  'News Summary': {
+    eyebrow: 'MARKETS · NEWSAPI',
+    title: 'News Summary',
+    subtitle: 'Live bond and macro news with AI-generated summary.',
   },
   'Settings': {
     eyebrow: 'PREFERENCES',
@@ -253,6 +277,9 @@ export default function App() {
           {page === 'Historical Shocks'     && <HistoricalShocksPage />}
           {page === 'Curve Trade Builder'   && <CurveTradeBuilderPage />}
           {page === 'Heatmap'              && <HeatmapPage />}
+          {page === 'Bond Portfolio'       && <BondPortfolioPage />}
+          {page === 'Bond Simulator'       && <BondSimulatorPage />}
+          {page === 'News Summary'         && <NewsSummaryPage />}
           {page === 'Settings' && (
             <div className="content-wrap">
               <div className="placeholder-state">
