@@ -1,6 +1,6 @@
 """
 Global Capital Markets Dashboard — Dash prototype (Bloomberg dark theme)
-Run standalone:  python capital_markets_dash.py  →  http://localhost:8051
+Run standalone:  python capital_markets_dash.py  →  http://localhost:8052
 
 Bloomberg black + orange dark theme.
 All Plotly charts show the full toolbar (zoom, pan, download, fullscreen).
@@ -1392,6 +1392,6 @@ def _dna_table(yr_df: pd.DataFrame) -> html.Div:
 if __name__ == "__main__":
     print("\n  Bond Analytics — Global Capital Markets (Dash / Light theme)")
     print("  ─────────────────────────────────────────────────────────────")
-    print("  http://localhost:8051\n")
+    print("  http://localhost:8052\n")
     print("  Chart toolbar: zoom · pan · box-zoom · scroll-zoom · download PNG · reset\n")
-    app.run(debug=False, port=8051)
+    app.run(debug=False, port=8052)
