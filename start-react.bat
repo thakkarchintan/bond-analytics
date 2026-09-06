@@ -2,6 +2,11 @@
 cd /d "%~dp0frontend"
 echo Installing dependencies (first run only)...
 npm install
+if %errorlevel% neq 0 (
+    echo ERROR: npm install failed. Is Node.js installed?
+    pause
+    exit /b 1
+)
 echo.
 echo Starting Bond Analytics React app...
 echo Open http://localhost:5175 in your browser
