@@ -22,6 +22,9 @@ import CurveTradeBuilderPage from './pages/CurveTradeBuilder'
 import NewsSummaryPage from './pages/NewsSummary'
 import BondPortfolioPage from './pages/BondPortfolio'
 import BondSimulatorPage from './pages/BondSimulator'
+import DataSourcesPage from './pages/DataSources'
+import ChangelogPage from './pages/Changelog'
+import RoadmapPage from './pages/Roadmap'
 
 type Page =
   | 'Bond Analytics'
@@ -42,6 +45,9 @@ type Page =
   | 'Bond Portfolio'
   | 'Bond Simulator'
   | 'News Summary'
+  | 'Data Sources'
+  | 'Changelog'
+  | 'Roadmap'
   | 'Settings'
 
 const navGroups: Array<{
@@ -74,6 +80,14 @@ const navGroups: Array<{
       { label: 'Fiscal Scorecard',    icon: History },
       { label: 'Global Capital Markets', icon: Globe },
       { label: 'News Summary',      icon: Globe },
+    ],
+  },
+  {
+    label: 'ADMIN',
+    items: [
+      { label: 'Data Sources', icon: Activity },
+      { label: 'Changelog',    icon: History },
+      { label: 'Roadmap',      icon: BarChart3 },
     ],
   },
   {
@@ -169,6 +183,21 @@ const pageHeadings: Record<Page, { eyebrow: string; title: string; subtitle: str
     eyebrow: 'FIXED INCOME · MONTE CARLO',
     title: 'Monte Carlo Bond Simulator',
     subtitle: 'GBM yield simulation — price distribution, VaR, CVaR, and yield fan at horizon.',
+  },
+  'Data Sources': {
+    eyebrow: 'ADMIN · DATA CATALOG',
+    title: 'Data Sources',
+    subtitle: 'All 16 parquet-backed datasets — source, coverage, frequency, lag type, and alternatives.',
+  },
+  'Changelog': {
+    eyebrow: 'ADMIN · RELEASE NOTES',
+    title: 'Changelog',
+    subtitle: 'Full deployment history from Streamlit v1.0 through the React/Vite migration.',
+  },
+  'Roadmap': {
+    eyebrow: 'ADMIN · PRODUCT',
+    title: 'Roadmap',
+    subtitle: 'Architecture decisions, new page backlog, and data source expansion pipeline.',
   },
   'News Summary': {
     eyebrow: 'MARKETS · NEWSAPI',
@@ -280,6 +309,9 @@ export default function App() {
           {page === 'Bond Portfolio'       && <BondPortfolioPage />}
           {page === 'Bond Simulator'       && <BondSimulatorPage />}
           {page === 'News Summary'         && <NewsSummaryPage />}
+          {page === 'Data Sources'         && <DataSourcesPage />}
+          {page === 'Changelog'            && <ChangelogPage />}
+          {page === 'Roadmap'              && <RoadmapPage />}
           {page === 'Settings' && (
             <div className="content-wrap">
               <div className="placeholder-state">
