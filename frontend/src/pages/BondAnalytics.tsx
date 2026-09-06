@@ -1,57 +1,21 @@
-import { useState, useMemo } from 'react'
-import { BarChart3, TrendingUp, Play, SlidersHorizontal } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { BarChart3, TrendingUp, Play, SlidersHorizontal, RefreshCw } from 'lucide-react'
+import { fetchSpreadGrid, fetchColumns, fetchSeries, evalFormula, type SpreadCard, type SeriesPoint } from '../api/bond'
 
-/* ── Mock data ─────────────────────────────────────────────────────────────── */
-function mockSeries(seed: number, len = 80): number[] {
-  let v = seed
-  return Array.from({ length: len }, (_, i) => {
-    v += (Math.sin(i * 0.31 + seed) * 0.4 + (Math.random() - 0.5) * 0.3)
-    return parseFloat(v.toFixed(4))
-  })
-}
-
-const FORMULAS: Array<{ name: string; formula: string; seed: number }> = [
-  { name: 'Eurex 5-10 Spread',          formula: 'FGBLY − FGBMY',          seed: 1.2  },
-  { name: 'Eurex 2-5 Spread',           formula: 'FGBMY − FGBSY',          seed: 0.5  },
-  { name: 'Eurex 2-10 Spread',          formula: 'FGBLY − FGBSY',          seed: 1.8  },
-  { name: 'Eurex 10-30 Spread',         formula: 'FGBXY − FGBLY',          seed: -0.3 },
-  { name: 'Eurex 2-5-10 Fly',           formula: 'FGBLY − 2×FGBMY + FGBSY', seed: 0.02 },
-  { name: 'Eurex 5-10-30 Fly',          formula: 'FGBXY − 2×FGBLY + FGBMY', seed: -0.05 },
-  { name: 'US 5-10 Spread',             formula: 'US10Y − US5Y',           seed: 0.8  },
-  { name: 'US 2-5 Spread',              formula: 'US5Y − US2Y',            seed: -0.2 },
-  { name: 'US 2-10 Spread',             formula: 'US10Y − US2Y',           seed: 0.6  },
-  { name: 'US 10-30 Spread',            formula: 'US30Y − US10Y',          seed: 1.1  },
-  { name: 'US 2-5-10 Fly',              formula: 'US10Y − 2×US5Y + US2Y',  seed: -0.01 },
-  { name: 'US 5-10-30 Fly',             formula: 'US30Y − 2×US10Y + US5Y', seed: 0.03 },
-  { name: 'Italian vs German 2Y',        formula: 'FBTSY − FGBSY',          seed: 1.4  },
-  { name: 'Italian vs German 10Y',       formula: 'FBTPY − FGBLY',          seed: 1.7  },
-  { name: 'Aus vs Canadian 10Y',         formula: 'AUS10Y − CAD10Y',        seed: 0.3  },
-  { name: 'French vs German 10Y',        formula: 'FOATY − FGBLY',          seed: 0.55 },
-  { name: 'UK vs German 10Y',            formula: 'UK10Y − FGBLY',          seed: 1.0  },
-  { name: 'UK vs Australian 10Y',        formula: 'UK10Y − AUS10Y',         seed: 0.7  },
-  { name: 'US vs Australian 10Y',        formula: 'US10Y − AUS10Y',         seed: -0.4 },
-  { name: 'CA vs US 2-5-10 Fly',         formula: 'CAD10Y − 2×CAD5Y + CAD2Y − (US10Y − 2×US5Y + US2Y)', seed: 0.001 },
-]
-
-const INSTRUMENTS = [
-  'FGBSY','FGBMY','FGBLY','FGBXY',
-  'US2Y','US5Y','US10Y','US30Y',
-  'FBTSY','FBTPY','FOATY','UK10Y',
-  'AUS10Y','AUS3Y','CAD10Y','CAD2Y','CAD5Y',
-]
-
-/* ── Sparkline SVG ─────────────────────────────────────────────────────────── */
-function Sparkline({ data, color = '#f39200', height = 54 }: { data: number[]; color?: string; height?: number }) {
+/* ── Sparkline SVG (real data) ──────────────────────────────────────────────── */
+function Sparkline({ points, color = '#f39200', height = 54 }: { points: { value: number }[]; color?: string; height?: number }) {
+  if (!points.length) return <div style={{ height }} />
   const w = 400; const h = height
-  const min = Math.min(...data); const max = Math.max(...data)
+  const vals = points.map(p => p.value)
+  const min = Math.min(...vals); const max = Math.max(...vals)
   const range = max - min || 1
-  const pts = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * w
+  const pts = vals.map((v, i) => {
+    const x = (i / (vals.length - 1)) * w
     const y = h - ((v - min) / range) * (h - 4) - 2
     return `${x},${y}`
   }).join(' ')
-  const last = parseFloat(pts.split(' ').at(-1)!.split(',')[1])
-  const gradId = `g${Math.random().toString(36).slice(2)}`
+  const lastPt = pts.split(' ').at(-1)!.split(',')
+  const gradId = `g${color.replace('#', '')}${h}`
   return (
     <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ height }}>
       <defs>
@@ -62,74 +26,191 @@ function Sparkline({ data, color = '#f39200', height = 54 }: { data: number[]; c
       </defs>
       <polygon points={`0,${h} ${pts} ${w},${h}`} fill={`url(#${gradId})`} />
       <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
-      <circle cx={parseFloat(pts.split(' ').at(-1)!.split(',')[0])} cy={last} r="2.5" fill={color} />
+      <circle cx={parseFloat(lastPt[0])} cy={parseFloat(lastPt[1])} r="2.5" fill={color} />
     </svg>
   )
 }
 
 /* ── Spread card ────────────────────────────────────────────────────────────── */
-function SpreadCard({ name, formula, seed, ncols }: { name: string; formula: string; seed: number; ncols: number }) {
-  const series = useMemo(() => mockSeries(seed), [seed])
-  const last = series.at(-1)!
-  const prev = series.at(-2)!
-  const chg = last - prev
-  const isPos = chg >= 0
+function SpreadCardItem({ card, ncols }: { card: SpreadCard; ncols: number }) {
+  const isPos = card.change >= 0
   return (
     <div className="spread-card">
       <div className="spread-card-head">
         <div>
-          <div className="spread-card-title">{name}</div>
-          <div className="spread-card-formula">{formula}</div>
+          <div className="spread-card-title">{card.name}</div>
+          <div className="spread-card-formula">{card.formula}</div>
         </div>
       </div>
       <div className="spread-card-meta">
-        <span className="spread-val">{last.toFixed(3)}</span>
+        <span className="spread-val">{card.last.toFixed(3)}</span>
         <span className={`spread-chg ${isPos ? 'pos' : 'neg'}`}>
-          {isPos ? '▲' : '▼'} {Math.abs(chg).toFixed(3)}
+          {isPos ? '▲' : '▼'} {Math.abs(card.change).toFixed(3)}
         </span>
       </div>
       <div className="sparkline-wrap">
-        <Sparkline data={series} height={ncols <= 2 ? 64 : 50} />
+        <Sparkline points={card.sparkline} height={ncols <= 2 ? 64 : 50} />
       </div>
     </div>
   )
 }
 
-/* ── Custom chart placeholder ───────────────────────────────────────────────── */
-function CustomChartPlaceholder({ instrument, formula }: { instrument: string; formula?: string }) {
-  const label = formula?.trim() || instrument
-  const series = useMemo(() => mockSeries(label.length * 0.13 + 1.1, 120), [label])
-  return (
-    <div className="card" style={{ marginBottom: 16 }}>
-      <div className="card-head">
-        <span>{label}</span>
-        <span style={{ color: '#f39200', letterSpacing: 0 }}>Level Chart</span>
-      </div>
-      <div style={{ padding: '12px 16px 8px' }}>
-        <Sparkline data={series} height={160} />
-      </div>
-    </div>
-  )
+/* ── Plotly chart (lazy-loaded) ─────────────────────────────────────────────── */
+interface PlotlyTrace {
+  x: string[]
+  y: number[]
+  name: string
+  type: string
+  mode: string
+  line: { color: string; width: number }
+  fill?: string
+  fillcolor?: string
 }
+
+function PlotlyChart({ traces, title }: { traces: PlotlyTrace[]; title: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!ref.current || !traces.length) return
+    let cancelled = false
+    import('plotly.js-dist-min').then((Plotly) => {
+      if (cancelled || !ref.current) return
+      Plotly.react(ref.current!, traces as never, {
+        title: { text: title, font: { color: '#e8e8e8', size: 13 } },
+        paper_bgcolor: '#1a1a1a',
+        plot_bgcolor:  '#111111',
+        font:          { color: '#aaaaaa', family: 'system-ui, sans-serif', size: 11 },
+        margin:        { t: 36, r: 16, b: 40, l: 56 },
+        xaxis: {
+          gridcolor: '#2a2a2a', zerolinecolor: '#2a2a2a',
+          tickfont: { color: '#888', size: 10 },
+        },
+        yaxis: {
+          gridcolor: '#2a2a2a', zerolinecolor: '#444',
+          tickfont: { color: '#888', size: 10 },
+        },
+        legend: {
+          bgcolor: 'rgba(26,26,26,0.9)', bordercolor: '#2a2a2a',
+          font: { color: '#aaa', size: 10 },
+        },
+        hovermode: 'x unified',
+        hoverlabel: { bgcolor: '#1a1a1a', bordercolor: '#f39200', font: { color: '#e8e8e8' } },
+      } as never, { responsive: true, displayModeBar: false })
+    })
+    return () => { cancelled = true }
+  }, [traces, title])
+
+  return <div ref={ref} style={{ width: '100%', height: 320 }} />
+}
+
+/* ── KPI values from spread grid ─────────────────────────────────────────────── */
+const KPI_NAMES = ['US 2-10 Spread', 'Eurex 5-10 Spread', 'Italian vs German 10Y', 'UK vs. German 10Y']
 
 /* ── Bond Analytics page ────────────────────────────────────────────────────── */
 export default function BondAnalyticsPage() {
   const [section, setSection] = useState<'spreads' | 'custom'>('spreads')
   const [ncols, setNcols] = useState(2)
   const [startDate, setStartDate] = useState('1994-01-03')
-  const [endDate, setEndDate]     = useState('2025-11-06')
+  const [endDate, setEndDate]     = useState('')
+
+  // Spread grid state
+  const [spreadData, setSpreadData]   = useState<SpreadCard[]>([])
+  const [gridLoading, setGridLoading] = useState(false)
+  const [gridError, setGridError]     = useState('')
 
   // Custom section state
   const [analysisType, setAnalysisType] = useState<'single' | 'overlay'>('single')
-  const [instrument, setInstrument] = useState('US10Y')
-  const [formula, setFormula] = useState('')
+  const [columns, setColumns]           = useState<string[]>([])
+  const [instrument, setInstrument]     = useState('US10Y')
+  const [formula, setFormula]           = useState('')
   const [overlayInstr, setOverlayInstr] = useState('US2Y')
   const [overlayFormula, setOverlayFormula] = useState('')
-  const [submitted, setSubmitted] = useState(false)
   const [custStart, setCustStart] = useState('1994-01-03')
-  const [custEnd, setCustEnd]     = useState('2025-11-06')
+  const [custEnd, setCustEnd]     = useState('')
+  const [chartTraces, setChartTraces]   = useState<PlotlyTrace[]>([])
+  const [chartTitle, setChartTitle]     = useState('')
+  const [chartLoading, setChartLoading] = useState(false)
+  const [chartError, setChartError]     = useState('')
+  const [submitted, setSubmitted]       = useState(false)
 
-  const colOptions = [1, 2, 3, 4]
+  // Load spread grid
+  const loadGrid = useCallback(() => {
+    setGridLoading(true)
+    setGridError('')
+    fetchSpreadGrid(startDate || undefined, endDate || undefined)
+      .then(setSpreadData)
+      .catch(e => setGridError(String(e)))
+      .finally(() => setGridLoading(false))
+  }, [startDate, endDate])
+
+  useEffect(() => { loadGrid() }, [loadGrid])
+
+  // Load column list
+  useEffect(() => {
+    fetchColumns().then(setColumns).catch(() => {})
+  }, [])
+
+  // Build KPI data from spread grid
+  const kpiCards = KPI_NAMES.map(name => spreadData.find(c => c.name === name)).filter(Boolean) as SpreadCard[]
+
+  // Submit custom chart
+  const handleSubmit = useCallback(async () => {
+    setChartLoading(true)
+    setChartError('')
+    setSubmitted(true)
+    try {
+      const traces: PlotlyTrace[] = []
+      const primaryLabel = instrument === 'custom' ? (formula || 'Formula') : instrument
+      const primaryFormula = instrument === 'custom' ? formula : instrument
+
+      let primaryPoints: SeriesPoint[]
+      if (instrument === 'custom' && formula.includes(' ')) {
+        primaryPoints = await evalFormula(formula, custStart || undefined, custEnd || undefined)
+      } else {
+        const res = await fetchSeries([primaryFormula], custStart || undefined, custEnd || undefined)
+        primaryPoints = res[primaryFormula] || []
+      }
+
+      traces.push({
+        x: primaryPoints.map(p => p.date),
+        y: primaryPoints.map(p => p.value),
+        name: primaryLabel,
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: '#f39200', width: 1.5 },
+        fill: analysisType === 'single' ? 'tozeroy' : undefined,
+        fillcolor: analysisType === 'single' ? 'rgba(243,146,0,0.07)' : undefined,
+      })
+
+      if (analysisType === 'overlay') {
+        const overlayLabel = overlayInstr === 'custom' ? (overlayFormula || 'Overlay') : overlayInstr
+        const overlayFmla  = overlayInstr === 'custom' ? overlayFormula : overlayInstr
+
+        let overlayPoints: SeriesPoint[]
+        if (overlayInstr === 'custom' && overlayFormula.includes(' ')) {
+          overlayPoints = await evalFormula(overlayFormula, custStart || undefined, custEnd || undefined)
+        } else {
+          const res = await fetchSeries([overlayFmla], custStart || undefined, custEnd || undefined)
+          overlayPoints = res[overlayFmla] || []
+        }
+        traces.push({
+          x: overlayPoints.map(p => p.date),
+          y: overlayPoints.map(p => p.value),
+          name: overlayLabel,
+          type: 'scatter',
+          mode: 'lines',
+          line: { color: '#00c087', width: 1.5 },
+        })
+      }
+
+      setChartTraces(traces)
+      setChartTitle(primaryLabel + (analysisType === 'overlay' ? ` vs ${overlayInstr === 'custom' ? 'Overlay' : overlayInstr}` : ''))
+    } catch (e) {
+      setChartError(String(e))
+    } finally {
+      setChartLoading(false)
+    }
+  }, [instrument, formula, analysisType, overlayInstr, overlayFormula, custStart, custEnd])
 
   return (
     <div className="bond-layout">
@@ -140,7 +221,7 @@ export default function BondAnalyticsPage() {
         <div className="ctrl-section">
           <div className="ctrl-label">Section</div>
           <div className="ctrl-select-wrap">
-            <select className="ctrl-select" value={section} onChange={e => { setSection(e.target.value as 'spreads' | 'custom'); setSubmitted(false) }}>
+            <select className="ctrl-select" value={section} onChange={e => setSection(e.target.value as 'spreads' | 'custom')}>
               <option value="spreads">Bond Spreads &amp; Flies</option>
               <option value="custom">Custom Formula Graphs</option>
             </select>
@@ -162,11 +243,14 @@ export default function BondAnalyticsPage() {
             <div className="ctrl-section">
               <div className="ctrl-label">Columns</div>
               <div className="pill-group">
-                {colOptions.map(n => (
+                {[1, 2, 3, 4].map(n => (
                   <button key={n} className={`pill ${ncols === n ? 'active' : ''}`} onClick={() => setNcols(n)}>{n}</button>
                 ))}
               </div>
             </div>
+            <button className="primary-button" onClick={loadGrid}>
+              <RefreshCw size={13} /> Refresh
+            </button>
           </>
         )}
 
@@ -187,7 +271,7 @@ export default function BondAnalyticsPage() {
               <div className="ctrl-select-wrap">
                 <select className="ctrl-select" value={instrument} onChange={e => setInstrument(e.target.value)}>
                   <option value="custom">Custom Formula</option>
-                  {INSTRUMENTS.map(i => <option key={i} value={i}>{i}</option>)}
+                  {columns.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
             </div>
@@ -212,7 +296,7 @@ export default function BondAnalyticsPage() {
                   <div className="ctrl-select-wrap">
                     <select className="ctrl-select" value={overlayInstr} onChange={e => setOverlayInstr(e.target.value)}>
                       <option value="custom">Custom Formula</option>
-                      {INSTRUMENTS.map(i => <option key={i} value={i}>{i}</option>)}
+                      {columns.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                 </div>
@@ -239,8 +323,8 @@ export default function BondAnalyticsPage() {
               <input className="ctrl-input" type="date" value={custEnd} onChange={e => setCustEnd(e.target.value)} />
             </div>
 
-            <button className="primary-button" onClick={() => setSubmitted(true)}>
-              <Play size={13} /> Submit
+            <button className="primary-button" onClick={handleSubmit} disabled={chartLoading}>
+              <Play size={13} /> {chartLoading ? 'Loading…' : 'Submit'}
             </button>
           </>
         )}
@@ -251,40 +335,32 @@ export default function BondAnalyticsPage() {
 
         {/* KPI strip */}
         <div className="kpi-strip">
-          <div className="kpi-card">
-            <span>US 2-10 Spread</span>
-            <b>0.621</b>
-            <small style={{ color: '#00c087' }}>▲ 0.012 today</small>
-          </div>
-          <div className="kpi-card">
-            <span>Eurex 5-10 Spread</span>
-            <b>1.204</b>
-            <small style={{ color: '#ff4d4d' }}>▼ 0.008 today</small>
-          </div>
-          <div className="kpi-card">
-            <span>IT vs DE 10Y</span>
-            <b>1.712</b>
-            <small style={{ color: '#00c087' }}>▲ 0.021 today</small>
-          </div>
-          <div className="kpi-card">
-            <span>UK vs DE 10Y</span>
-            <b>1.038</b>
-            <small style={{ color: '#f39200' }}>— 0.000 today</small>
-          </div>
+          {kpiCards.length > 0 ? kpiCards.map(card => (
+            <div key={card.name} className="kpi-card">
+              <span>{card.name}</span>
+              <b>{card.last.toFixed(3)}</b>
+              <small style={{ color: card.change >= 0 ? '#00c087' : '#ff4d4d' }}>
+                {card.change >= 0 ? '▲' : '▼'} {Math.abs(card.change).toFixed(3)} today
+              </small>
+            </div>
+          )) : (
+            // Skeleton KPI cards while loading
+            ['US 2-10 Spread', 'Eurex 5-10 Spread', 'IT vs DE 10Y', 'UK vs DE 10Y'].map(name => (
+              <div key={name} className="kpi-card">
+                <span>{name}</span>
+                <b style={{ color: '#444' }}>—</b>
+                <small style={{ color: '#555' }}>loading…</small>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Section toggle */}
         <div className="surface-tabs">
-          <button
-            className={`surface-tab ${section === 'spreads' ? 'active' : ''}`}
-            onClick={() => setSection('spreads')}
-          >
+          <button className={`surface-tab ${section === 'spreads' ? 'active' : ''}`} onClick={() => setSection('spreads')}>
             <BarChart3 size={13} /> Bond Spreads &amp; Flies
           </button>
-          <button
-            className={`surface-tab ${section === 'custom' ? 'active' : ''}`}
-            onClick={() => setSection('custom')}
-          >
+          <button className={`surface-tab ${section === 'custom' ? 'active' : ''}`} onClick={() => setSection('custom')}>
             <SlidersHorizontal size={13} /> Custom Formula Graphs
           </button>
         </div>
@@ -294,19 +370,35 @@ export default function BondAnalyticsPage() {
           <>
             <div className="section-header" style={{ marginBottom: 14 }}>
               <div className="section-title-block">
-                <div className="section-eyebrow">Preset Formulas · 20 Spreads &amp; Flies</div>
+                <div className="section-eyebrow">Preset Formulas · {spreadData.length} Spreads &amp; Flies</div>
                 <div className="section-title">Bond Spreads &amp; Flies</div>
-                <div className="section-sub">{startDate} → {endDate}</div>
+                <div className="section-sub">
+                  {startDate || 'All dates'} → {endDate || 'latest'}
+                </div>
               </div>
             </div>
-            <div
-              className="spread-grid"
-              style={{ gridTemplateColumns: `repeat(${ncols}, 1fr)` }}
-            >
-              {FORMULAS.map(f => (
-                <SpreadCard key={f.name} {...f} ncols={ncols} />
-              ))}
-            </div>
+
+            {gridLoading && (
+              <div className="placeholder-state">
+                <RefreshCw size={32} style={{ animation: 'spin 1s linear infinite' }} />
+                <p>Loading spread data from Final.xlsx…</p>
+              </div>
+            )}
+
+            {gridError && (
+              <div className="placeholder-state">
+                <p style={{ color: '#ff4d4d' }}>Error: {gridError}</p>
+                <p style={{ color: '#888', fontSize: 12 }}>Is the FastAPI backend running? Start it with: uvicorn api.main:app --reload</p>
+              </div>
+            )}
+
+            {!gridLoading && !gridError && (
+              <div className="spread-grid" style={{ gridTemplateColumns: `repeat(${ncols}, 1fr)` }}>
+                {spreadData.map(card => (
+                  <SpreadCardItem key={card.name} card={card} ncols={ncols} />
+                ))}
+              </div>
+            )}
           </>
         )}
 
@@ -317,33 +409,41 @@ export default function BondAnalyticsPage() {
               <div className="section-title-block">
                 <div className="section-eyebrow">Custom Formula · {analysisType === 'overlay' ? 'Overlay' : 'Single'}</div>
                 <div className="section-title">Custom Formula Graphs</div>
-                <div className="section-sub">
-                  Configure options in the left panel and press Submit
-                </div>
+                <div className="section-sub">Configure options in the left panel and press Submit</div>
               </div>
             </div>
 
-            {!submitted && (
+            {!submitted && !chartLoading && (
               <div className="placeholder-state">
                 <TrendingUp size={40} />
                 <div className="section-title" style={{ marginBottom: 8 }}>No chart yet</div>
-                <p>Select an instrument or enter a custom formula in the left panel, then press Submit to render the charts.</p>
+                <p>Select an instrument or enter a custom formula, then press Submit.</p>
               </div>
             )}
 
-            {submitted && (
-              <>
-                <CustomChartPlaceholder
-                  instrument={instrument}
-                  formula={instrument === 'custom' ? formula : undefined}
-                />
-                {analysisType === 'overlay' && (
-                  <CustomChartPlaceholder
-                    instrument={overlayInstr}
-                    formula={overlayInstr === 'custom' ? overlayFormula : undefined}
-                  />
-                )}
-              </>
+            {chartLoading && (
+              <div className="placeholder-state">
+                <RefreshCw size={32} style={{ animation: 'spin 1s linear infinite' }} />
+                <p>Fetching data…</p>
+              </div>
+            )}
+
+            {chartError && (
+              <div className="placeholder-state">
+                <p style={{ color: '#ff4d4d' }}>{chartError}</p>
+              </div>
+            )}
+
+            {submitted && !chartLoading && !chartError && chartTraces.length > 0 && (
+              <div className="card">
+                <div className="card-head">
+                  <span>{chartTitle}</span>
+                  <span style={{ color: '#f39200' }}>Level Chart</span>
+                </div>
+                <div style={{ padding: '8px 0' }}>
+                  <PlotlyChart traces={chartTraces} title={chartTitle} />
+                </div>
+              </div>
             )}
           </>
         )}
