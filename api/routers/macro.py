@@ -97,3 +97,36 @@ def get_ecb_curve() -> list[dict]:
 def get_reer() -> list[dict]:
     df = _read_parquet(_HERE / "dbn_eer_cache.parquet")
     return df.to_dict(orient="records")
+
+
+@router.get("/dashboard")
+def get_dashboard() -> list[dict]:
+    """Merged annual macro data: IMF indicators + 10Y yields + CB policy rates."""
+    # Annual IMF data
+    annual = _read_parquet(_HERE / "gmacro_annual_cache.parquet")
+
+    # Annual 10Y yield averages (from monthly FRED data)
+    yields_path = _HERE / "gmacro_yields_cache.parquet"
+    if yields_path.exists():
+        ydf = pd.read_parquet(yields_path)
+        ydf["Year"] = pd.to_datetime(ydf["Date"]).dt.year
+        ydf_ann = ydf.groupby(["Country", "Year"])["Yield_Pct"].mean().reset_index()
+        ydf_ann = ydf_ann.rename(columns={"Yield_Pct": "TenY_Yield"})
+        annual = annual.merge(ydf_ann, on=["Country", "Year"], how="left")
+
+    # Annual CB policy rate averages (from monthly BIS data)
+    cb_path = _HERE / "gmacro_cb_rates_cache.parquet"
+    if cb_path.exists():
+        cdf = pd.read_parquet(cb_path)
+        cdf["Year"] = pd.to_datetime(cdf["Date"]).dt.year
+        cdf_ann = cdf.groupby(["Country", "Year"])["Rate_Pct"].mean().reset_index()
+        cdf_ann = cdf_ann.rename(columns={"Rate_Pct": "Policy_Rate"})
+        annual = annual.merge(cdf_ann, on=["Country", "Year"], how="left")
+
+    # Compute government debt outstanding (USD bn) = DebtGDP_Pct / 100 * GDP_USD_Bn
+    if "DebtGDP_Pct" in annual.columns and "GDP_USD_Bn" in annual.columns:
+        annual["Govt_Debt_USD_Bn"] = annual["DebtGDP_Pct"] / 100 * annual["GDP_USD_Bn"]
+
+    # Replace NaN with None for JSON serialisation
+    annual = annual.where(annual.notna(), other=None)
+    return annual.to_dict(orient="records")

@@ -2,14 +2,17 @@ import { useState } from 'react'
 import {
   BarChart3, TrendingUp, Globe, Activity, Settings2,
   History, PanelLeftClose, PanelLeftOpen, ChevronDown, RefreshCw,
+  LayoutDashboard,
 } from 'lucide-react'
 import BondAnalyticsPage from './pages/BondAnalytics'
 import CapitalMarketsPage from './pages/CapitalMarkets'
+import MacroDashboardPage from './pages/MacroDashboard'
 
-type Page = 'Bond Analytics' | 'Global Capital Markets' | 'Yield Curves' | 'Credit Spreads' | 'Cross Asset' | 'Settings'
+type Page = 'Bond Analytics' | 'Macro Dashboard' | 'Global Capital Markets' | 'Yield Curves' | 'Credit Spreads' | 'Cross Asset' | 'Settings'
 
 const navItems: Array<{ label: Page; icon: typeof BarChart3; soon?: boolean }> = [
   { label: 'Bond Analytics',         icon: BarChart3 },
+  { label: 'Macro Dashboard',        icon: LayoutDashboard },
   { label: 'Global Capital Markets', icon: Globe },
   { label: 'Yield Curves',           icon: TrendingUp, soon: true },
   { label: 'Credit Spreads',         icon: Activity,   soon: true },
@@ -22,6 +25,11 @@ const pageHeadings: Record<Page, { eyebrow: string; title: string; subtitle: str
     eyebrow: 'FIXED INCOME · RATES',
     title: 'Bond Analytics',
     subtitle: 'Eurex, US Treasuries, cross-country spreads, flies, and custom formula charts.',
+  },
+  'Macro Dashboard': {
+    eyebrow: 'MACRO · IMF · FRED · BIS',
+    title: 'Global Macro Dashboard',
+    subtitle: 'GDP, inflation, debt, fiscal balance, 10Y yields and policy rates across 16 countries.',
   },
   'Global Capital Markets': {
     eyebrow: 'MACRO · 10 COUNTRIES',
@@ -127,8 +135,9 @@ export default function App() {
 
         <div className="main-scroll">
           {page === 'Bond Analytics'         && <BondAnalyticsPage />}
+          {page === 'Macro Dashboard'        && <MacroDashboardPage />}
           {page === 'Global Capital Markets' && <CapitalMarketsPage />}
-          {!['Bond Analytics', 'Global Capital Markets'].includes(page) && (
+          {!['Bond Analytics', 'Macro Dashboard', 'Global Capital Markets'].includes(page) && (
             <div className="content-wrap">
               <div className="placeholder-state">
                 <Settings2 size={40} />
