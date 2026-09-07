@@ -24,7 +24,7 @@ const CHANGELOG: Entry[] = [
   {
     id: 54,
     version: '2.6',
-    timestamp: 'Sep 2026',
+    timestamp: '07 Sep 2026, 21:35 IST',
     category: 'Enhancement',
     title: 'Low-priority gap close — 5 pages enriched with new views and analytics',
     description: [
@@ -38,7 +38,7 @@ const CHANGELOG: Entry[] = [
   {
     id: 53,
     version: '2.5',
-    timestamp: 'Sep 2026',
+    timestamp: '07 Sep 2026, 21:25 IST',
     category: 'Enhancement',
     title: 'Medium-priority gap close — 2 new API endpoints + 5 pages enriched',
     description: [
