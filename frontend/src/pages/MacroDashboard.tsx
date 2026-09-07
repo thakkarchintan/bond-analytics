@@ -353,6 +353,10 @@ export default function MacroDashboardPage() {
         <SectionHeader title="Policy Rate" subtitle="Central bank policy rate · BIS" />
         <Chart traces={lineTraces(filtered, 'Policy_Rate', selected)} layout={{ title: { text: 'CB Policy Rate %', font: { color: '#e8e8e8', size: 12 } }, yaxis: { title: { text: '%' } } }} />
 
+        {/* Unemployment */}
+        <SectionHeader title="Unemployment Rate" subtitle="% of labour force · IMF WEO" />
+        <Chart traces={lineTraces(filtered, 'Unemployment_Pct', selected)} layout={{ title: { text: 'Unemployment %', font: { color: '#e8e8e8', size: 12 } }, yaxis: { title: { text: '%' } } }} />
+
         {/* Current Account */}
         <SectionHeader title="Current Account Balance" subtitle="% of GDP · IMF WEO" />
         <Chart traces={lineTraces(filtered, 'CurrentAcct_Pct', selected)} layout={{ title: { text: 'Current Account % GDP', font: { color: '#e8e8e8', size: 12 } }, yaxis: { title: { text: '%' } } }} />

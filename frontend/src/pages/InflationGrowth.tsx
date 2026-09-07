@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import apiFetch from '../api/client'
 
 type PlotTrace = Record<string, unknown>
@@ -36,6 +36,8 @@ interface AnnualRow {
   CurrentAcct_Pct: number | null
 }
 
+interface BreakevenRow { Date: string; Series: string; Value: number }
+
 const COUNTRIES = ['United States','Euro Area','United Kingdom','Japan','China','India','Canada','Brazil','Australia','South Korea','Switzerland','Sweden','Mexico','South Africa','Norway','New Zealand']
 const PALETTE   = ['#60a5fa','#a78bfa','#22d3ee','#34d399','#f87171','#f472b6','#818cf8','#a3e635','#fb923c','#fbbf24','#e879f9','#2dd4bf','#c084fc','#f9a8d4','#67e8f9','#86efac']
 
@@ -46,13 +48,17 @@ export default function InflationGrowth() {
   const [selected, setSelected] = useState<string[]>(['United States','Euro Area','United Kingdom','Japan','China','India','Canada','Brazil'])
   const [startYear, setStartYear] = useState(2010)
   const [mode, setMode] = useState<'lines'|'bars'>('lines')
-  const [view, setView] = useState<'timeseries'|'scatter'>('timeseries')
+  const [view, setView] = useState<'timeseries'|'scatter'|'breakeven'>('timeseries')
   const [scatterYear, setScatterYear] = useState(2023)
+  const [breakeven, setBreakeven] = useState<BreakevenRow[]>([])
 
   useEffect(() => {
-    apiFetch<AnnualRow[]>('/api/macro/inflation')
-      .then(d => {
+    Promise.all([
+      apiFetch<AnnualRow[]>('/api/macro/inflation'),
+      apiFetch<BreakevenRow[]>('/api/macro/breakeven'),
+    ]).then(([d, b]) => {
         setData(d)
+        setBreakeven(b)
         const years = Array.from(new Set(d.map(r => r.Year))).sort()
         if (years.length) setScatterYear(years[years.length - 1])
         setLoading(false)
@@ -66,6 +72,24 @@ export default function InflationGrowth() {
   const years = Array.from(new Set(data.map(r => r.Year))).sort()
   const filtYears = years.filter(y => y >= startYear)
   const latestYear = Math.max(...years)
+
+  // Breakeven series
+  const beSeries = useMemo(() => Array.from(new Set(breakeven.map(r => r.Series))), [breakeven])
+  const BE_COLORS: Record<string,string> = {
+    '5Y Breakeven':      '#f39200',
+    '10Y Breakeven':     '#60a5fa',
+    '5-10Y Fwd Breakeven':'#34d399',
+    '5Y Real Yield':     '#a78bfa',
+    '10Y Real Yield':    '#f87171',
+  }
+  const beTraces: PlotTrace[] = beSeries.map(s => {
+    const rows = breakeven.filter(r => r.Series === s && r.Date >= `${startYear}-01-01`).sort((a,b) => a.Date.localeCompare(b.Date))
+    return { type:'scatter', mode:'lines', name:s, x:rows.map(r=>r.Date), y:rows.map(r=>r.Value), line:{color:BE_COLORS[s]??'#888',width:1.5} }
+  })
+  const latestBe = beSeries.map(s => {
+    const rows = breakeven.filter(r => r.Series === s).sort((a,b) => b.Date.localeCompare(a.Date))
+    return { s, val: rows[0]?.Value, date: rows[0]?.Date }
+  })
 
   function makeTraces(field: keyof AnnualRow): PlotTrace[] {
     return selected.map((c, i) => {
@@ -130,10 +154,10 @@ export default function InflationGrowth() {
       <aside className="bond-sidebar">
         <div className="ctrl-section">
           <div className="ctrl-label">VIEW</div>
-          <div className="pill-group">
-            {(['timeseries','scatter'] as const).map(v => (
+          <div className="pill-group" style={{ flexWrap:'wrap', gap:4 }}>
+            {(['timeseries','scatter','breakeven'] as const).map(v => (
               <button key={v} className={`pill ${view===v?'active':''}`} onClick={() => setView(v)}>
-                {v === 'timeseries' ? 'Time Series' : 'Scatter'}
+                {v === 'timeseries' ? 'Time Series' : v === 'scatter' ? 'Scatter' : 'Breakeven'}
               </button>
             ))}
           </div>
@@ -175,7 +199,7 @@ export default function InflationGrowth() {
       </aside>
 
       <div className="bond-main">
-        {view === 'timeseries' ? (
+        {view === 'timeseries' && (
           <>
             {/* CPI */}
             <div style={{ borderLeft:'3px solid #f39200', padding:'10px 14px', background:'rgba(243,146,0,0.04)', borderRadius:'0 6px 6px 0', marginBottom:12 }}>
@@ -220,7 +244,9 @@ export default function InflationGrowth() {
               </table>
             </div>
           </>
-        ) : (
+        )}
+
+        {view === 'scatter' && (
           <>
             {/* Stagflation Quadrant */}
             <div style={{ borderLeft:'3px solid #f39200', padding:'10px 14px', background:'rgba(243,146,0,0.04)', borderRadius:'0 6px 6px 0', marginBottom:12 }}>
@@ -258,6 +284,48 @@ export default function InflationGrowth() {
                 legend: { showlegend: false },
               }}
               height={380} />
+          </>
+        )}
+
+        {view === 'breakeven' && (
+          <>
+            <div style={{ borderLeft:'3px solid #f39200', padding:'10px 14px', background:'rgba(243,146,0,0.04)', borderRadius:'0 6px 6px 0', marginBottom:12 }}>
+              <div style={{ color:'#e8e8e8', fontWeight:600, fontSize:13, textTransform:'uppercase', letterSpacing:'0.04em' }}>Inflation Breakevens &amp; Real Yields</div>
+              <div style={{ color:'#888', fontSize:11, marginTop:4 }}>FRED · US TIPS-implied breakeven inflation expectations &amp; real yields</div>
+            </div>
+
+            {/* KPI strip */}
+            <div className="kpi-strip" style={{ margin:'0 0 20px' }}>
+              {latestBe.map(({ s, val, date }) => (
+                <div key={s} className="kpi-card">
+                  <div style={{ color:'#888', fontSize:10, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>{s}</div>
+                  <div style={{ color: BE_COLORS[s] ?? '#aaa', fontSize:20, fontWeight:700, fontVariantNumeric:'tabular-nums' }}>
+                    {val != null ? val.toFixed(2) + '%' : '—'}
+                  </div>
+                  <div style={{ color:'#555', fontSize:10, marginTop:2 }}>{date ?? ''}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Breakeven rates chart */}
+            <div style={{ borderLeft:'3px solid #f39200', padding:'10px 14px', background:'rgba(243,146,0,0.04)', borderRadius:'0 6px 6px 0', marginBottom:12 }}>
+              <div style={{ color:'#e8e8e8', fontWeight:600, fontSize:13, textTransform:'uppercase', letterSpacing:'0.04em' }}>Breakeven Inflation</div>
+              <div style={{ color:'#888', fontSize:11, marginTop:4 }}>5Y, 10Y, and 5-10Y forward breakeven rates</div>
+            </div>
+            <Chart
+              traces={beTraces.filter(t => ['5Y Breakeven','10Y Breakeven','5-10Y Fwd Breakeven'].includes(t.name as string))}
+              layout={{ yaxis: { title:{ text:'Rate (%)', font:{color:'#666',size:11} }, ticksuffix:'%' } }}
+              height={320} />
+
+            {/* Real yields chart */}
+            <div style={{ borderLeft:'3px solid #a78bfa', padding:'10px 14px', background:'rgba(167,139,250,0.04)', borderRadius:'0 6px 6px 0', margin:'28px 0 12px' }}>
+              <div style={{ color:'#e8e8e8', fontWeight:600, fontSize:13, textTransform:'uppercase', letterSpacing:'0.04em' }}>Real Yields</div>
+              <div style={{ color:'#888', fontSize:11, marginTop:4 }}>5Y and 10Y TIPS real yields</div>
+            </div>
+            <Chart
+              traces={beTraces.filter(t => ['5Y Real Yield','10Y Real Yield'].includes(t.name as string))}
+              layout={{ yaxis: { title:{ text:'Yield (%)', font:{color:'#666',size:11} }, ticksuffix:'%' } }}
+              height={300} />
           </>
         )}
       </div>

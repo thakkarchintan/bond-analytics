@@ -99,6 +99,22 @@ export default function FiscalScorecard() {
     marker: { color: scoreRows.filter(r=>r.DebtGDP_Pct!=null).map(r=>colorDebt(r.DebtGDP_Pct!)) },
   }
 
+  // Debt sustainability scatter: x = FiscalBal, y = DebtGDP, size = GDP_USD_Bn
+  const sustainScatter: PlotTrace[] = selected.map((c, i) => {
+    const row = data.find(r => r.Country === c && r.Year === scoreYear)
+    if (!row || row.FiscalBal_Pct == null || row.DebtGDP_Pct == null) return null
+    const color = PALETTE[COUNTRIES.indexOf(c) % PALETTE.length]
+    const sz = row.GDP_USD_Bn ? Math.max(10, Math.min(50, row.GDP_USD_Bn / 500)) : 14
+    return {
+      type:'scatter', mode:'markers+text', name:c,
+      x:[row.FiscalBal_Pct], y:[row.DebtGDP_Pct],
+      text:[c.replace('United States','US').replace('United Kingdom','UK').replace('Euro Area','EA')],
+      textposition:'top center', textfont:{ size:10, color:'#aaa' },
+      marker:{ color, size: sz, opacity:0.85, line:{color:'#111',width:1} },
+      hovertemplate:`<b>${c}</b><br>Fiscal Bal: %{x:.1f}%<br>Debt/GDP: %{y:.1f}%<extra></extra>`,
+    }
+  }).filter(Boolean) as PlotTrace[]
+
   return (
     <div className="bond-layout">
       <aside className="bond-sidebar">
@@ -163,8 +179,29 @@ export default function FiscalScorecard() {
           </table>
         </div>
 
+        {/* Debt Sustainability Scatter */}
+        <div style={{ borderLeft:'3px solid #a78bfa', padding:'10px 14px', background:'rgba(167,139,250,0.04)', borderRadius:'0 6px 6px 0', marginBottom:12 }}>
+          <div style={{ color:'#e8e8e8', fontWeight:600, fontSize:13, textTransform:'uppercase', letterSpacing:'0.04em' }}>Debt Sustainability — {scoreYear}</div>
+          <div style={{ color:'#888', fontSize:11, marginTop:4 }}>Fiscal Balance (x) vs Debt/GDP (y) · bubble size = GDP · top-left = most stressed</div>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:10, fontSize:10, color:'#666' }}>
+          <div style={{ background:'rgba(255,77,77,0.05)', border:'1px solid #ff4d4d22', borderRadius:6, padding:'5px 10px' }}>↖ High Debt + Deficit = Most Stressed</div>
+          <div style={{ background:'rgba(0,192,135,0.05)', border:'1px solid #00c08722', borderRadius:6, padding:'5px 10px' }}>↗ High Debt + Surplus = Deleveraging</div>
+          <div style={{ background:'rgba(96,165,250,0.05)', border:'1px solid #60a5fa22', borderRadius:6, padding:'5px 10px' }}>↙ Low Debt + Deficit = Manageable</div>
+          <div style={{ background:'rgba(0,192,135,0.05)', border:'1px solid #00c08722', borderRadius:6, padding:'5px 10px' }}>↘ Low Debt + Surplus = Strongest</div>
+        </div>
+        <Chart
+          traces={sustainScatter}
+          layout={{
+            hovermode:'closest', showlegend:false,
+            xaxis:{ title:{text:'Fiscal Balance (% GDP)  ← deficit | surplus →',font:{color:'#666',size:11}}, ticksuffix:'%', zeroline:true, zerolinecolor:'#444' },
+            yaxis:{ title:{text:'Debt / GDP (%)',font:{color:'#666',size:11}}, ticksuffix:'%' },
+            shapes:[{ type:'line', x0:-20, x1:5, y0:90, y1:90, line:{color:'#ff4d4d44',width:1,dash:'dot'} }],
+          }}
+          height={380} />
+
         {/* Debt/GDP bar */}
-        <div style={{ borderLeft:'3px solid #f39200', padding:'10px 14px', background:'rgba(243,146,0,0.04)', borderRadius:'0 6px 6px 0', marginBottom:12 }}>
+        <div style={{ borderLeft:'3px solid #f39200', padding:'10px 14px', background:'rgba(243,146,0,0.04)', borderRadius:'0 6px 6px 0', margin:'28px 0 12px' }}>
           <div style={{ color:'#e8e8e8', fontWeight:600, fontSize:13, textTransform:'uppercase', letterSpacing:'0.04em' }}>Debt / GDP Comparison — {scoreYear}</div>
         </div>
         <Chart traces={[debtBar]} layout={{ xaxis:{ tickangle:-30 }, yaxis:{ ticksuffix:'%', title:{text:'Debt/GDP %',font:{color:'#666',size:11}} } }} />
@@ -180,6 +217,20 @@ export default function FiscalScorecard() {
           <div style={{ color:'#e8e8e8', fontWeight:600, fontSize:13, textTransform:'uppercase', letterSpacing:'0.04em' }}>Fiscal Balance (% GDP)</div>
         </div>
         <Chart traces={makeTraces('FiscalBal_Pct')} layout={{ yaxis:{ ticksuffix:'%', title:{text:'Fiscal Bal. %',font:{color:'#666',size:11}}, zerolinecolor:'#555' } }} />
+
+        {/* Primary balance */}
+        <div style={{ borderLeft:'3px solid #22d3ee', padding:'10px 14px', background:'rgba(34,211,238,0.04)', borderRadius:'0 6px 6px 0', margin:'28px 0 12px' }}>
+          <div style={{ color:'#e8e8e8', fontWeight:600, fontSize:13, textTransform:'uppercase', letterSpacing:'0.04em' }}>Primary Balance (% GDP)</div>
+          <div style={{ color:'#888', fontSize:11, marginTop:4 }}>Fiscal balance excluding interest payments · positive = revenue covers non-interest spending</div>
+        </div>
+        <Chart traces={makeTraces('PrimaryBal_Pct')} layout={{ yaxis:{ ticksuffix:'%', title:{text:'Primary Bal. %',font:{color:'#666',size:11}}, zerolinecolor:'#555' } }} />
+
+        {/* Current account */}
+        <div style={{ borderLeft:'3px solid #34d399', padding:'10px 14px', background:'rgba(52,211,153,0.04)', borderRadius:'0 6px 6px 0', margin:'28px 0 12px' }}>
+          <div style={{ color:'#e8e8e8', fontWeight:600, fontSize:13, textTransform:'uppercase', letterSpacing:'0.04em' }}>Current Account Balance (% GDP)</div>
+          <div style={{ color:'#888', fontSize:11, marginTop:4 }}>Surplus (+) = net exporter · Deficit (−) = net importer</div>
+        </div>
+        <Chart traces={makeTraces('CurrentAcct_Pct')} layout={{ yaxis:{ ticksuffix:'%', title:{text:'Current Acct. %',font:{color:'#666',size:11}}, zerolinecolor:'#555' } }} />
       </div>
     </div>
   )

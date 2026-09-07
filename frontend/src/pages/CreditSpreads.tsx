@@ -32,12 +32,13 @@ function Chart({ traces, layout, height = 340 }: { traces: PlotTrace[]; layout: 
 interface SpreadRow { Date: string; Series: string; OAS_Pct: number }
 
 const SERIES_COLORS: Record<string, string> = {
+  'IG OAS': '#60a5fa', 'HY OAS': '#f87171',
   'IG': '#60a5fa', 'HY': '#f87171',
   'AAA': '#34d399', 'AA': '#22d3ee', 'A': '#818cf8',
   'BBB': '#f39200', 'BB': '#fbbf24', 'B': '#fb923c', 'CCC': '#ff4d4d',
 }
 
-const IG_HY = ['IG', 'HY']
+const IG_HY = ['IG OAS', 'HY OAS']
 const RATING_LADDER = ['AAA','AA','A','BBB','BB','B','CCC']
 
 export default function CreditSpreads() {
@@ -45,7 +46,7 @@ export default function CreditSpreads() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [startYear, setStartYear] = useState(2010)
-  const [view, setView] = useState<'main'|'ladder'>('main')
+  const [view, setView] = useState<'main'|'ladder'|'spectrum'>('main')
 
   useEffect(() => {
     apiFetch<SpreadRow[]>('/api/macro/credit-spreads')
@@ -58,6 +59,12 @@ export default function CreditSpreads() {
 
   const startDate = `${startYear}-01-01`
 
+  // Detect series names present (IG/HY may be stored as "IG OAS"/"HY OAS" or "IG"/"HY")
+  const allSeries = Array.from(new Set(data.map(r => r.Series)))
+  const igKey = allSeries.find(s => s === 'IG OAS' || s === 'IG') ?? 'IG'
+  const hyKey = allSeries.find(s => s === 'HY OAS' || s === 'HY') ?? 'HY'
+  const igHyKeys = [igKey, hyKey]
+
   const makeTraces = (series: string[]): PlotTrace[] =>
     series.map(s => {
       const rows = data.filter(r => r.Series === s && r.Date >= startDate).sort((a,b) => a.Date.localeCompare(b.Date))
@@ -66,21 +73,43 @@ export default function CreditSpreads() {
 
   // Latest values
   const latestByS = Object.fromEntries(
-    [...IG_HY, ...RATING_LADDER].map(s => {
+    [...igHyKeys, ...RATING_LADDER].map(s => {
       const rows = data.filter(r => r.Series === s).sort((a,b) => b.Date.localeCompare(a.Date))
-      return [s, rows[0]?.OAS_Pct]
+      return [s, { val: rows[0]?.OAS_Pct, date: rows[0]?.Date }]
     })
   )
+
+  // Historical percentile for IG and HY
+  const pctile = (s: string) => {
+    const vals = data.filter(r => r.Series === s).map(r => r.OAS_Pct).sort((a,b)=>a-b)
+    const cur = latestByS[s]?.val
+    if (cur == null || !vals.length) return null
+    const rank = vals.filter(v => v <= cur).length
+    return Math.round((rank / vals.length) * 100)
+  }
+  const igPct = pctile(igKey)
+  const hyPct = pctile(hyKey)
+
+  // Credit spectrum: snapshot bar chart for rating ladder at latest date
+  const spectrumBar: PlotTrace = {
+    type:'bar', name:'Current OAS',
+    x: RATING_LADDER.filter(r => latestByS[r]?.val != null),
+    y: RATING_LADDER.filter(r => latestByS[r]?.val != null).map(r => latestByS[r].val!),
+    marker: { color: RATING_LADDER.filter(r => latestByS[r]?.val != null).map(r => SERIES_COLORS[r]) },
+    text: RATING_LADDER.filter(r => latestByS[r]?.val != null).map(r => latestByS[r].val!.toFixed(2) + '%'),
+    textposition: 'outside',
+    hovertemplate: '<b>%{x}</b><br>OAS: %{y:.2f}%<extra></extra>',
+  }
 
   return (
     <div className="bond-layout">
       <aside className="bond-sidebar">
         <div className="ctrl-section">
           <div className="ctrl-label">VIEW</div>
-          <div className="pill-group">
-            {(['main','ladder'] as const).map(v => (
+          <div className="pill-group" style={{ flexWrap:'wrap', gap:4 }}>
+            {(['main','ladder','spectrum'] as const).map(v => (
               <button key={v} className={`pill ${view===v?'active':''}`} onClick={() => setView(v)}>
-                {v === 'main' ? 'IG / HY' : 'Rating Ladder'}
+                {v === 'main' ? 'IG / HY' : v === 'ladder' ? 'Rating Ladder' : 'Spectrum'}
               </button>
             ))}
           </div>
@@ -92,46 +121,108 @@ export default function CreditSpreads() {
 
         {/* Latest spread snapshot */}
         <div className="ctrl-section">
-          <div className="ctrl-label">LATEST OAS (%)</div>
-          {[...IG_HY, ...RATING_LADDER].map(s => (
-            <div key={s} style={{ display:'flex', justifyContent:'space-between', padding:'4px 0', fontSize:12, borderBottom:'1px solid #1a1a1a' }}>
-              <span style={{ color: SERIES_COLORS[s]??'#aaa' }}>{s}</span>
-              <span style={{ color:'#e8e8e8', fontVariantNumeric:'tabular-nums' }}>
-                {latestByS[s] != null ? latestByS[s]!.toFixed(2) + '%' : '—'}
-              </span>
-            </div>
-          ))}
+          <div className="ctrl-label">LATEST OAS</div>
+          {[...igHyKeys, ...RATING_LADDER].map(s => {
+            const { val } = latestByS[s] ?? {}
+            return (
+              <div key={s} style={{ display:'flex', justifyContent:'space-between', padding:'4px 0', fontSize:12, borderBottom:'1px solid #1a1a1a' }}>
+                <span style={{ color: SERIES_COLORS[s]??'#aaa' }}>{s}</span>
+                <span style={{ color:'#e8e8e8', fontVariantNumeric:'tabular-nums' }}>
+                  {val != null ? val.toFixed(2) + '%' : '—'}
+                </span>
+              </div>
+            )
+          })}
         </div>
       </aside>
 
       <div className="bond-main">
-        {view === 'main' ? (
+        {view === 'main' && (
           <>
             <div style={{ borderLeft:'3px solid #f39200', padding:'10px 14px', background:'rgba(243,146,0,0.04)', borderRadius:'0 6px 6px 0', marginBottom:12 }}>
               <div style={{ color:'#e8e8e8', fontWeight:600, fontSize:13, textTransform:'uppercase', letterSpacing:'0.04em' }}>IG vs HY OAS Credit Spreads</div>
               <div style={{ color:'#888', fontSize:11, marginTop:4 }}>ICE BofA OAS — Investment Grade vs High Yield</div>
             </div>
-            <Chart traces={makeTraces(IG_HY)} layout={{ yaxis: { title:{ text:'OAS (%)', font:{color:'#666',size:11} } } }} />
+            <Chart traces={makeTraces(igHyKeys)} layout={{ yaxis: { title:{ text:'OAS (%)', font:{color:'#666',size:11} } } }} />
 
-            {/* KPI strip */}
+            {/* KPI strip with percentile */}
             <div className="kpi-strip" style={{ margin:'20px 0' }}>
-              {IG_HY.map(s => (
-                <div key={s} className="kpi-card">
-                  <div style={{ color:'#888', fontSize:10, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>{s === 'IG' ? 'Investment Grade' : 'High Yield'}</div>
-                  <div style={{ color: SERIES_COLORS[s], fontSize:22, fontWeight:700, fontVariantNumeric:'tabular-nums' }}>
-                    {latestByS[s] != null ? latestByS[s]!.toFixed(2) + '%' : '—'}
+              {[{ s: igKey, label:'Investment Grade' }, { s: hyKey, label:'High Yield' }].map(({ s, label }) => {
+                const pct = s === igKey ? igPct : hyPct
+                const val = latestByS[s]?.val
+                return (
+                  <div key={s} className="kpi-card">
+                    <div style={{ color:'#888', fontSize:10, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>{label}</div>
+                    <div style={{ color: SERIES_COLORS[s], fontSize:22, fontWeight:700, fontVariantNumeric:'tabular-nums' }}>
+                      {val != null ? val.toFixed(2) + '%' : '—'}
+                    </div>
+                    {pct != null && (
+                      <div style={{ color: pct < 20 ? '#00c087' : pct > 80 ? '#ff4d4d' : '#f39200', fontSize:11, marginTop:4 }}>
+                        {pct}th pctile
+                        <span style={{ color:'#555', fontSize:10, marginLeft:4 }}>
+                          {pct < 20 ? '(tight)' : pct > 80 ? '(wide)' : '(moderate)'}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </>
-        ) : (
+        )}
+
+        {view === 'ladder' && (
           <>
             <div style={{ borderLeft:'3px solid #f39200', padding:'10px 14px', background:'rgba(243,146,0,0.04)', borderRadius:'0 6px 6px 0', marginBottom:12 }}>
               <div style={{ color:'#e8e8e8', fontWeight:600, fontSize:13, textTransform:'uppercase', letterSpacing:'0.04em' }}>Credit Rating Ladder — OAS</div>
               <div style={{ color:'#888', fontSize:11, marginTop:4 }}>ICE BofA OAS by rating bucket: AAA → CCC</div>
             </div>
             <Chart traces={makeTraces(RATING_LADDER)} layout={{ yaxis: { title:{ text:'OAS (%)', font:{color:'#666',size:11} } } }} height={380} />
+          </>
+        )}
+
+        {view === 'spectrum' && (
+          <>
+            <div style={{ borderLeft:'3px solid #f39200', padding:'10px 14px', background:'rgba(243,146,0,0.04)', borderRadius:'0 6px 6px 0', marginBottom:12 }}>
+              <div style={{ color:'#e8e8e8', fontWeight:600, fontSize:13, textTransform:'uppercase', letterSpacing:'0.04em' }}>Credit Spectrum — Current OAS by Rating</div>
+              <div style={{ color:'#888', fontSize:11, marginTop:4 }}>ICE BofA · snapshot of OAS across the full rating ladder AAA → CCC</div>
+            </div>
+            <Chart
+              traces={[spectrumBar]}
+              layout={{
+                showlegend:false,
+                xaxis:{ title:{text:'Rating',font:{color:'#666',size:11}}, categoryorder:'array', categoryarray:RATING_LADDER },
+                yaxis:{ title:{text:'OAS (%)',font:{color:'#666',size:11}} },
+              }}
+              height={340} />
+
+            {/* Spread table with latest date */}
+            <div style={{ marginTop:20, overflowX:'auto' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                <thead>
+                  <tr style={{ borderBottom:'1px solid #2a2a2a' }}>
+                    {['Rating','OAS (%)','As of','vs IG Premium'].map(h => <th key={h} style={{ padding:'8px 12px', textAlign:'left', color:'#666', fontWeight:500, textTransform:'uppercase', fontSize:10, letterSpacing:'0.05em' }}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {RATING_LADDER.map(s => {
+                    const { val, date } = latestByS[s] ?? {}
+                    const igVal = latestByS[igKey]?.val
+                    const premium = val != null && igVal != null ? val - igVal : null
+                    return (
+                      <tr key={s} style={{ borderBottom:'1px solid #1f1f1f' }}>
+                        <td style={{ padding:'8px 12px', color:SERIES_COLORS[s], fontWeight:600 }}>{s}</td>
+                        <td style={{ padding:'8px 12px', color:'#e8e8e8', fontVariantNumeric:'tabular-nums' }}>{val != null ? val.toFixed(2) + '%' : '—'}</td>
+                        <td style={{ padding:'8px 12px', color:'#555', fontSize:11 }}>{date ?? ''}</td>
+                        <td style={{ padding:'8px 12px', color: premium == null ? '#555' : premium > 2 ? '#ff4d4d' : '#f39200', fontVariantNumeric:'tabular-nums' }}>
+                          {premium != null ? '+' + premium.toFixed(2) + '%' : '—'}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
       </div>

@@ -42,7 +42,7 @@ export default function FXCurrencies() {
   const [reer, setReer] = useState<ReerRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [tab, setTab] = useState<'spot'|'reer'>('spot')
+  const [tab, setTab] = useState<'spot'|'indexed'|'reer'>('spot')
   const [startYear, setStartYear] = useState(2015)
   const [selectedFx, setSelectedFx] = useState<string[]>(['Euro Area','Japan','China','United Kingdom','Australia','Canada'])
   const [selectedReer, setSelectedReer] = useState<string[]>(['EUR','JPY','CNY','GBP','USD','AUD'])
@@ -65,15 +65,40 @@ export default function FXCurrencies() {
     return { type:'scatter', mode:'lines', name:c, x:rows.map(r=>r.Date), y:rows.map(r=>r.LocalPerUSD), line:{color:PALETTE[i%PALETTE.length],width:1.5} }
   })
 
+  // Indexed chart: all series rebased to 100 at the first available date in the range
+  const indexedTraces: PlotTrace[] = selectedFx.map((c, i) => {
+    const rows = fx.filter(r => r.Country === c && r.Date >= startDate).sort((a,b) => a.Date.localeCompare(b.Date))
+    if (!rows.length) return null
+    const base = rows[0].LocalPerUSD
+    return {
+      type:'scatter', mode:'lines', name:c,
+      x:rows.map(r=>r.Date),
+      y:rows.map(r => (r.LocalPerUSD / base) * 100),
+      line:{color:PALETTE[i%PALETTE.length],width:1.5},
+      hovertemplate:`<b>${c}</b><br>%{x}<br>%{y:.1f} (base 100)<extra></extra>`,
+    }
+  }).filter(Boolean) as PlotTrace[]
+
   const reerTraces: PlotTrace[] = selectedReer.map((c, i) => {
     const rows = reer.filter(r => r.Currency === c && r.Date >= startDate).sort((a,b) => a.Date.localeCompare(b.Date))
     return { type:'scatter', mode:'lines', name:c, x:rows.map(r=>r.Date), y:rows.map(r=>r.EER), line:{color:PALETTE[i%PALETTE.length],width:1.5} }
   })
 
-  // Latest values
+  // Latest values with 1yr change
   const latestFx = FX_COUNTRIES.map(c => {
     const rows = fx.filter(r => r.Country === c).sort((a,b) => b.Date.localeCompare(a.Date))
-    return { country: c, val: rows[0]?.LocalPerUSD, date: rows[0]?.Date }
+    const latest = rows[0]
+    if (!latest) return { country: c, val: undefined as number|undefined, date: undefined as string|undefined, yoy: null as number|null }
+    const latestTs = new Date(latest.Date).getTime()
+    const targetTs = latestTs - 365 * 86400000
+    const yearAgo = rows.reduce((best, r) => {
+      const d = Math.abs(new Date(r.Date).getTime() - targetTs)
+      return d < Math.abs(new Date(best.Date).getTime() - targetTs) ? r : best
+    }, rows[rows.length - 1])
+    const yoy = yearAgo && Math.abs(new Date(yearAgo.Date).getTime() - targetTs) < 120 * 86400000
+      ? ((latest.LocalPerUSD - yearAgo.LocalPerUSD) / yearAgo.LocalPerUSD) * 100
+      : null
+    return { country: c, val: latest.LocalPerUSD, date: latest.Date, yoy }
   })
 
   return (
@@ -81,10 +106,10 @@ export default function FXCurrencies() {
       <aside className="bond-sidebar">
         <div className="ctrl-section">
           <div className="ctrl-label">VIEW</div>
-          <div className="pill-group">
-            {(['spot','reer'] as const).map(t => (
+          <div className="pill-group" style={{ flexWrap:'wrap', gap:4 }}>
+            {(['spot','indexed','reer'] as const).map(t => (
               <button key={t} className={`pill ${tab===t?'active':''}`} onClick={() => setTab(t)}>
-                {t === 'spot' ? 'Spot vs USD' : 'REER'}
+                {t === 'spot' ? 'Spot vs USD' : t === 'indexed' ? 'Indexed' : 'REER'}
               </button>
             ))}
           </div>
@@ -94,7 +119,7 @@ export default function FXCurrencies() {
           <input type="number" className="ctrl-input" value={startYear} min={2000} max={2024} onChange={e => setStartYear(+e.target.value)} />
         </div>
 
-        {tab === 'spot' ? (
+        {tab !== 'reer' ? (
           <div className="ctrl-section">
             <div className="ctrl-label">CURRENCIES</div>
             {FX_COUNTRIES.map((c, i) => (
@@ -118,7 +143,7 @@ export default function FXCurrencies() {
       </aside>
 
       <div className="bond-main">
-        {tab === 'spot' ? (
+        {tab === 'spot' && (
           <>
             <div style={{ borderLeft:'3px solid #f39200', padding:'10px 14px', background:'rgba(243,146,0,0.04)', borderRadius:'0 6px 6px 0', marginBottom:12 }}>
               <div style={{ color:'#e8e8e8', fontWeight:600, fontSize:13, textTransform:'uppercase', letterSpacing:'0.04em' }}>FX Spot vs USD</div>
@@ -126,31 +151,52 @@ export default function FXCurrencies() {
             </div>
             <Chart traces={fxTraces} layout={{ yaxis: { title:{ text:'Local per USD', font:{color:'#666',size:11} } } }} />
 
-            {/* Latest snapshot table */}
+            {/* Latest snapshot table with YoY */}
             <div style={{ marginTop:24, overflowX:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
                 <thead>
                   <tr style={{ borderBottom:'1px solid #2a2a2a' }}>
-                    {['Currency','Rate (vs USD)','Date'].map(h => <th key={h} style={{ padding:'8px 12px', textAlign:'left', color:'#666', fontWeight:500, textTransform:'uppercase', fontSize:10, letterSpacing:'0.05em' }}>{h}</th>)}
+                    {['Currency','Rate (vs USD)','YoY Change','Date'].map(h => <th key={h} style={{ padding:'8px 12px', textAlign:'left', color:'#666', fontWeight:500, textTransform:'uppercase', fontSize:10, letterSpacing:'0.05em' }}>{h}</th>)}
                   </tr>
                 </thead>
                 <tbody>
-                  {latestFx.map(({ country, val, date }) => (
+                  {latestFx.map(({ country, val, date, yoy }) => (
                     <tr key={country} style={{ borderBottom:'1px solid #1f1f1f' }}>
                       <td style={{ padding:'8px 12px', color:'#e8e8e8' }}>{country}</td>
                       <td style={{ padding:'8px 12px', color:'#f39200', fontVariantNumeric:'tabular-nums' }}>{val != null ? val.toFixed(4) : '—'}</td>
+                      <td style={{ padding:'8px 12px', fontVariantNumeric:'tabular-nums',
+                        color: yoy == null ? '#555' : yoy > 0 ? '#ff4d4d' : '#00c087' }}>
+                        {yoy != null ? (yoy > 0 ? '▲ ' : '▼ ') + Math.abs(yoy).toFixed(1) + '%' : '—'}
+                        {yoy != null && <span style={{ color:'#555', fontSize:10 }}> {yoy > 0 ? 'weakened' : 'strengthened'}</span>}
+                      </td>
                       <td style={{ padding:'8px 12px', color:'#555', fontSize:11 }}>{date ?? ''}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              <div style={{ color:'#555', fontSize:10, marginTop:8 }}>{'↑ YoY > 0 = local currency weakened vs USD (more units to buy $1)'}</div>
             </div>
           </>
-        ) : (
+        )}
+
+        {tab === 'indexed' && (
+          <>
+            <div style={{ borderLeft:'3px solid #60a5fa', padding:'10px 14px', background:'rgba(96,165,250,0.04)', borderRadius:'0 6px 6px 0', marginBottom:12 }}>
+              <div style={{ color:'#e8e8e8', fontWeight:600, fontSize:13, textTransform:'uppercase', letterSpacing:'0.04em' }}>Indexed FX Performance (Base = 100)</div>
+              <div style={{ color:'#888', fontSize:11, marginTop:4 }}>All currencies rebased to 100 at start of period · rise = local currency weakened vs USD</div>
+            </div>
+            <Chart traces={indexedTraces}
+              layout={{ yaxis:{ title:{text:'Index (start = 100)',font:{color:'#666',size:11}}, ticksuffix:'' },
+                shapes:[{ type:'line', x0:startDate, x1:'2030-01-01', y0:100, y1:100, line:{color:'#444',width:1,dash:'dot'} }] }}
+              height={400} />
+          </>
+        )}
+
+        {tab === 'reer' && (
           <>
             <div style={{ borderLeft:'3px solid #f39200', padding:'10px 14px', background:'rgba(243,146,0,0.04)', borderRadius:'0 6px 6px 0', marginBottom:12 }}>
               <div style={{ color:'#e8e8e8', fontWeight:600, fontSize:13, textTransform:'uppercase', letterSpacing:'0.04em' }}>Real Effective Exchange Rate (REER)</div>
-              <div style={{ color:'#888', fontSize:11, marginTop:4 }}>BIS via DBnomics · index, base = 2020</div>
+              <div style={{ color:'#888', fontSize:11, marginTop:4 }}>BIS via DBnomics · index, base = 2020 · above 100 = real appreciation</div>
             </div>
             <Chart traces={reerTraces} layout={{ yaxis: { title:{ text:'REER Index', font:{color:'#666',size:11} } } }} height={400} />
           </>
