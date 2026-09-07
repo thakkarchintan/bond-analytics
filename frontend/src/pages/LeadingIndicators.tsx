@@ -45,6 +45,72 @@ const LEADING_COLORS: Record<string,string> = {
 const OECD_COUNTRIES_DEFAULT = ['United States','Germany','China','Japan','United Kingdom','France','India','Canada']
 const OECD_PALETTE = ['#60a5fa','#f39200','#f87171','#34d399','#22d3ee','#a78bfa','#fbbf24','#fb923c']
 
+// Signal definitions: { label, series, format, getSignal }
+type SignalLevel = 'green' | 'yellow' | 'red' | 'gray'
+interface SignalDef {
+  label: string
+  series: string
+  unit: string
+  getSignal: (v: number) => { level: SignalLevel; text: string }
+  format: (v: number) => string
+}
+
+const SIGNAL_DEFS: SignalDef[] = [
+  {
+    label: '2Y–10Y Spread',
+    series: '2Y10Y Spread',
+    unit: '%',
+    format: v => (v >= 0 ? '+' : '') + v.toFixed(2) + '%',
+    getSignal: v => v < 0 ? { level:'red', text:'Inverted' } : v < 0.5 ? { level:'yellow', text:'Flat' } : { level:'green', text:'Normal' },
+  },
+  {
+    label: 'Consumer Sentiment',
+    series: 'Consumer Sentiment',
+    unit: 'index',
+    format: v => v.toFixed(1),
+    getSignal: v => v < 70 ? { level:'red', text:'Pessimistic' } : v < 90 ? { level:'yellow', text:'Cautious' } : { level:'green', text:'Optimistic' },
+  },
+  {
+    label: 'Initial Claims',
+    series: 'Initial Claims',
+    unit: 'K',
+    format: v => (v / 1000).toFixed(0) + 'K',
+    getSignal: v => v > 300000 ? { level:'red', text:'Rising' } : v > 250000 ? { level:'yellow', text:'Elevated' } : { level:'green', text:'Low' },
+  },
+  {
+    label: 'Unemployment',
+    series: 'Unemployment',
+    unit: '%',
+    format: v => v.toFixed(1) + '%',
+    getSignal: v => v > 6 ? { level:'red', text:'High' } : v > 4 ? { level:'yellow', text:'Moderate' } : { level:'green', text:'Low' },
+  },
+  {
+    label: 'Housing Starts',
+    series: 'Housing Starts',
+    unit: 'K',
+    format: v => (v / 1000).toFixed(0) + 'K',
+    getSignal: v => v < 1000000 ? { level:'red', text:'Weak' } : v < 1400000 ? { level:'yellow', text:'Moderate' } : { level:'green', text:'Strong' },
+  },
+  {
+    label: 'Ind. Production',
+    series: 'Industrial Production',
+    unit: 'index',
+    format: v => v.toFixed(1),
+    getSignal: v => v < 95 ? { level:'red', text:'Contracting' } : v < 100 ? { level:'yellow', text:'Slowing' } : { level:'green', text:'Expanding' },
+  },
+]
+
+const SIGNAL_COLOR: Record<SignalLevel, string> = {
+  green: '#00c087', yellow: '#f39200', red: '#ff4d4d', gray: '#555',
+}
+const SIGNAL_BG: Record<SignalLevel, string> = {
+  green: 'rgba(0,192,135,0.08)', yellow: 'rgba(243,146,0,0.08)', red: 'rgba(255,77,77,0.08)', gray: 'rgba(85,85,85,0.08)',
+}
+const SIGNAL_BORDER: Record<SignalLevel, string> = {
+  green: '#00c08733', yellow: '#f3920033', red: '#ff4d4d33', gray: '#55555533',
+}
+const SIGNAL_DOT: Record<SignalLevel, string> = { green: '●', yellow: '●', red: '●', gray: '●' }
+
 export default function LeadingIndicators() {
   const [leading, setLeading] = useState<LeadRow[]>([])
   const [oecd, setOecd] = useState<OecdRow[]>([])
@@ -76,7 +142,7 @@ export default function LeadingIndicators() {
     return { type:'scatter', mode:'lines', name:s, x:rows.map(r=>r.Date), y:rows.map(r=>r.Value), line:{color:LEADING_COLORS[s]??'#888',width:1.5} }
   })
 
-  // Recession shading as shape
+  // Recession shading
   const recRows = leading.filter(r => r.Series === 'Recession' && r.Date >= startDate).sort((a,b) => a.Date.localeCompare(b.Date))
   const recTrace: PlotTrace = {
     type:'scatter', mode:'none', name:'Recession', fill:'tozeroy', fillcolor:'rgba(255,77,77,0.08)',
@@ -84,7 +150,6 @@ export default function LeadingIndicators() {
     hoverinfo:'skip', showlegend:true,
   }
 
-  // 2Y10Y by itself for clarity
   const spreadTrace: PlotTrace = {
     ...leadTraces.find(t => t.name === '2Y10Y Spread')!,
     name: '2Y10Y Spread (bps)',
@@ -94,6 +159,15 @@ export default function LeadingIndicators() {
   const oecdTraces: PlotTrace[] = oecdCountries.map((c, i) => {
     const rows = oecd.filter(r => r.Country === c && r.Indicator === indicator && r.Date >= startDate).sort((a,b) => a.Date.localeCompare(b.Date))
     return { type:'scatter', mode:'lines', name:c, x:rows.map(r=>r.Date), y:rows.map(r=>r.Value), line:{color:OECD_PALETTE[i%OECD_PALETTE.length],width:1.5} }
+  })
+
+  // Signal cards: latest value per series
+  const signals = SIGNAL_DEFS.map(def => {
+    const rows = leading.filter(r => r.Series === def.series).sort((a,b) => b.Date.localeCompare(a.Date))
+    const latest = rows[0]
+    if (!latest) return { def, val: null as number|null, date: '', signal: { level:'gray' as SignalLevel, text:'No data' } }
+    const sig = def.getSignal(latest.Value)
+    return { def, val: latest.Value, date: latest.Date, signal: sig }
   })
 
   return (
@@ -138,6 +212,27 @@ export default function LeadingIndicators() {
       <div className="bond-main">
         {tab === 'us' ? (
           <>
+            {/* Traffic-light signal cards */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:10, marginBottom:20 }}>
+              {signals.map(({ def, val, date, signal }) => (
+                <div key={def.series} style={{
+                  background: SIGNAL_BG[signal.level],
+                  border: `1px solid ${SIGNAL_BORDER[signal.level]}`,
+                  borderRadius: 8, padding:'12px 14px',
+                }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
+                    <span style={{ color: SIGNAL_COLOR[signal.level], fontSize:10 }}>{SIGNAL_DOT[signal.level]}</span>
+                    <span style={{ color:'#888', fontSize:10, textTransform:'uppercase', letterSpacing:'0.05em' }}>{def.label}</span>
+                  </div>
+                  <div style={{ color:'#e8e8e8', fontSize:18, fontWeight:700, fontVariantNumeric:'tabular-nums', marginBottom:4 }}>
+                    {val != null ? def.format(val) : '—'}
+                  </div>
+                  <div style={{ color: SIGNAL_COLOR[signal.level], fontSize:11, fontWeight:500 }}>{signal.text}</div>
+                  <div style={{ color:'#555', fontSize:10, marginTop:4 }}>{date}</div>
+                </div>
+              ))}
+            </div>
+
             <div style={{ borderLeft:'3px solid #f39200', padding:'10px 14px', background:'rgba(243,146,0,0.04)', borderRadius:'0 6px 6px 0', marginBottom:12 }}>
               <div style={{ color:'#e8e8e8', fontWeight:600, fontSize:13, textTransform:'uppercase', letterSpacing:'0.04em' }}>2Y–10Y Treasury Spread</div>
               <div style={{ color:'#888', fontSize:11, marginTop:4 }}>FRED · inverted spread = recession signal</div>

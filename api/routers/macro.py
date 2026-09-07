@@ -99,6 +99,18 @@ def get_reer() -> list[dict]:
     return df.to_dict(orient="records")
 
 
+@router.get("/us-curve")
+def get_us_curve() -> list[dict]:
+    df = _read_parquet(_HERE / "gmacro_us_curve_cache.parquet")
+    return df.to_dict(orient="records")
+
+
+@router.get("/mmkt")
+def get_mmkt() -> list[dict]:
+    df = _read_parquet(_HERE / "gmacro_mmkt_cache.parquet")
+    return df.to_dict(orient="records")
+
+
 @router.get("/dashboard")
 def get_dashboard() -> list[dict]:
     """Merged annual macro data: IMF indicators + 10Y yields + CB policy rates."""
