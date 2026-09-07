@@ -22,6 +22,7 @@ import CurveTradeBuilderPage from './pages/CurveTradeBuilder'
 import NewsSummaryPage from './pages/NewsSummary'
 import BondPortfolioPage from './pages/BondPortfolio'
 import BondSimulatorPage from './pages/BondSimulator'
+import MonteCarloSimulatorPage from './pages/MonteCarloSimulator'
 import DataSourcesPage from './pages/DataSources'
 import ChangelogPage from './pages/Changelog'
 import RoadmapPage from './pages/Roadmap'
@@ -50,6 +51,7 @@ type Page =
   | 'Heatmap'
   | 'Bond Portfolio'
   | 'Bond Simulator'
+  | 'Monte Carlo Simulator'
   | 'News Summary'
   | 'Data Sources'
   | 'Changelog'
@@ -72,6 +74,7 @@ const navGroups: Array<{
       { label: 'Heatmap',           icon: Activity },
       { label: 'Bond Portfolio',             icon: BarChart3 },
       { label: 'Bond Simulator',             icon: LineChart },
+      { label: 'Monte Carlo Simulator',      icon: LineChart },
       { label: 'Portfolio Rebalance',        icon: BarChart3 },
       { label: 'Bond Investment Strategies', icon: LineChart },
     ],
@@ -189,7 +192,12 @@ const pageHeadings: Record<Page, { eyebrow: string; title: string; subtitle: str
     subtitle: 'Market value, duration, DV01, convexity, and P&L sensitivity for a multi-bond portfolio.',
   },
   'Bond Simulator': {
-    eyebrow: 'FIXED INCOME · MONTE CARLO',
+    eyebrow: 'FIXED INCOME · PRICE-YIELD · ANALYTICS',
+    title: 'Bond Simulator',
+    subtitle: 'Interactive price-yield curve, cash flow timeline, and rate shock analysis — all client-side, live updates.',
+  },
+  'Monte Carlo Simulator': {
+    eyebrow: 'FIXED INCOME · MONTE CARLO · GBM',
     title: 'Monte Carlo Bond Simulator',
     subtitle: 'GBM yield simulation — price distribution, VaR, CVaR, and yield fan at horizon.',
   },
@@ -331,7 +339,8 @@ export default function App() {
           {page === 'Curve Trade Builder'   && <CurveTradeBuilderPage />}
           {page === 'Heatmap'              && <HeatmapPage />}
           {page === 'Bond Portfolio'       && <BondPortfolioPage />}
-          {page === 'Bond Simulator'       && <BondSimulatorPage />}
+          {page === 'Bond Simulator'         && <BondSimulatorPage />}
+          {page === 'Monte Carlo Simulator'  && <MonteCarloSimulatorPage />}
           {page === 'Portfolio Rebalance'        && <PortfolioRebalancePage />}
           {page === 'Bond Investment Strategies' && <BondInvestmentStrategiesPage />}
           {page === 'Global Business Cycle'      && <GlobalBusinessCyclePage />}
