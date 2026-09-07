@@ -22,6 +22,35 @@ interface Entry {
 
 const CHANGELOG: Entry[] = [
   {
+    id: 54,
+    version: '2.6',
+    timestamp: 'Sep 2026',
+    category: 'Enhancement',
+    title: 'Low-priority gap close — 5 pages enriched with new views and analytics',
+    description: [
+      'InflationGrowth — new Breakeven tab: TIPS-implied breakeven rates (5Y, 10Y, 5-10Y forward) and real yields (5Y, 10Y) charts with KPI strip; data from /api/macro/breakeven',
+      'FXCurrencies — new Indexed tab rebasing all currencies to 100 at period start (rise = local weakened vs USD); added YoY change column with colour-coded ▲/▼ and weakened/strengthened labels to Spot table',
+      'CreditSpreads — new Spectrum view: bar chart of current OAS across full AAA→CCC rating ladder with vs-IG-premium table; added historical percentile badges for IG and HY with tight/moderate/wide labels',
+      'MacroDashboard — added Unemployment Rate (% labour force) time-series chart in global macro section',
+      'FiscalScorecard — added Debt Sustainability bubble scatter (DebtGDP vs FiscalBal, bubble size ∝ GDP); added Primary Balance and Current Account history charts',
+    ],
+  },
+  {
+    id: 53,
+    version: '2.5',
+    timestamp: 'Sep 2026',
+    category: 'Enhancement',
+    title: 'Medium-priority gap close — 2 new API endpoints + 5 pages enriched',
+    description: [
+      'api/routers/macro.py — added GET /api/macro/us-curve (US Treasury 11-maturity daily data) and GET /api/macro/mmkt (SOFR + Effective Fed Funds daily)',
+      'YieldCurves — new US Curve tab: compare the full 1M–30Y term structure across up to 5 user-selected dates; 2Y10Y and 3M10Y spread badges below chart',
+      'CrossAsset — added US 10Y yield series, IG and HY OAS spreads, and NBER recession shading to the cross-asset time-series view',
+      'InflationGrowth — added Scatter view: Stagflation Quadrant (CPI vs Real GDP) and Phillips Curve (Unemployment vs CPI) for any selected year',
+      'CentralBankRates — added 1yr rate change badges to policy rate KPI cards; added Money Market Rates section showing Fed Funds and SOFR',
+      'LeadingIndicators — added 6 traffic-light signal cards for US leading indicators with configurable thresholds and colour coding',
+    ],
+  },
+  {
     id: 52,
     version: '2.4',
     timestamp: 'Sep 2026',
