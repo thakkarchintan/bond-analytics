@@ -53,7 +53,16 @@ button { cursor: pointer; }
 }
 .sidebar-group-label.admin { margin-top: 16px; }
 
-nav { padding: 0 8px; flex: 1; }
+nav {
+  padding: 0 8px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* hide scrollbar — Webkit */
+  scrollbar-width: none;       /* Firefox */
+  -ms-overflow-style: none;    /* IE/Edge */
+}
+nav::-webkit-scrollbar { display: none; } /* Chrome/Safari */
 
 .nav-item {
   width: 100%; display: flex; align-items: center; gap: 10px;
