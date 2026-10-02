@@ -26,6 +26,7 @@ from FiscalScorecard import fiscal_scorecard
 from InflationGrowth import inflation_growth
 from FXCurrencies import fx_currencies
 from DataSources import data_sources
+from Roadmap import roadmap
 from HomePage import home_page_cards
 from data import load_data
 from dotenv import load_dotenv
@@ -195,15 +196,15 @@ if st.session_state["connected"]:
         "Curve Trade Builder": curve_trade_builder,
         "Changelog": changelog_tab,
         "Data Sources": data_sources,
+        "Roadmap": roadmap,
     }
 
     user_email = st.session_state["user_info"].get("email", "None")
 
-    admins = [email.strip() for email in os.getenv("ADMINS", "").split(",")]
-    if "admins" not in st.session_state:
-        st.session_state["admins"] = admins
+    admins = [email.strip() for email in os.getenv("ADMINS", "").split(",") if email.strip()]
+    st.session_state["admins"] = admins  # refresh every run so env-var changes take effect
 
-    restricted_apps = ["Changelog", "Data Sources"]
+    restricted_apps = ["Changelog", "Data Sources", "Roadmap"]
     visible_apps = {
         app_name: app_func
         for app_name, app_func in APP_MAP.items()
